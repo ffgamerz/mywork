@@ -11,6 +11,11 @@ export default function RecordManager({ session }) {
   const [generatedText, setGeneratedText] = useState('')
   const [toastMessage, setToastMessage] = useState('')
 
+  // State Baru untuk Pengurusan Edit Rekod
+  const [editingRecord, setEditingRecord] = useState(null)
+  const [editAmount, setEditAmount] = useState('')
+  const [editDate, setEditDate] = useState('')
+
   const showToast = (msg) => {
     setToastMessage(msg)
     setTimeout(() => {
@@ -49,6 +54,37 @@ export default function RecordManager({ session }) {
       alert('Failed to save data: ' + error.message)
     } else {
       setAmount('')
+      fetchRecords()
+    }
+    setLoading(false)
+  }
+
+  // Fungsi Baru: Buka modal edit dan masukkan data asal rekod
+  const handleStartEdit = (rec) => {
+    setEditingRecord(rec)
+    setEditAmount(rec.amount)
+    setEditDate(rec.date)
+  }
+
+  // Fungsi Baru: Simpan kemas kini rekod ke Supabase
+  const handleUpdateRecord = async (e) => {
+    e.preventDefault()
+    setLoading(true)
+
+    const { error } = await supabase
+      .from('records')
+      .update({
+        title: `RM ${parseFloat(editAmount).toFixed(2)}`,
+        amount: parseFloat(editAmount) || 0,
+        date: editDate,
+      })
+      .eq('id', editingRecord.id)
+
+    if (error) {
+      alert('Failed to update data: ' + error.message)
+    } else {
+      setEditingRecord(null)
+      showToast('Record updated successfully!')
       fetchRecords()
     }
     setLoading(false)
@@ -150,7 +186,7 @@ export default function RecordManager({ session }) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* SECTION 1: INPUT FORM (Ditukar ke text-base / 16px untuk mengelakkan auto-zoom mudah alih) */}
+        {/* SECTION 1: INPUT FORM */}
         <div className="card bg-base-100 shadow-xl p-6 border border-base-200 h-fit">
           <h3 className="text-xl font-bold mb-4 text-primary">Add New Record</h3>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -254,7 +290,20 @@ export default function RecordManager({ session }) {
                       <td className="text-center opacity-70 font-mono">{index + 1}</td>
                       <td className="whitespace-nowrap">{rec.date}</td>
                       <td className="text-right font-bold text-success">
-                        {parseFloat(rec.amount).toFixed(2)}
+                        <div className="flex items-center justify-end gap-2">
+                          <span>{parseFloat(rec.amount).toFixed(2)}</span>
+                          {/* BUTTON EDIT BARU (Ikon Pensil) */}
+                          <button
+                            type="button"
+                            onClick={() => handleStartEdit(rec)}
+                            className="btn btn-ghost btn-xs btn-circle text-info hover:bg-info/20"
+                            title="Edit Record"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" />
+                            </svg>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -279,6 +328,42 @@ export default function RecordManager({ session }) {
           </div>
         </div>
       )}
+
+      {/* MODAL POP-UP EDIT REKOD BARU */}
+      {editingRecord && (
+        <div className="modal modal-open z-50">
+          <div className="modal-box max-w-sm border border-base-200 shadow-2xl rounded-2xl p-6">
+            <h3 className="font-bold text-lg text-info flex items-center gap-2 mb-4">✏️ Edit Record</h3>
+            <form onSubmit={handleUpdateRecord} className="space-y-4">
+              <div className="form-control">
+                <label className="label-text font-semibold mb-1">Date</label>
+                <input 
+                  type="date" required className="input input-bordered w-full text-base"
+                  value={editDate} onChange={(e) => setEditDate(e.target.value)}
+                />
+              </div>
+
+              <div className="form-control">
+                <label className="label-text font-semibold mb-1">Amount (RM)</label>
+                <input 
+                  type="number" step="0.01" required className="input input-bordered w-full text-base"
+                  value={editAmount} onChange={(e) => setEditAmount(e.target.value)}
+                />
+              </div>
+
+              <div className="modal-action gap-2 pt-2">
+                <button type="button" className="btn btn-sm btn-ghost" onClick={() => setEditingRecord(null)}>
+                  Cancel
+                </button>
+                <button type="submit" disabled={loading} className="btn btn-sm btn-info text-white font-bold px-4">
+                  {loading ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }
