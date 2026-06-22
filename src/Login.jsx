@@ -6,7 +6,7 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState(null)
-  const [isSignUp, setIsSignUp] = useState(false) // Suis untuk tukar Mod
+  const [isSignUp, setIsSignUp] = useState(false)
 
   const handleAuth = async (e) => {
     e.preventDefault()
@@ -14,19 +14,17 @@ export default function Login() {
     setMessage(null)
 
     if (isSignUp) {
-      // 1. LOGIK DAFTAR AKAUN BARU
-      const { data, error } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signUp({
         email,
         password,
       })
       if (error) {
         setMessage({ type: 'error', text: error.message })
       } else {
-        setMessage({ type: 'success', text: 'Pendaftaran berjaya! Cuba log masuk sekarang.' })
-        setIsSignUp(false) // Tukar balik ke mod login lepas sukses
+        setMessage({ type: 'success', text: 'Registration successful! You can log in now.' })
+        setIsSignUp(false)
       }
     } else {
-      // 2. LOGIK LOG MASUK
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -42,7 +40,7 @@ export default function Login() {
       <div className="card w-full max-w-sm shadow-2xl bg-base-100">
         <form onSubmit={handleAuth} className="card-body">
           <h2 className="card-title text-2xl font-bold justify-center mb-2 text-primary">
-            {isSignUp ? 'Daftar mywork' : 'mywork hub'}
+            {isSignUp ? 'Register mywork' : 'mywork hub'}
           </h2>
           
           {message && (
@@ -53,12 +51,15 @@ export default function Login() {
 
           <div className="form-control">
             <label className="label">
-              <span className="label-text font-medium">Emel</span>
+              <span className="label-text font-medium">Email</span>
             </label>
+            {/* Ditambah atribut name dan autoComplete untuk trigger Safari Save Password */}
             <input 
               type="email" 
-              placeholder="nama@emel.com" 
-              className="input input-bordered w-full" 
+              name="email"
+              autoComplete="username"
+              placeholder="name@email.com" 
+              className="input input-bordered w-full text-base" 
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required 
@@ -67,12 +68,15 @@ export default function Login() {
 
           <div className="form-control mt-2">
             <label className="label">
-              <span className="label-text font-medium">Kata Laluan</span>
+              <span className="label-text font-medium">Password</span>
             </label>
+            {/* Ditambah atribut name dan autoComplete untuk trigger Safari Save Password */}
             <input 
               type="password" 
+              name="password"
+              autoComplete={isSignUp ? "new-password" : "current-password"}
               placeholder="••••••••" 
-              className="input input-bordered w-full" 
+              className="input input-bordered w-full text-base" 
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required 
@@ -80,15 +84,14 @@ export default function Login() {
           </div>
 
           <div className="form-control mt-6">
-            <button type="submit" disabled={loading} className="btn btn-primary w-full">
-              {loading ? <span className="loading loading-spinner"></span> : (isSignUp ? 'Daftar Akaun' : 'Log Masuk')}
+            <button type="submit" disabled={loading} className="btn btn-primary w-full mt-2">
+              {loading ? <span className="loading loading-spinner"></span> : (isSignUp ? 'Register Account' : 'Log In')}
             </button>
           </div>
 
-          {/* BUTANG TUKAR MOD */}
           <div className="text-center mt-4 text-sm">
             <span className="opacity-70">
-              {isSignUp ? 'Dah ada akaun?' : 'Belum ada akaun?'} 
+              {isSignUp ? 'Already have an account?' : "Don't have an account?"} 
             </span>{' '}
             <button 
               type="button"
@@ -98,7 +101,7 @@ export default function Login() {
                 setMessage(null)
               }}
             >
-              {isSignUp ? 'Log Masuk' : 'Daftar Sini'}
+              {isSignUp ? 'Log In' : 'Register Here'}
             </button>
           </div>
         </form>
