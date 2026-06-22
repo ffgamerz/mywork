@@ -19,26 +19,41 @@ export default function Privileges({ session }) {
   const [adminNewPassword, setAdminNewPassword] = useState('')
   const [actionLoading, setActionLoading] = useState(false)
 
+  // State Delete User
+  const [userToDelete, setUserToDelete] = useState(null)
+
   const showToast = (msg) => {
     setToast(msg)
-    setTimeout(() => setToast(''), 5000) // Panjangkan sikit masa untuk mudahkan salin password
+    setTimeout(() => setToast(''), 5000)
   }
 
   const loadData = async () => {
     setLoading(true)
-    const { data: mods } = await supabase.from('system_modules').select('*').order('name')
-    if (mods) setModules(mods)
+    try {
+      // 1. Ambil data modul sistem
+      const { data: mods, error: modsError } = await supabase.from('system_modules').select('*').order('name')
+      if (modsError) throw modsError
+      if (mods) setModules(mods)
 
-    const { data: profs } = await supabase.from('profiles').select('*').order('email')
-    if (profs) setUsers(profs)
+      // 2. Ambil data profil pengguna
+      const { data: profs, error: profsError } = await supabase.from('profiles').select('*').order('email')
+      if (profsError) throw profsError
+      if (profs) setUsers(profs)
 
-    const { data: perms } = await supabase.from('user_permissions').select('*')
-    if (perms) {
-      const permMap = {}
-      perms.forEach(p => { permMap[`${p.user_id}-${p.module_id}`] = p.is_allowed })
-      setPermissions(permMap)
+      // 3. Ambil data matriks kebenaran
+      const { data: perms, error: permsError } = await supabase.from('user_permissions').select('*')
+      if (permsError) throw permsError
+      if (perms) {
+        const permMap = {}
+        perms.forEach(p => { permMap[`${p.user_id}-${p.module_id}`] = p.is_allowed })
+        setPermissions(permMap)
+      }
+    } catch (err) {
+      console.error("Ralat memuatkan data Supabase:", err.message)
+      alert("Error loading data: " + err.message)
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   useEffect(() => { loadData() }, [])
@@ -52,17 +67,15 @@ export default function Privileges({ session }) {
     setGeneratedPassword(pass)
   }
 
-  // Fungsi pra-submit untuk semak data sebelum tunjuk amaran mutakhir
   const handlePreSubmitCheck = (e) => {
     e.preventDefault()
     if (!generatedPassword) {
       alert('Please generate a temporary password first!')
       return
     }
-    setShowConfirmStep(true) // Buka pop-up amaran
+    setShowConfirmStep(true)
   }
 
-  // Fungsi sebenar pendaftaran akaun ke server Supabase
   const handleExecuteCreateUser = async () => {
     setCreateLoading(true)
     const { data, error } = await supabase.functions.invoke('admin-create-user', {
@@ -72,20 +85,49 @@ export default function Privileges({ session }) {
     if (error) {
       alert('Creation failed: ' + error.message)
     } else {
-      showToast(`ACCOUNT CREATED SUCCESSFULLY! 🎉\nEmail: ${newEmail}\nTemporary Pass: ${generatedPassword}\n(Please copy and share with the user)`)
+      showToast(`ACCOUNT CREATED SUCCESSFULLY! 🎉\nEmail: ${newEmail}\nTemporary Pass: ${generatedPassword}`)
       setNewEmail('')
       setGeneratedPassword('')
       setShowConfirmStep(false)
-      setIsCreateModalOpen(false) // Tutup modal utama
+      setIsCreateModalOpen(false)
       loadData()
     }
     setCreateLoading(false)
   }
 
+  const handleDeleteUser = async () => {
+    setActionLoading(true)
+    const { error } = await supabase.functions.invoke('admin-delete-user', { 
+      body: { userId: userToDelete.id } 
+    })
+    if (error) {
+      alert(error.message)
+    } else { 
+      showToast('User deleted permanently!')
+      setUserToDelete(null)
+      loadData() 
+    }
+    setActionLoading(false)
+  }
+
+  // DIFAHAMI & DIPERBETULKAN: Memanggil Edge Function untuk kemas kini role dengan kuasa penuh (bypass RLS)
   const handleRoleChange = async (userId, newRole) => {
-    const { error } = await supabase.from('profiles').update({ role: newRole }).eq('id', userId)
-    if (error) alert(error.message)
-    else { showToast('Privilege role updated!'); loadData() }
+    setActionLoading(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-change-role', {
+        body: { userId, newRole }
+      })
+
+      if (error) throw error
+
+      showToast(`Privilege level updated successfully to ${newRole}!`)
+      loadData() // Muat semula jadual di skrin
+    } catch (err) {
+      console.error("Gagal menukar peranan:", err.message)
+      alert("Gagal menukar peranan: " + err.message)
+    } finally {
+      setActionLoading(false)
+    }
   }
 
   const handleTogglePermission = async (userId, moduleId, currentStatus) => {
@@ -94,8 +136,9 @@ export default function Privileges({ session }) {
       user_id: userId, module_id: moduleId, is_allowed: newStatus, updated_at: new Date().toISOString()
     }, { onConflict: 'user_id,module_id' })
 
-    if (error) alert(error.message)
-    else {
+    if (error) {
+      alert(error.message)
+    } else {
       setPermissions(prev => ({ ...prev, [`${userId}-${moduleId}`]: newStatus }))
       showToast('Preference updated!')
     }
@@ -104,17 +147,28 @@ export default function Privileges({ session }) {
   const handleForceChangePassword = async (e) => {
     e.preventDefault()
     setActionLoading(true)
-    const { error } = await supabase.functions.invoke('admin-change-password', {
-      body: { userId: selectedUser.id, newPassword: adminNewPassword },
-    })
-    if (error) alert(error.message)
-    else {
-      await supabase.from('profiles').update({ requires_password_change: true }).eq('id', selectedUser.id)
+    try {
+      const { error: funcError } = await supabase.functions.invoke('admin-change-password', {
+        body: { userId: selectedUser.id, newPassword: adminNewPassword },
+      })
+      if (funcError) throw funcError
+
+      const { error: dbError } = await supabase
+        .from('profiles')
+        .update({ requires_password_change: true, updated_at: new Date().toISOString() })
+        .eq('id', selectedUser.id)
+        
+      if (dbError) throw dbError
+
       showToast(`Password updated and forced reset active for ${selectedUser.email}`)
       setAdminNewPassword('')
       setSelectedUser(null)
+      loadData()
+    } catch (err) {
+      alert("Reset Password Failed: " + err.message)
+    } finally {
+      setActionLoading(false)
     }
-    setActionLoading(false)
   }
 
   return (
@@ -127,14 +181,12 @@ export default function Privileges({ session }) {
         </div>
       )}
 
-      {/* TAJUK HALAMAN & BUTANG ACTION POPUP */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-base-100 pb-5">
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl md:text-3xl font-black tracking-tight">Privilege & User Manager</h1>
           <p className="text-sm opacity-60">Create organization accounts and delegate dynamic structural rights.</p>
         </div>
         
-        {/* BUTANG UTAMA UNTUK BUKA MODAL */}
         <button 
           onClick={() => setIsCreateModalOpen(true)}
           className="btn btn-primary font-bold shadow-lg gap-2 self-start sm:self-auto rounded-xl"
@@ -144,7 +196,6 @@ export default function Privileges({ session }) {
         </button>
       </div>
 
-      {/* JADUAL MATRIKS KEBENARAN */}
       <div className="card bg-base-100 shadow-xl p-6 border border-base-200">
         <h3 className="text-lg font-bold mb-4 text-secondary">Interactive Access Control Matrix</h3>
         {loading ? (
@@ -176,21 +227,40 @@ export default function Privileges({ session }) {
                       </span>
                     </td>
                     {modules.map(m => {
-                      const isSuperOrAdmin = u.role === 'super_admin' || u.role === 'admin';
-                      const isChecked = isSuperOrAdmin || !!permissions[`${u.id}-${m.id}`];
+                      const isChecked = !!permissions[`${u.id}-${m.id}`];
                       return (
                         <td key={m.id} className="text-center">
-                          <input type="checkbox" className="checkbox checkbox-primary checkbox-sm" checked={isChecked} disabled={isSuperOrAdmin} onChange={() => handleTogglePermission(u.id, m.id, permissions[`${u.id}-${m.id}`])} />
-                          {isSuperOrAdmin && <div className="text-[9px] text-primary font-medium mt-0.5">By Right</div>}
+                          <input 
+                            type="checkbox" 
+                            className="checkbox checkbox-primary checkbox-sm" 
+                            checked={isChecked} 
+                            disabled={false} 
+                            onChange={() => handleTogglePermission(u.id, m.id, permissions[`${u.id}-${m.id}`])} 
+                          />
                         </td>
                       )
                     })}
                     <td className="text-right">
                       <div className="flex justify-end gap-1">
                         <button onClick={() => setSelectedUser(u)} className="btn btn-xs btn-outline btn-error">Reset Pass</button>
+                        <button onClick={() => setUserToDelete(u)} className="btn btn-xs btn-outline btn-ghost text-error">Delete</button>
                         <div className="divider divider-horizontal mx-0.5"></div>
-                        <button onClick={() => handleRoleChange(u.id, 'default')} disabled={u.role === 'super_admin'} className={`btn btn-xs ${u.role === 'default' ? 'btn-active opacity-40' : 'btn-outline'}`}>Default</button>
-                        <button onClick={() => handleRoleChange(u.id, 'admin')} disabled={u.role === 'super_admin'} className={`btn btn-xs btn-primary ${u.role === 'admin' ? 'btn-active opacity-40' : 'btn-outline'}`}>Admin</button>
+                        
+                        {/* Atribut disabled dikawal mengikut nilai role semasa di database */}
+                        <button 
+                          onClick={() => handleRoleChange(u.id, 'default')} 
+                          disabled={actionLoading || u.role === 'super_admin' || u.role === 'default' || !u.role} 
+                          className={`btn btn-xs ${u.role === 'default' || !u.role ? 'btn-active opacity-40' : 'btn-outline'}`}
+                        >
+                          Default
+                        </button>
+                        <button 
+                          onClick={() => handleRoleChange(u.id, 'admin')} 
+                          disabled={actionLoading || u.role === 'super_admin' || u.role === 'admin'} 
+                          className={`btn btn-xs btn-primary ${u.role === 'admin' ? 'btn-active opacity-40' : 'btn-outline'}`}
+                        >
+                          Admin
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -201,84 +271,42 @@ export default function Privileges({ session }) {
         )}
       </div>
 
-      {/* MODAL UTAMA: BORANG ADD NEW STAFF */}
+      {/* MODAL ADD NEW STAFF */}
       {isCreateModalOpen && (
         <div className="modal modal-open z-[100]">
           <div className="modal-box max-w-md border border-base-200 shadow-2xl rounded-2xl p-6">
-            <h3 className="font-bold text-xl text-primary flex items-center gap-2 mb-2">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M18 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0ZM3 19.235v-.11a6.375 6.375 0 0 1 12.75 0v.109A12.318 12.318 0 0 1 9.374 21c-2.331 0-4.512-.645-6.374-1.766Z" /></svg>
-              Provision Staff Account
-            </h3>
+            <h3 className="font-bold text-xl text-primary flex items-center gap-2 mb-2">Provision Staff Account</h3>
             <p className="text-xs opacity-60 mb-4">Register new access coordinates within the cloud framework.</p>
-            
             <form onSubmit={handlePreSubmitCheck} className="space-y-4">
               <div className="form-control">
                 <label className="label-text font-semibold mb-1">Staff Email Address</label>
-                <input 
-                  type="email" required placeholder="staffname@gmail.com" className="input input-bordered w-full text-base rounded-xl"
-                  value={newEmail} onChange={(e) => setNewEmail(e.target.value)}
-                />
+                <input type="email" required placeholder="staffname@gmail.com" className="input input-bordered w-full text-base rounded-xl" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} />
               </div>
-
               <div className="form-control">
                 <label className="label-text font-semibold mb-1">Temporary Security Password</label>
                 <div className="flex gap-2">
-                  <input 
-                    type="text" readOnly placeholder="Click Generate to build" className="input input-bordered flex-1 text-base font-mono bg-base-200 rounded-xl px-3"
-                    value={generatedPassword} required
-                  />
-                  <button type="button" onClick={generateRandomPassword} className="btn btn-secondary font-bold rounded-xl px-4">
-                    Generate
-                  </button>
+                  <input type="text" readOnly placeholder="Click Generate to build" className="input input-bordered flex-1 text-base font-mono bg-base-200 rounded-xl px-3" value={generatedPassword} required />
+                  <button type="button" onClick={generateRandomPassword} className="btn btn-secondary font-bold rounded-xl px-4">Generate</button>
                 </div>
               </div>
-
               <div className="modal-action gap-2 pt-2">
-                <button 
-                  type="button" 
-                  className="btn btn-sm btn-ghost rounded-lg" 
-                  onClick={() => { setIsCreateModalOpen(false); setNewEmail(''); setGeneratedPassword(''); }}
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-sm btn-primary rounded-lg font-bold px-4">
-                  Create User
-                </button>
+                <button type="button" className="btn btn-sm btn-ghost rounded-lg" onClick={() => { setIsCreateModalOpen(false); setNewEmail(''); setGeneratedPassword(''); }}>Cancel</button>
+                <button type="submit" className="btn btn-sm btn-primary rounded-lg font-bold px-4">Create User</button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* MODAL LAPISAN KEDUA: REMINDER / IMPLICIT ACTION CONFIRMATION */}
+      {/* MODAL CONFIRMATION */}
       {showConfirmStep && (
         <div className="modal modal-open z-[200]">
           <div className="modal-box max-w-sm border-2 border-warning shadow-2xl bg-base-100 rounded-2xl p-6 text-center">
-            <div className="w-16 h-16 bg-warning/10 text-warning mx-auto flex items-center justify-center rounded-full mb-3">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" /></svg>
-            </div>
             <h3 className="font-black text-xl text-warning">Confirm Action</h3>
-            <p className="py-2 text-sm font-semibold opacity-90 text-base-content">
-              This action cannot be undone, please be careful.
-            </p>
-            <p className="text-xs opacity-60 px-2 pb-2">
-              An official permanent registration record will be committed for <span className="font-bold text-base-content underline">{newEmail}</span>.
-            </p>
-
+            <p className="py-2 text-sm font-semibold opacity-90">This action cannot be undone, please be careful.</p>
             <div className="flex justify-center gap-3 mt-4">
-              <button 
-                type="button" 
-                className="btn btn-sm btn-ghost rounded-lg flex-1" 
-                onClick={() => setShowConfirmStep(false)}
-              >
-                Go Back
-              </button>
-              <button 
-                type="button" 
-                disabled={createLoading}
-                onClick={handleExecuteCreateUser} 
-                className="btn btn-sm btn-warning text-black font-bold flex-1 rounded-lg"
-              >
+              <button className="btn btn-sm btn-ghost rounded-lg flex-1" onClick={() => setShowConfirmStep(false)}>Go Back</button>
+              <button disabled={createLoading} onClick={handleExecuteCreateUser} className="btn btn-sm btn-warning text-black font-bold flex-1 rounded-lg">
                 {createLoading ? 'Provisioning...' : 'Yes, Confirm'}
               </button>
             </div>
@@ -299,6 +327,22 @@ export default function Privileges({ session }) {
                 <button type="submit" disabled={actionLoading} className="btn btn-sm btn-error text-white rounded-lg px-4">Confirm</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DELETE USER */}
+      {userToDelete && (
+        <div className="modal modal-open z-[100]">
+          <div className="modal-box max-w-sm border border-base-200 rounded-2xl p-6">
+            <h3 className="font-bold text-lg text-error">Delete User Permanently?</h3>
+            <p className="py-2 text-xs opacity-70">Sistem akan memadam akaun <strong>{userToDelete.email}</strong>.</p>
+            <div className="modal-action">
+              <button className="btn btn-sm btn-ghost" onClick={() => setUserToDelete(null)}>Cancel</button>
+              <button className="btn btn-sm btn-error text-white font-bold rounded-lg px-4" disabled={actionLoading} onClick={handleDeleteUser}>
+                {actionLoading ? 'Deleting...' : 'Confirm Delete'}
+              </button>
+            </div>
           </div>
         </div>
       )}

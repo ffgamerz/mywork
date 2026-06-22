@@ -19,6 +19,7 @@ function App() {
   const [themeMode, setThemeMode] = useState(() => localStorage.getItem('bol_theme_mode') || 'dark')
   const [currentTheme, setCurrentTheme] = useState('dim')
 
+  // Simpan halaman aktif ke localstorage
   useEffect(() => {
     localStorage.setItem('bol_active_page', activePage)
   }, [activePage])
@@ -30,9 +31,12 @@ function App() {
     
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session)
+      
       if (event === 'SIGNED_IN') {
-        //setActivePage('home')
+        setActivePage('home')
+        localStorage.setItem('bol_active_page', 'home')
       }
+      
       if (!session) {
         setUserRole('default')
         setAllowedModules({})
@@ -40,19 +44,26 @@ function App() {
         localStorage.removeItem('bol_active_page')
       }
     })
-    //return () => subscription.unsubscribe()
+    return () => subscription.unsubscribe()
   }, [])
 
   const loadUserPermissions = async (userId) => {
     if (!userId) return
+    
+    // Bersihkan state lama terlebih dahulu untuk elakkan cache salah lekat
+    setAllowedModules({})
 
     const { data: prof } = await supabase.from('profiles').select('theme_mode, role, requires_password_change').eq('id', userId).single()
     if (prof) {
       if (prof.theme_mode) setThemeMode(prof.theme_mode)
-      setUserRole(session?.user?.email === 'azmanrazali84@gmail.com' ? 'super_admin' : prof.role || 'default')
+      
+      // KEMAS KINI: Ambil peranan (role) 100% daripada database profil tanpa hardcode e-mel lagi
+      setUserRole(prof.role || 'default')
+      
       setMustChangePassword(!!prof.requires_password_change)
     }
 
+    // Mengambil data kebenaran spesifik untuk pengguna ini
     const { data: perms } = await supabase.from('user_permissions').select('module_id, is_allowed').eq('user_id', userId)
     if (perms) {
       const allowedMap = {}
@@ -72,7 +83,9 @@ function App() {
     }
   }
 
-  const handleLogout = async () => { await supabase.auth.signOut() }
+  const handleLogout = async () => { 
+    await supabase.auth.signOut() 
+  }
 
   const handleForcePasswordSubmit = async (e) => {
     e.preventDefault()
@@ -102,8 +115,8 @@ function App() {
         <div className="card w-full max-w-md shadow-2xl bg-base-100 border border-base-200">
           <form onSubmit={handleForcePasswordSubmit} className="card-body p-6">
             <h2 className="card-title text-xl font-black text-error justify-center">🔒 Update Password</h2>
-            <input type="password" required placeholder="New Password" class="input input-bordered w-full" value={forceNewPassword} onChange={(e) => setForceNewPassword(e.target.value)} />
-            <input type="password" required placeholder="Confirm Password" class="input input-bordered w-full" value={forceConfirmPassword} onChange={(e) => setForceConfirmPassword(e.target.value)} />
+            <input type="password" required placeholder="New Password" className="input input-bordered w-full" value={forceNewPassword} onChange={(e) => setForceNewPassword(e.target.value)} />
+            <input type="password" required placeholder="Confirm Password" className="input input-bordered w-full" value={forceConfirmPassword} onChange={(e) => setForceConfirmPassword(e.target.value)} />
             <button type="submit" disabled={forceLoading} className="btn btn-error text-white w-full mt-4">Save Password</button>
           </form>
         </div>
@@ -111,8 +124,13 @@ function App() {
     )
   }
 
-  const isSuperAdmin = userRole === 'super_admin' || session.user.email === 'azmanrazali84@gmail.com'
-  const canAccessRecords = isSuperAdmin || userRole === 'admin' || !!allowedModules['records']
+  // KEMAS KINI LOGIK PERMISSION: Bersih daripada sebarang sekatan hardcode e-mel
+  const isSuperAdmin = userRole === 'super_admin'
+  const isAdmin = userRole === 'admin'
+  
+  // Akses dibuka jika mereka mempunyai peranan pentadbir ATAU matrik user_permissions bernilai true
+  const canAccessRecords = isSuperAdmin || isAdmin || allowedModules['records'] === true
+  const canAccessPrivileges = isSuperAdmin || isAdmin || allowedModules['privileges'] === true
 
   return (
     <div data-theme={currentTheme} className="min-h-screen bg-base-300 text-base-content font-sans transition-colors duration-300">
@@ -122,10 +140,11 @@ function App() {
           <button onClick={() => setActivePage('home')} className={`btn btn-xs sm:btn-sm ${activePage === 'home' ? 'btn-primary' : 'btn-ghost'}`}>Home</button>
           {canAccessRecords && <button onClick={() => setActivePage('records')} className={`btn btn-xs sm:btn-sm ${activePage === 'records' ? 'btn-primary' : 'btn-ghost'}`}>Record Manager</button>}
           <button onClick={() => setActivePage('settings')} className={`btn btn-xs sm:btn-sm ${activePage === 'settings' ? 'btn-primary' : 'btn-ghost'}`}>Settings</button>
-          {isSuperAdmin && <button onClick={() => setActivePage('privileges')} className={`btn btn-xs sm:btn-sm ${activePage === 'privileges' ? 'btn-primary' : 'btn-ghost'}`}>Privileges</button>}
+          {canAccessPrivileges && <button onClick={() => setActivePage('privileges')} className={`btn btn-xs sm:btn-sm ${activePage === 'privileges' ? 'btn-primary' : 'btn-ghost'}`}>Privileges</button>}
           <button onClick={handleLogout} className="btn btn-error btn-xs sm:btn-sm btn-outline">Log Out</button>
         </div>
       </div>
+      
       <div className="p-4 md:p-8 max-w-7xl mx-auto">
         {activePage === 'home' && (
            <div className="space-y-6">
@@ -155,6 +174,7 @@ function App() {
                     </div>
                   </div>
                 )}
+                
                 <button onClick={() => setActivePage('settings')} className="card bg-base-100 border border-base-200 hover:border-accent shadow-xl hover:shadow-2xl transition-all duration-300 text-left group">
                   <div className="card-body p-6 flex flex-col justify-between h-48">
                     <div className="p-3 bg-accent/10 text-accent w-fit rounded-xl group-hover:bg-accent group-hover:text-white transition-all"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.43l-1.003.767c-.307.235-.45.643-.366 1.023.004.022.006.045.008.068a1.124 1.124 0 0 1-.504 1.014l-1.12.756a1.126 1.126 0 0 1-1.34-.1l-.816-.677a1.123 1.123 0 0 0-1.284-.112l-1.12.639a1.125 1.125 0 0 1-1.3-.067l-.872-.705a1.123 1.123 0 0 0-1.246-.145l-1.112.556a1.125 1.125 0 0 1-1.31-.21l-1.196-1.196a1.125 1.125 0 0 1-.21-1.31l.556-1.112a1.122 1.122 0 0 0-.145-1.246l-.705-.872a1.125 1.125 0 0 1-.067-1.3l.639-1.12a1.123 1.123 0 0 0-.112-1.284l-.677-.816a1.125 1.125 0 0 1-.1-1.34l.756-1.12a1.124 1.124 0 0 1 1.014-.504c.023.002.046.004.068.008.38.084.788-.06 1.023-.366l.767-1.003a1.125 1.125 0 0 1 1.43-.26l2.247 1.296a1.125 1.125 0 0 1 .49 1.37l-.456 1.217a1.122 1.122 0 0 0 .124 1.075c.044.073.087.146.127.22.184.332.496.582.87.645l1.281.213Z" /></svg></div>
@@ -164,7 +184,8 @@ function App() {
                     </div>
                   </div>
                 </button>
-                {isSuperAdmin && (
+                
+                {canAccessPrivileges ? (
                   <button onClick={() => setActivePage('privileges')} className="card bg-base-100 border border-base-200 hover:border-warning shadow-xl hover:shadow-2xl transition-all duration-300 text-left group">
                     <div className="card-body p-6 flex flex-col justify-between h-48">
                       <div className="p-3 bg-warning/10 text-warning w-fit rounded-xl group-hover:bg-warning group-hover:text-white transition-all"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94-3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" /></svg></div>
@@ -174,13 +195,23 @@ function App() {
                       </div>
                     </div>
                   </button>
+                ) : (
+                  <div className="card bg-base-100/40 border border-base-200/50 shadow-md opacity-40 cursor-not-allowed">
+                    <div className="card-body p-6 flex flex-col justify-between h-48">
+                      <div className="p-3 bg-base-content/10 rounded-xl w-fit"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6"><path d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" /></svg></div>
+                      <div>
+                        <h2 className="card-title text-base font-bold opacity-70">Privileges</h2>
+                        <p className="text-xs opacity-50 mt-1">Locked Module.</p>
+                      </div>
+                    </div>
+                  </div>
                 )}
              </div>
            </div>
         )}
         {activePage === 'records' && canAccessRecords && <RecordManager session={session} />}
         {activePage === 'settings' && <Settings session={session} themeMode={themeMode} setThemeMode={handleThemeChange} />}
-        {activePage === 'privileges' && isSuperAdmin && <Privileges session={session} />}
+        {activePage === 'privileges' && canAccessPrivileges && <Privileges session={session} />}
       </div>
     </div>
   )
