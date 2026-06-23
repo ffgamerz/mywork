@@ -114,7 +114,6 @@ export default function Inventory({ session, userRole }) {
     }
   }, [isStockModalOpen, productions])
 
-  // FUNGSI BARU: Mengemas kini status batch pengeluaran kepada selesai / dah habis
   const handleToggleStockFinished = async (productionId, currentStatus) => {
     setLoading(true)
     const { error } = await supabase
@@ -197,7 +196,8 @@ export default function Inventory({ session, userRole }) {
     setLoading(false)
   }
 
-  // --- SUB-PAGE: STOCK PRODUCTION LISTING ---
+  const activeBatchCount = productions.filter(p => !p.is_finished).length
+
   if (selectedProduct) {
     return (
       <div className="space-y-6 relative">
@@ -209,24 +209,29 @@ export default function Inventory({ session, userRole }) {
           </div>
         )}
 
-        <div className="flex flex-col gap-4 border-b border-base-100 pb-4">
+        <div className="flex flex-col gap-4 border-b border-base-200 pb-4">
           <div className="flex items-start justify-between gap-3 w-full">
             <div className="flex items-start gap-3 flex-1">
               <button 
                 onClick={() => { setSelectedProduct(null); fetchProducts(); }} 
                 className="btn btn-md btn-circle btn-active bg-base-200 hover:bg-base-300 border-base-300 text-base-content shadow-md shrink-0 flex items-center justify-center font-black"
-                title="Kembali ke Senarai"
               >
                 ✕
               </button>
               
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2 flex-wrap">
-                <h1 className="text-xl md:text-2xl font-black tracking-tight leading-tight max-w-full break-words">
-                  {selectedProduct.product_name}
-                </h1>
-                <span className="badge badge-md badge-outline font-bold font-mono text-secondary px-2.5 py-3 whitespace-nowrap self-start sm:self-auto shadow-sm">
-                  Shelf Life: {selectedProduct.expiry_month || 12}M
-                </span>
+              <div className="flex flex-col gap-1.5 flex-1">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 flex-wrap">
+                  <h1 className="text-xl md:text-2xl font-black tracking-tight leading-tight max-w-full break-words">
+                    {selectedProduct.product_name}
+                  </h1>
+                  <span className="badge badge-md badge-outline font-bold font-mono text-secondary px-2.5 py-3 whitespace-nowrap self-start sm:self-auto shadow-sm">
+                    Shelf Life: {selectedProduct.expiry_month || 12}M
+                  </span>
+                </div>
+                <div className="w-fit bg-warning/20 border border-warning/40 px-3 py-1 rounded-xl flex items-center gap-1.5 text-xs font-black text-warning-content shadow-sm">
+                  <span className="w-2 h-2 rounded-full bg-warning animate-pulse"></span>
+                  <span>{lang === 'ms' ? `Baki Stok: ${activeBatchCount} Batch` : `Active Stock: ${activeBatchCount} Batches`}</span>
+                </div>
               </div>
             </div>
 
@@ -237,86 +242,59 @@ export default function Inventory({ session, userRole }) {
             )}
           </div>
           
-          <div className="flex items-center justify-between w-full">
-            <p className="text-xs opacity-60 font-semibold uppercase tracking-wider">{t('stockListing')}</p>
-            {isAuthorized && (
-              <button onClick={() => setIsStockModalOpen(true)} className="btn btn-sm btn-accent font-bold shadow-md rounded-xl w-full sm:w-auto sm:hidden mt-1">
+          {isAuthorized && (
+            <div className="block sm:hidden w-full pt-1">
+              <button onClick={() => setIsStockModalOpen(true)} className="btn btn-md btn-block btn-accent font-black shadow-md rounded-xl text-sm">
                 + {t('addStock')}
               </button>
-            )}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {loading && productions.length === 0 ? (
-            <div className="text-center py-6 col-span-full"><span className="loading loading-spinner"></span></div>
-          ) : productions.length === 0 ? (
-            <div className="text-center py-8 card bg-base-100 border border-base-200 col-span-full"><p className="opacity-50 text-sm">{lang === 'ms' ? 'Tiada rekod pengeluaran batch bagi produk ini.' : 'No production batch records for this product.'}</p></div>
-          ) : (
-            productions.map((p, pIdx) => (
-              <div key={p.id || pIdx} className="card bg-base-100 border border-base-300 shadow-md p-4 space-y-3 rounded-2xl relative overflow-hidden flex flex-col justify-between">
-                <div className={`absolute top-0 right-0 left-0 h-1.5 ${p.is_finished ? 'bg-success' : 'bg-primary'}`}></div>
-                
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center border-b border-base-200/60 pb-2.5 gap-2">
-                    <div className="flex flex-col">
-                      <span className="text-[10px] uppercase font-black opacity-50 tracking-wider text-primary">{t('batchNo')}</span>
-                      <span className="font-mono font-black text-primary text-xl tracking-wide">{p.batch_no}</span>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-[10px] uppercase font-black opacity-50 tracking-wider block text-success">{t('date')}</span>
-                      <span className="font-black text-base text-success tracking-wide">{p.production_date}</span>
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-2 text-sm py-0.5">
-                    <div>
-                      <span className="text-[11px] block opacity-50 font-bold tracking-tight">{lang === 'ms' ? 'Staf Bertugas' : 'Staff In-Charge'}</span>
-                      <span className="font-black text-base-content/90 text-sm break-all">{p.production_name || '-'}</span>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-[11px] block opacity-50 font-bold tracking-tight">{t('quantity')}</span>
-                      <span className="font-black text-xl text-info">{p.quantity}</span>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2 text-sm border-t border-base-200/60 pt-2.5 items-center">
-                    <div>
-                      <span className="text-[11px] block opacity-50 font-bold tracking-tight">{t('expiryDate')}</span>
-                      <span className="font-black text-sm text-error">{p.expiry_date || '-'}</span>
-                    </div>
-                    <div className="text-right">
-                      <span className={`badge badge-md font-black shadow-sm ${p.is_finished ? 'badge-success text-white' : 'badge-warning text-black'}`}>
-                        {p.is_finished ? t('statusDone') : t('statusActive')}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* DIKEMAS KINI: Menambahkan Butang Tukar Status "Dah Habis" di Bahagian Bawah Setiap Kad */}
-                <div className="pt-3 border-t border-base-200/40 mt-1">
-                  <button
-                    disabled={loading}
-                    onClick={() => handleToggleStockFinished(p.id, p.is_finished)}
-                    className={`btn btn-xs btn-block font-bold rounded-xl shadow-sm transition-all ${
-                      p.is_finished 
-                        ? 'btn-outline btn-success' 
-                        : 'btn-neutral text-white'
-                    }`}
-                  >
-                    {p.is_finished 
-                      ? (lang === 'ms' ? '🔄 Buka Semula Batch' : '🔄 Re-open Batch') 
-                      : (lang === 'ms' ? '✅ Tandakan Dah Habis' : '✅ Mark as Finished')
-                    }
-                  </button>
-                </div>
-
-              </div>
-            ))
+            </div>
           )}
         </div>
 
-        {/* MODAL INPUT: REKOD PRODUKSI STOK BARU */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {productions.map((p, pIdx) => (
+            <div key={p.id || pIdx} className="card bg-base-100 border border-base-300 shadow-md p-4 space-y-3 rounded-2xl relative overflow-hidden flex flex-col justify-between">
+              <div className={`absolute top-0 right-0 left-0 h-1.5 ${p.is_finished ? 'bg-success' : 'bg-primary'}`}></div>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center border-b border-base-200/60 pb-2.5 gap-2">
+                  <div className="flex flex-col">
+                    <span className="text-[10px] uppercase font-black opacity-50 tracking-wider text-primary">{t('batchNo')}</span>
+                    <span className="font-mono font-black text-primary text-xl tracking-wide">{p.batch_no}</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[10px] uppercase font-black opacity-50 tracking-wider block text-success">{t('date')}</span>
+                    <span className="font-black text-base text-success tracking-wide">{p.production_date}</span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-sm py-0.5">
+                  <div>
+                    <span className="text-[11px] block opacity-50 font-bold tracking-tight">{lang === 'ms' ? 'Staf Bertugas' : 'Staff In-Charge'}</span>
+                    <span className="font-black text-base-content/90 text-sm break-all">{p.production_name || '-'}</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[11px] block opacity-50 font-bold tracking-tight">{t('quantity')}</span>
+                    <span className="font-black text-xl text-info">{p.quantity}</span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-sm border-t border-base-200/60 pt-2.5 items-center">
+                  <div>
+                    <span className="text-[11px] block opacity-50 font-bold tracking-tight">{t('expiryDate')}</span>
+                    <span className="font-black text-sm text-error">{p.expiry_date || '-'}</span>
+                  </div>
+                  <div className="text-right">
+                    <span className={`badge badge-md font-black shadow-sm ${p.is_finished ? 'badge-success text-white' : 'badge-warning text-black'}`}>{p.is_finished ? t('statusDone') : t('statusActive')}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="pt-3 border-t border-base-200/40 mt-1">
+                <button onClick={() => handleToggleStockFinished(p.id, p.is_finished)} className={`btn btn-xs btn-block font-bold rounded-xl shadow-sm transition-all ${p.is_finished ? 'btn-outline btn-success' : 'btn-neutral text-white'}`}>
+                  {p.is_finished ? (lang === 'ms' ? '🔄 Buka Semula Batch' : '🔄 Re-open Batch') : (lang === 'ms' ? '✅ Tandakan Dah Habis' : '✅ Mark as Finished')}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
         {isStockModalOpen && isAuthorized && (
           <div className="modal modal-open z-50">
             <div className="modal-box max-w-md border border-base-200 shadow-2xl rounded-2xl p-6">
@@ -355,7 +333,6 @@ export default function Inventory({ session, userRole }) {
     )
   }
 
-  // --- MAIN PAGE: INVENTORY MANAGER (PRODUCT LISTING) ---
   return (
     <div className="space-y-8 relative">
       {toastMessage && (
@@ -381,32 +358,24 @@ export default function Inventory({ session, userRole }) {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {loading && products.length === 0 ? (
-          <div className="text-center py-8 col-span-full"><span className="loading loading-spinner loading-lg"></span></div>
-        ) : products.length === 0 ? (
-          <p className="text-center py-8 opacity-60 col-span-full">{t('noProducts')}</p>
-        ) : (
-          products.map((prod, index) => (
+        {products.map((prod, index) => {
+          const activeCount = (prod.stock_productions || []).filter(p => !p.is_finished).length;
+          return (
             <div key={prod.id || index} className="card bg-base-100 border border-base-300 shadow-xl rounded-2xl p-5 space-y-4 relative overflow-hidden flex flex-col justify-between">
               <div className="absolute top-0 right-0 left-0 h-1.5 bg-secondary"></div>
-              
               <div className="flex justify-between items-start gap-2 border-b border-base-200 pb-3">
-                <button 
-                  onClick={() => setSelectedProduct(prod)} 
-                  className="font-black text-lg text-left link link-primary hover:text-primary-focus transition-all leading-tight flex-1"
-                >
-                  {prod.product_name}
-                </button>
-                <span className="badge badge-sm badge-outline font-bold font-mono text-secondary p-2 whitespace-nowrap shadow-xs">
-                  {prod.expiry_month || 12}M
-                </span>
+                <div className="flex flex-col gap-1 flex-1">
+                  <button onClick={() => setSelectedProduct(prod)} className="font-black text-lg text-left link link-primary hover:text-primary-focus transition-all leading-tight">
+                    {prod.product_name}
+                  </button>
+                  <div className={`w-fit text-[10px] font-black px-2 py-0.5 rounded-lg ${activeCount > 0 ? 'bg-success/10 text-success' : 'bg-error/10 text-error'}`}>
+                    {activeCount > 0 ? (lang === 'ms' ? `${activeCount} Batch Aktif` : `${activeCount} Active Batches`) : (lang === 'ms' ? 'Tiada Stok Aktif' : 'No Active Stock')}
+                  </div>
+                </div>
+                <span className="badge badge-sm badge-outline font-bold font-mono text-secondary p-2 whitespace-nowrap shadow-xs">{prod.expiry_month || 12}M</span>
               </div>
-
               <div className="bg-base-200/50 rounded-2xl p-3 border border-base-200 space-y-2">
-                <span className="text-[10px] uppercase font-black opacity-50 tracking-wider text-error block">
-                  {lang === 'ms' ? 'Stok Lama Kena Keluar (FIFO)' : 'Oldest Active Stock'}
-                </span>
-                
+                <span className="text-[10px] uppercase font-black opacity-50 tracking-wider text-error block">{lang === 'ms' ? 'Stok Lama Kena Keluar (FIFO)' : 'Oldest Active Stock'}</span>
                 {prod.fifo_stock ? (
                   <div className="flex justify-between items-center gap-2">
                     <div className="flex flex-col">
@@ -419,26 +388,17 @@ export default function Inventory({ session, userRole }) {
                     </div>
                   </div>
                 ) : (
-                  <span className="text-xs opacity-40 font-bold font-sans block py-1">
-                    {lang === 'ms' ? 'Tiada Baki Stok Aktif' : 'No Active Stock'}
-                  </span>
+                  <span className="text-xs opacity-40 font-bold font-sans block py-1">{lang === 'ms' ? 'Tiada Baki Stok Aktif' : 'No Active Stock'}</span>
                 )}
               </div>
-
               <div className="pt-1">
-                <button 
-                  onClick={() => setSelectedProduct(prod)} 
-                  className="btn btn-sm btn-block btn-outline btn-primary rounded-xl font-bold"
-                >
-                  {lang === 'ms' ? 'Lihat Rekod Stok ↗' : 'View Stock Records ↗'}
-                </button>
+                <button onClick={() => setSelectedProduct(prod)} className="btn btn-sm btn-block btn-outline btn-primary rounded-xl font-bold">{lang === 'ms' ? 'Lihat Rekod Stok ↗' : 'View Stock Records ↗'}</button>
               </div>
             </div>
-          ))
-        )}
+          );
+        })}
       </div>
 
-      {/* MODAL INPUT: TAMBAH PRODUK BARU */}
       {isModalOpen && isAuthorized && (
         <div className="modal modal-open z-50">
           <div className="modal-box max-w-md border border-base-200 shadow-2xl rounded-2xl p-6">
