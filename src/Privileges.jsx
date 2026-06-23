@@ -1,6 +1,108 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
 
+// KAMUS TERJEMAHAN TEMPATAN MODUL PRIVILEGES & USER MANAGER
+const localTranslations = {
+  en: {
+    title: "Privilege & User Manager",
+    subtitle: "Create organization accounts and delegate dynamic structural rights.",
+    addStaffBtn: "Add New Staff Account",
+    matrixTitle: "Interactive Access Control Matrix",
+    thEmail: "User Email",
+    thLevel: "Privilege Level",
+    thActions: "Account Actions",
+    badgeForceReset: "Force Pass Reset Active",
+    btnResetPass: "Reset Pass",
+    btnDelete: "Delete",
+    lblDefault: "Default",
+    lblAdmin: "Admin",
+    // Modal Cipta Staff
+    modalCreateTitle: "Provision Staff Account",
+    modalCreateSubtitle: "Register new access coordinates within the cloud framework.",
+    lblEmail: "Staff Email Address",
+    lblTempPass: "Temporary Security Password",
+    btnGenerate: "Generate",
+    btnCancel: "Cancel",
+    btnCreateUser: "Create User",
+    placeholderGenerate: "Click Generate to build",
+    alertGeneratePass: "Please generate a temporary password first!",
+    // Modal Pengesahan
+    modalConfirmTitle: "Confirm Action",
+    modalConfirmSubtitle: "This action cannot be undone, please be careful.",
+    btnGoBack: "Go Back",
+    btnConfirmYes: "Yes, Confirm",
+    btnProvisioning: "Provisioning...",
+    // Modal Force Reset Pass
+    modalResetTitle: "Force Password Reset",
+    modalResetTarget: "Target: ",
+    placeholderNewPass: "Enter new password",
+    btnConfirm: "Confirm",
+    // Modal Delete User
+    modalDeleteTitle: "Delete User Permanently?",
+    modalDeleteDesc: "System will erase the account for {email}.",
+    btnConfirmDelete: "Confirm Delete",
+    btnDeleting: "Deleting...",
+    // Mesej Toast & Ralat
+    toastCreatedSuccess: "ACCOUNT CREATED SUCCESSFULLY! 🎉\nEmail: {email}\nTemporary Pass: {password}",
+    toastDeletedSuccess: "User deleted permanently!",
+    toastRoleSuccess: "Privilege level updated successfully to {role}!",
+    toastPermSuccess: "Preference updated!",
+    toastResetSuccess: "Password updated and forced reset active for {email}",
+    errLoad: "Error loading data: ",
+    errCreate: "Creation failed: ",
+    errReset: "Reset Password Failed: "
+  },
+  ms: {
+    title: "Pengurus Hak Akses & Pengguna",
+    subtitle: "Cipta akaun organisasi dan tetapkan kebenaran struktur secara dinamik.",
+    addStaffBtn: "Tambah Akaun Staf Baharu",
+    matrixTitle: "Matriks Kawalan Akses Interaktif",
+    thEmail: "E-mel Pengguna",
+    thLevel: "Tahap Kuasa",
+    thActions: "Tindakan Akaun",
+    badgeForceReset: "Set Semula Kataluan Aktif",
+    btnResetPass: "Set Semula Laluan",
+    btnDelete: "Padam",
+    lblDefault: "Asal",
+    lblAdmin: "Admin",
+    // Modal Cipta Staff
+    modalCreateTitle: "Penyediaan Akaun Staf",
+    modalCreateSubtitle: "Daftar koordinat akses baharu di dalam sistem awan.",
+    lblEmail: "Alamat E-mel Staf",
+    lblTempPass: "Kata Laluan Keselamatan Sementara",
+    btnGenerate: "Jana",
+    btnCancel: "Batal",
+    btnCreateUser: "Cipta Pengguna",
+    placeholderGenerate: "Klik Jana untuk membina kata laluan",
+    alertGeneratePass: "Sila jana kata laluan sementara terlebih dahulu!",
+    // Modal Pengesahan
+    modalConfirmTitle: "Sahkan Tindakan",
+    modalConfirmSubtitle: "Tindakan ini tidak boleh dikembalikan semula, sila berhati-hati.",
+    btnGoBack: "Kembali",
+    btnConfirmYes: "Ya, Sahkan",
+    btnProvisioning: "Menyediakan...",
+    // Modal Force Reset Pass
+    modalResetTitle: "Paksa Set Semula Kata Laluan",
+    modalResetTarget: "Sasaran: ",
+    placeholderNewPass: "Masukkan kata laluan baharu",
+    btnConfirm: "Sahkan",
+    // Modal Delete User
+    modalDeleteTitle: "Padam Pengguna Secara Kekal?",
+    modalDeleteDesc: "Sistem akan memadam akaun {email}.",
+    btnConfirmDelete: "Sahkan Padam",
+    btnDeleting: "Memadam...",
+    // Mesej Toast & Ralat
+    toastCreatedSuccess: "AKAUN BERJAYA DICIPTA! 🎉\nE-mel: {email}\nLaluan Sementara: {password}",
+    toastDeletedSuccess: "Pengguna telah dipadam secara kekal!",
+    toastRoleSuccess: "Tahap kuasa berjaya dikemas kini kepada {role}!",
+    toastPermSuccess: "Kebenaran modul dikemas kini!",
+    toastResetSuccess: "Kata laluan dikemas kini dan paksaan set semula aktif untuk {email}",
+    errLoad: "Gagal memuatkan data: ",
+    errCreate: "Gagal mencipta pengguna: ",
+    errReset: "Gagal mengemas kini kata laluan: "
+  }
+}
+
 export default function Privileges({ session }) {
   const [users, setUsers] = useState([])
   const [modules, setModules] = useState([])
@@ -21,6 +123,10 @@ export default function Privileges({ session }) {
 
   // State Delete User
   const [userToDelete, setUserToDelete] = useState(null)
+
+  // Membaca pilihan bahasa aktif dari localStorage secara dinamik (selaras dengan App.jsx)
+  const lang = localStorage.getItem('bol_lang') || 'en'
+  const t = (key) => localTranslations[lang]?.[key] || localTranslations['en'][key]
 
   const showToast = (msg) => {
     setToast(msg)
@@ -50,7 +156,7 @@ export default function Privileges({ session }) {
       }
     } catch (err) {
       console.error("Ralat memuatkan data Supabase:", err.message)
-      alert("Error loading data: " + err.message)
+      alert(t('errLoad') + err.message)
     } finally {
       setLoading(false)
     }
@@ -70,7 +176,7 @@ export default function Privileges({ session }) {
   const handlePreSubmitCheck = (e) => {
     e.preventDefault()
     if (!generatedPassword) {
-      alert('Please generate a temporary password first!')
+      alert(t('alertGeneratePass'))
       return
     }
     setShowConfirmStep(true)
@@ -83,9 +189,12 @@ export default function Privileges({ session }) {
     })
 
     if (error) {
-      alert('Creation failed: ' + error.message)
+      alert(t('errCreate') + error.message)
     } else {
-      showToast(`ACCOUNT CREATED SUCCESSFULLY! 🎉\nEmail: ${newEmail}\nTemporary Pass: ${generatedPassword}`)
+      const successMsg = t('toastCreatedSuccess')
+        .replace('{email}', newEmail)
+        .replace('{password}', generatedPassword)
+      showToast(successMsg)
       setNewEmail('')
       setGeneratedPassword('')
       setShowConfirmStep(false)
@@ -103,14 +212,13 @@ export default function Privileges({ session }) {
     if (error) {
       alert(error.message)
     } else { 
-      showToast('User deleted permanently!')
+      showToast(t('toastDeletedSuccess'))
       setUserToDelete(null)
       loadData() 
     }
     setActionLoading(false)
   }
 
-  // DIFAHAMI & DIPERBETULKAN: Memanggil Edge Function untuk kemas kini role dengan kuasa penuh (bypass RLS)
   const handleRoleChange = async (userId, newRole) => {
     setActionLoading(true)
     try {
@@ -120,11 +228,11 @@ export default function Privileges({ session }) {
 
       if (error) throw error
 
-      showToast(`Privilege level updated successfully to ${newRole}!`)
-      loadData() // Muat semula jadual di skrin
+      showToast(t('toastRoleSuccess').replace('{role}', newRole))
+      loadData() 
     } catch (err) {
       console.error("Gagal menukar peranan:", err.message)
-      alert("Gagal menukar peranan: " + err.message)
+      alert(err.message)
     } finally {
       setActionLoading(false)
     }
@@ -140,7 +248,7 @@ export default function Privileges({ session }) {
       alert(error.message)
     } else {
       setPermissions(prev => ({ ...prev, [`${userId}-${moduleId}`]: newStatus }))
-      showToast('Preference updated!')
+      showToast(t('toastPermSuccess'))
     }
   }
 
@@ -160,12 +268,12 @@ export default function Privileges({ session }) {
         
       if (dbError) throw dbError
 
-      showToast(`Password updated and forced reset active for ${selectedUser.email}`)
+      showToast(t('toastResetSuccess').replace('{email}', selectedUser.email))
       setAdminNewPassword('')
       setSelectedUser(null)
       loadData()
     } catch (err) {
-      alert("Reset Password Failed: " + err.message)
+      alert(t('errReset') + err.message)
     } finally {
       setActionLoading(false)
     }
@@ -183,8 +291,8 @@ export default function Privileges({ session }) {
 
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-base-100 pb-5">
         <div className="flex flex-col gap-1">
-          <h1 className="text-2xl md:text-3xl font-black tracking-tight">Privilege & User Manager</h1>
-          <p className="text-sm opacity-60">Create organization accounts and delegate dynamic structural rights.</p>
+          <h1 className="text-2xl md:text-3xl font-black tracking-tight">{t('title')}</h1>
+          <p className="text-sm opacity-60">{t('subtitle')}</p>
         </div>
         
         <button 
@@ -192,12 +300,12 @@ export default function Privileges({ session }) {
           className="btn btn-primary font-bold shadow-lg gap-2 self-start sm:self-auto rounded-xl"
         >
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
-          Add New Staff Account
+          {t('addStaffBtn')}
         </button>
       </div>
 
       <div className="card bg-base-100 shadow-xl p-6 border border-base-200">
-        <h3 className="text-lg font-bold mb-4 text-secondary">Interactive Access Control Matrix</h3>
+        <h3 className="text-lg font-bold mb-4 text-secondary">{t('matrixTitle')}</h3>
         {loading ? (
           <div className="text-center py-4"><span className="loading loading-spinner"></span></div>
         ) : (
@@ -205,10 +313,10 @@ export default function Privileges({ session }) {
             <table className="table table-zebra w-full">
               <thead>
                 <tr>
-                  <th>User Email</th>
-                  <th>Privilege Level</th>
+                  <th>{t('thEmail')}</th>
+                  <th>{t('thLevel')}</th>
                   {modules.map(m => (<th key={m.id} className="text-center">{m.name}</th>))}
-                  <th className="text-right">Account Actions</th>
+                  <th className="text-right">{t('thActions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -218,7 +326,7 @@ export default function Privileges({ session }) {
                       <div className="flex flex-col">
                         <span className="font-bold text-sm">{u.email || 'No Email'}</span>
                         <span className="text-[10px] font-mono opacity-40">{u.id}</span>
-                        {u.requires_password_change && <span className="badge badge-warning badge-xs font-sans mt-1 text-black font-semibold">Force Pass Reset Active</span>}
+                        {u.requires_password_change && <span className="badge badge-warning badge-xs font-sans mt-1 text-black font-semibold">{t('badgeForceReset')}</span>}
                       </div>
                     </td>
                     <td>
@@ -242,24 +350,23 @@ export default function Privileges({ session }) {
                     })}
                     <td className="text-right">
                       <div className="flex justify-end gap-1">
-                        <button onClick={() => setSelectedUser(u)} className="btn btn-xs btn-outline btn-error">Reset Pass</button>
-                        <button onClick={() => setUserToDelete(u)} className="btn btn-xs btn-outline btn-ghost text-error">Delete</button>
+                        <button onClick={() => setSelectedUser(u)} className="btn btn-xs btn-outline btn-error">{t('btnResetPass')}</button>
+                        <button onClick={() => setUserToDelete(u)} className="btn btn-xs btn-outline btn-ghost text-error">{t('btnDelete')}</button>
                         <div className="divider divider-horizontal mx-0.5"></div>
                         
-                        {/* Atribut disabled dikawal mengikut nilai role semasa di database */}
                         <button 
                           onClick={() => handleRoleChange(u.id, 'default')} 
                           disabled={actionLoading || u.role === 'super_admin' || u.role === 'default' || !u.role} 
                           className={`btn btn-xs ${u.role === 'default' || !u.role ? 'btn-active opacity-40' : 'btn-outline'}`}
                         >
-                          Default
+                          {t('lblDefault')}
                         </button>
                         <button 
                           onClick={() => handleRoleChange(u.id, 'admin')} 
                           disabled={actionLoading || u.role === 'super_admin' || u.role === 'admin'} 
                           className={`btn btn-xs btn-primary ${u.role === 'admin' ? 'btn-active opacity-40' : 'btn-outline'}`}
                         >
-                          Admin
+                          {t('lblAdmin')}
                         </button>
                       </div>
                     </td>
@@ -275,23 +382,23 @@ export default function Privileges({ session }) {
       {isCreateModalOpen && (
         <div className="modal modal-open z-[100]">
           <div className="modal-box max-w-md border border-base-200 shadow-2xl rounded-2xl p-6">
-            <h3 className="font-bold text-xl text-primary flex items-center gap-2 mb-2">Provision Staff Account</h3>
-            <p className="text-xs opacity-60 mb-4">Register new access coordinates within the cloud framework.</p>
+            <h3 className="font-bold text-xl text-primary flex items-center gap-2 mb-2">{t('modalCreateTitle')}</h3>
+            <p className="text-xs opacity-60 mb-4">{t('modalCreateSubtitle')}</p>
             <form onSubmit={handlePreSubmitCheck} className="space-y-4">
               <div className="form-control">
-                <label className="label-text font-semibold mb-1">Staff Email Address</label>
+                <label className="label-text font-semibold mb-1">{t('lblEmail')}</label>
                 <input type="email" required placeholder="staffname@gmail.com" className="input input-bordered w-full text-base rounded-xl" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} />
               </div>
               <div className="form-control">
-                <label className="label-text font-semibold mb-1">Temporary Security Password</label>
+                <label className="label-text font-semibold mb-1">{t('lblTempPass')}</label>
                 <div className="flex gap-2">
-                  <input type="text" readOnly placeholder="Click Generate to build" className="input input-bordered flex-1 text-base font-mono bg-base-200 rounded-xl px-3" value={generatedPassword} required />
-                  <button type="button" onClick={generateRandomPassword} className="btn btn-secondary font-bold rounded-xl px-4">Generate</button>
+                  <input type="text" readOnly placeholder={t('placeholderGenerate')} className="input input-bordered flex-1 text-base font-mono bg-base-200 rounded-xl px-3" value={generatedPassword} required />
+                  <button type="button" onClick={generateRandomPassword} className="btn btn-secondary font-bold rounded-xl px-4">{t('btnGenerate')}</button>
                 </div>
               </div>
               <div className="modal-action gap-2 pt-2">
-                <button type="button" className="btn btn-sm btn-ghost rounded-lg" onClick={() => { setIsCreateModalOpen(false); setNewEmail(''); setGeneratedPassword(''); }}>Cancel</button>
-                <button type="submit" className="btn btn-sm btn-primary rounded-lg font-bold px-4">Create User</button>
+                <button type="button" className="btn btn-sm btn-ghost rounded-lg" onClick={() => { setIsCreateModalOpen(false); setNewEmail(''); setGeneratedPassword(''); }}>{t('btnCancel')}</button>
+                <button type="submit" className="btn btn-sm btn-primary rounded-lg font-bold px-4">{t('btnCreateUser')}</button>
               </div>
             </form>
           </div>
@@ -302,12 +409,12 @@ export default function Privileges({ session }) {
       {showConfirmStep && (
         <div className="modal modal-open z-[200]">
           <div className="modal-box max-w-sm border-2 border-warning shadow-2xl bg-base-100 rounded-2xl p-6 text-center">
-            <h3 className="font-black text-xl text-warning">Confirm Action</h3>
-            <p className="py-2 text-sm font-semibold opacity-90">This action cannot be undone, please be careful.</p>
+            <h3 className="font-black text-xl text-warning">{t('modalConfirmTitle')}</h3>
+            <p className="py-2 text-sm font-semibold opacity-90">{t('modalConfirmSubtitle')}</p>
             <div className="flex justify-center gap-3 mt-4">
-              <button className="btn btn-sm btn-ghost rounded-lg flex-1" onClick={() => setShowConfirmStep(false)}>Go Back</button>
+              <button className="btn btn-sm btn-ghost rounded-lg flex-1" onClick={() => setShowConfirmStep(false)}>{t('btnGoBack')}</button>
               <button disabled={createLoading} onClick={handleExecuteCreateUser} className="btn btn-sm btn-warning text-black font-bold flex-1 rounded-lg">
-                {createLoading ? 'Provisioning...' : 'Yes, Confirm'}
+                {createLoading ? t('btnProvisioning') : t('btnConfirmYes')}
               </button>
             </div>
           </div>
@@ -318,13 +425,13 @@ export default function Privileges({ session }) {
       {selectedUser && (
         <div className="modal modal-open z-[100]">
           <div className="modal-box max-w-sm border border-base-200 rounded-2xl p-6">
-            <h3 className="font-bold text-lg text-error">Force Password Reset</h3>
-            <p className="py-2 text-xs opacity-70">Target: <strong>{selectedUser.email}</strong></p>
+            <h3 className="font-bold text-lg text-error">{t('modalResetTitle')}</h3>
+            <p className="py-2 text-xs opacity-70">{t('modalResetTarget')}<strong>{selectedUser.email}</strong></p>
             <form onSubmit={handleForceChangePassword} className="space-y-4 mt-2">
-              <input type="text" required placeholder="Enter new password" className="input input-bordered w-full text-base font-mono rounded-xl" value={adminNewPassword} onChange={(e) => setAdminNewPassword(e.target.value)} />
+              <input type="text" required placeholder={t('placeholderNewPass')} className="input input-bordered w-full text-base font-mono rounded-xl" value={adminNewPassword} onChange={(e) => setAdminNewPassword(e.target.value)} />
               <div className="modal-action">
-                <button type="button" className="btn btn-sm btn-ghost rounded-lg" onClick={() => { setSelectedUser(null); setAdminNewPassword(''); }}>Cancel</button>
-                <button type="submit" disabled={actionLoading} className="btn btn-sm btn-error text-white rounded-lg px-4">Confirm</button>
+                <button type="button" className="btn btn-sm btn-ghost rounded-lg" onClick={() => { setSelectedUser(null); setAdminNewPassword(''); }}>{t('btnCancel')}</button>
+                <button type="submit" disabled={actionLoading} className="btn btn-sm btn-error text-white rounded-lg px-4">{t('btnConfirm')}</button>
               </div>
             </form>
           </div>
@@ -335,12 +442,12 @@ export default function Privileges({ session }) {
       {userToDelete && (
         <div className="modal modal-open z-[100]">
           <div className="modal-box max-w-sm border border-base-200 rounded-2xl p-6">
-            <h3 className="font-bold text-lg text-error">Delete User Permanently?</h3>
-            <p className="py-2 text-xs opacity-70">Sistem akan memadam akaun <strong>{userToDelete.email}</strong>.</p>
+            <h3 className="font-bold text-lg text-error">{t('modalDeleteTitle')}</h3>
+            <p className="py-2 text-xs opacity-70">{t('modalDeleteDesc').replace('{email}', userToDelete.email)}</p>
             <div className="modal-action">
-              <button className="btn btn-sm btn-ghost" onClick={() => setUserToDelete(null)}>Cancel</button>
+              <button className="btn btn-sm btn-ghost" onClick={() => setUserToDelete(null)}>{t('btnCancel')}</button>
               <button className="btn btn-sm btn-error text-white font-bold rounded-lg px-4" disabled={actionLoading} onClick={handleDeleteUser}>
-                {actionLoading ? 'Deleting...' : 'Confirm Delete'}
+                {actionLoading ? t('btnDeleting') : t('btnConfirmDelete')}
               </button>
             </div>
           </div>
