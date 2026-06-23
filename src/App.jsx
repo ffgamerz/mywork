@@ -4,7 +4,8 @@ import Login from './Login'
 import RecordManager from './RecordManager'
 import Settings from './Settings'
 import Privileges from './Privileges'
-import { translations } from './translations' // IMPORT PUSAT
+import Inventory from './Inventory' 
+import { translations } from './translations'
 
 function App() {
   const [session, setSession] = useState(null)
@@ -19,11 +20,8 @@ function App() {
 
   const [themeMode, setThemeMode] = useState(() => localStorage.getItem('bol_theme_mode') || 'dark')
   const [currentTheme, setCurrentTheme] = useState('dim')
-  
-  // State Bahasa Global
   const [lang, setLang] = useState(() => localStorage.getItem('bol_lang') || 'en')
 
-  // Fungsi pembantu terjemahan pusat
   const t = (key) => translations[lang]?.[key] || translations['en'][key]
 
   useEffect(() => {
@@ -56,11 +54,15 @@ function App() {
     if (!userId) return
     setAllowedModules({})
 
-    const { data: prof } = await supabase.from('profiles').select('theme_mode, role, requires_password_change, preferred_language').eq('id', userId).single()
+    // MEMASTIKAN DATA profiles DIBACA DENGAN TEPAT
+    const { data: prof, error: profErr } = await supabase.from('profiles').select('theme_mode, role, requires_password_change, preferred_language').eq('id', userId).single()
     if (prof) {
       if (prof.theme_mode) setThemeMode(prof.theme_mode)
       if (prof.preferred_language) setLang(prof.preferred_language)
-      setUserRole(prof.role || 'default')
+      
+      // Bersihkan sebarang string kosong atau isu huruf besar dari DB
+      const dbRole = String(prof.role || 'default').trim().toLowerCase()
+      setUserRole(dbRole)
       setMustChangePassword(!!prof.requires_password_change)
     }
 
@@ -81,11 +83,13 @@ function App() {
   
   const canAccessRecords = isSuperAdmin || isAdmin || allowedModules['records'] === true
   const canAccessPrivileges = isSuperAdmin || isAdmin || allowedModules['privileges'] === true
+  const canAccessInventory = isSuperAdmin || isAdmin || allowedModules['inventory'] === true
 
   useEffect(() => {
     if (!session) return
     if (activePage === 'records' && !canAccessRecords) setActivePage('home')
     if (activePage === 'privileges' && !canAccessPrivileges) setActivePage('home')
+    if (activePage === 'inventory' && !canAccessInventory) setActivePage('home')
   }, [activePage, userRole, allowedModules, session])
 
   const handleThemeChange = async (newMode) => {
@@ -140,9 +144,10 @@ function App() {
     <div data-theme={currentTheme} className="min-h-screen bg-base-300 text-base-content font-sans transition-colors duration-300">
       <div className="bg-base-100 shadow-md px-4 py-3 md:h-16 flex flex-col md:flex-row md:items-center justify-between gap-3">
         <button onClick={() => setActivePage('home')} className="text-xl font-black tracking-wider text-primary btn btn-ghost">B.O.L. FOOD SERVICES</button>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <button onClick={() => setActivePage('home')} className={`btn btn-xs sm:btn-sm ${activePage === 'home' ? 'btn-primary' : 'btn-ghost'}`}>{t('home')}</button>
           {canAccessRecords && <button onClick={() => setActivePage('records')} className={`btn btn-xs sm:btn-sm ${activePage === 'records' ? 'btn-primary' : 'btn-ghost'}`}>{t('recordManager')}</button>}
+          {canAccessInventory && <button onClick={() => setActivePage('inventory')} className={`btn btn-xs sm:btn-sm ${activePage === 'inventory' ? 'btn-primary' : 'btn-ghost'}`}>{t('inventory')}</button>}
           <button onClick={() => setActivePage('settings')} className={`btn btn-xs sm:btn-sm ${activePage === 'settings' ? 'btn-primary' : 'btn-ghost'}`}>{t('settings')}</button>
           {canAccessPrivileges && <button onClick={() => setActivePage('privileges')} className={`btn btn-xs sm:btn-sm ${activePage === 'privileges' ? 'btn-primary' : 'btn-ghost'}`}>{t('privileges')}</button>}
           <button onClick={handleLogout} className="btn btn-error btn-xs sm:btn-sm btn-outline">{t('logOut')}</button>
@@ -173,6 +178,30 @@ function App() {
                       <div className="p-3 bg-base-content/10 rounded-xl w-fit"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6"><path d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" /></svg></div>
                       <div>
                         <h2 className="card-title text-base font-bold opacity-70">{t('recordManager')}</h2>
+                        <p className="text-xs opacity-50 mt-1">{t('lockedModule')}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {canAccessInventory ? (
+                  <button onClick={() => setActivePage('inventory')} className="card bg-base-100 border border-base-200 hover:border-success shadow-xl hover:shadow-2xl transition-all duration-300 text-left group">
+                    <div className="card-body p-6 flex flex-col justify-between h-48">
+                      <div className="p-3 bg-success/10 text-success w-fit rounded-xl group-hover:bg-success group-hover:text-white transition-all">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" /></svg>
+                      </div>
+                      <div>
+                        <h2 className="card-title text-lg font-bold group-hover:text-success">{t('inventory')}</h2>
+                        <p className="text-xs opacity-60 mt-1">{t('inventoryDesc')}</p>
+                      </div>
+                    </div>
+                  </button>
+                ) : (
+                  <div className="card bg-base-100/40 border border-base-200/50 shadow-md opacity-40 cursor-not-allowed">
+                    <div className="card-body p-6 flex flex-col justify-between h-48">
+                      <div className="p-3 bg-base-content/10 rounded-xl w-fit"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6"><path d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" /></svg></div>
+                      <div>
+                        <h2 className="card-title text-base font-bold opacity-70">{t('inventory')}</h2>
                         <p className="text-xs opacity-50 mt-1">{t('lockedModule')}</p>
                       </div>
                     </div>
@@ -216,6 +245,11 @@ function App() {
         {activePage === 'records' && canAccessRecords && <RecordManager session={session} />}
         {activePage === 'settings' && <Settings session={session} themeMode={themeMode} setThemeMode={handleThemeChange} currentLang={lang} setCurrentLang={setLang} />}
         {activePage === 'privileges' && canAccessPrivileges && <Privileges session={session} />}
+        
+        {/* PEMBETULAN MUTLAK: HANTAR userRole={userRole} SECARA TEPAT KE INVENTORY KOMPONEN */}
+        {activePage === 'inventory' && canAccessInventory && (
+          <Inventory session={session} userRole={userRole} />
+        )}
       </div>
     </div>
   )
