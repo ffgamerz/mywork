@@ -54,13 +54,11 @@ function App() {
     if (!userId) return
     setAllowedModules({})
 
-    // MEMASTIKAN DATA profiles DIBACA DENGAN TEPAT
-    const { data: prof, error: profErr } = await supabase.from('profiles').select('theme_mode, role, requires_password_change, preferred_language').eq('id', userId).single()
+    const { data: prof } = await supabase.from('profiles').select('theme_mode, role, requires_password_change, preferred_language').eq('id', userId).single()
     if (prof) {
       if (prof.theme_mode) setThemeMode(prof.theme_mode)
       if (prof.preferred_language) setLang(prof.preferred_language)
       
-      // Bersihkan sebarang string kosong atau isu huruf besar dari DB
       const dbRole = String(prof.role || 'default').trim().toLowerCase()
       setUserRole(dbRole)
       setMustChangePassword(!!prof.requires_password_change)
@@ -140,17 +138,53 @@ function App() {
     )
   }
 
+  // Helper untuk dapatkan nama halaman aktif bagi tajuk dropdown mobile
+  const getActivePageName = () => {
+    if (activePage === 'home') return t('home')
+    if (activePage === 'records') return t('recordManager')
+    if (activePage === 'inventory') return t('inventory')
+    if (activePage === 'settings') return t('settings')
+    if (activePage === 'privileges') return t('privileges')
+    return t('home')
+  }
+
   return (
     <div data-theme={currentTheme} className="min-h-screen bg-base-300 text-base-content font-sans transition-colors duration-300">
-      <div className="bg-base-100 shadow-md px-4 py-3 md:h-16 flex flex-col md:flex-row md:items-center justify-between gap-3">
-        <button onClick={() => setActivePage('home')} className="text-xl font-black tracking-wider text-primary btn btn-ghost">B.O.L. FOOD SERVICES</button>
-        <div className="flex gap-2 flex-wrap">
-          <button onClick={() => setActivePage('home')} className={`btn btn-xs sm:btn-sm ${activePage === 'home' ? 'btn-primary' : 'btn-ghost'}`}>{t('home')}</button>
-          {canAccessRecords && <button onClick={() => setActivePage('records')} className={`btn btn-xs sm:btn-sm ${activePage === 'records' ? 'btn-primary' : 'btn-ghost'}`}>{t('recordManager')}</button>}
-          {canAccessInventory && <button onClick={() => setActivePage('inventory')} className={`btn btn-xs sm:btn-sm ${activePage === 'inventory' ? 'btn-primary' : 'btn-ghost'}`}>{t('inventory')}</button>}
-          <button onClick={() => setActivePage('settings')} className={`btn btn-xs sm:btn-sm ${activePage === 'settings' ? 'btn-primary' : 'btn-ghost'}`}>{t('settings')}</button>
-          {canAccessPrivileges && <button onClick={() => setActivePage('privileges')} className={`btn btn-xs sm:btn-sm ${activePage === 'privileges' ? 'btn-primary' : 'btn-ghost'}`}>{t('privileges')}</button>}
-          <button onClick={handleLogout} className="btn btn-error btn-xs sm:btn-sm btn-outline">{t('logOut')}</button>
+      
+      {/* TOPBAR NAVIGATION */}
+      <div className="bg-base-100 shadow-md px-4 py-3 md:h-16 flex items-center justify-between gap-3 relative z-30">
+        <button onClick={() => setActivePage('home')} className="text-lg md:text-xl font-black tracking-wider text-primary btn btn-ghost px-1 md:px-4">
+          B.O.L. FOOD SERVICES
+        </button>
+        
+        {/* RESPONSIVE MENU STYLE */}
+        <div className="flex items-center gap-2">
+          {/* MOBILE VERSION: GAYA DROPDOWN MENU (Sembunyi di Desktop) */}
+          <div className="dropdown dropdown-end md:hidden">
+            <div tabIndex={0} role="button" className="btn btn-sm btn-primary font-bold gap-1 rounded-xl">
+              <span>{getActivePageName()}</span>
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-3.5 h-3.5 opacity-70"><path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" /></svg>
+            </div>
+            <ul tabIndex={0} className="dropdown-content menu p-2 shadow-2xl bg-base-200 rounded-2xl w-52 mt-2 border border-base-300 font-semibold gap-1">
+              <li><button onClick={() => { setActivePage('home'); document.activeElement.blur(); }} className={activePage === 'home' ? 'active' : ''}>{t('home')}</button></li>
+              {canAccessRecords && <li><button onClick={() => { setActivePage('records'); document.activeElement.blur(); }} className={activePage === 'records' ? 'active' : ''}>{t('recordManager')}</button></li>}
+              {canAccessInventory && <li><button onClick={() => { setActivePage('inventory'); document.activeElement.blur(); }} className={activePage === 'inventory' ? 'active' : ''}>{t('inventory')}</button></li>}
+              <li><button onClick={() => { setActivePage('settings'); document.activeElement.blur(); }} className={activePage === 'settings' ? 'active' : ''}>{t('settings')}</button></li>
+              {canAccessPrivileges && <li><button onClick={() => { setActivePage('privileges'); document.activeElement.blur(); }} className={activePage === 'privileges' ? 'active' : ''}>{t('privileges')}</button></li>}
+              <div className="divider my-1"></div>
+              <li><button onClick={handleLogout} className="text-error hover:bg-error/20">{t('logOut')}</button></li>
+            </ul>
+          </div>
+
+          {/* DESKTOP VERSION: BUTTON TABS (Sembunyi di Mobile) */}
+          <div className="hidden md:flex gap-2">
+            <button onClick={() => setActivePage('home')} className={`btn btn-sm ${activePage === 'home' ? 'btn-primary' : 'btn-ghost'}`}>{t('home')}</button>
+            {canAccessRecords && <button onClick={() => setActivePage('records')} className={`btn btn-sm ${activePage === 'records' ? 'btn-primary' : 'btn-ghost'}`}>{t('recordManager')}</button>}
+            {canAccessInventory && <button onClick={() => setActivePage('inventory')} className={`btn btn-sm ${activePage === 'inventory' ? 'btn-primary' : 'btn-ghost'}`}>{t('inventory')}</button>}
+            <button onClick={() => setActivePage('settings')} className={`btn btn-sm ${activePage === 'settings' ? 'btn-primary' : 'btn-ghost'}`}>{t('settings')}</button>
+            {canAccessPrivileges && <button onClick={() => setActivePage('privileges')} className={`btn btn-sm ${activePage === 'privileges' ? 'btn-primary' : 'btn-ghost'}`}>{t('privileges')}</button>}
+            <button onClick={handleLogout} className="btn btn-error btn-sm btn-outline ml-2">{t('logOut')}</button>
+          </div>
         </div>
       </div>
       
@@ -245,8 +279,6 @@ function App() {
         {activePage === 'records' && canAccessRecords && <RecordManager session={session} />}
         {activePage === 'settings' && <Settings session={session} themeMode={themeMode} setThemeMode={handleThemeChange} currentLang={lang} setCurrentLang={setLang} />}
         {activePage === 'privileges' && canAccessPrivileges && <Privileges session={session} />}
-        
-        {/* PEMBETULAN MUTLAK: HANTAR userRole={userRole} SECARA TEPAT KE INVENTORY KOMPONEN */}
         {activePage === 'inventory' && canAccessInventory && (
           <Inventory session={session} userRole={userRole} />
         )}
