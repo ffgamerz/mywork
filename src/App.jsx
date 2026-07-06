@@ -5,6 +5,7 @@ import RecordManager from './RecordManager'
 import Settings from './Settings'
 import Privileges from './Privileges'
 import Inventory from './Inventory' 
+import ReceiptManager from './ReceiptManager' 
 import { translations } from './translations'
 
 function App() {
@@ -82,12 +83,14 @@ function App() {
   const canAccessRecords = isSuperAdmin || isAdmin || allowedModules['records'] === true
   const canAccessPrivileges = isSuperAdmin || isAdmin || allowedModules['privileges'] === true
   const canAccessInventory = isSuperAdmin || isAdmin || allowedModules['inventory'] === true
+  const canAccessReceiptManager = isSuperAdmin || isAdmin || allowedModules['receiptManager'] === true 
 
   useEffect(() => {
     if (!session) return
     if (activePage === 'records' && !canAccessRecords) setActivePage('home')
     if (activePage === 'privileges' && !canAccessPrivileges) setActivePage('home')
     if (activePage === 'inventory' && !canAccessInventory) setActivePage('home')
+    if (activePage === 'receiptManager' && !canAccessReceiptManager) setActivePage('home')
   }, [activePage, userRole, allowedModules, session])
 
   const handleThemeChange = async (newMode) => {
@@ -138,11 +141,11 @@ function App() {
     )
   }
 
-  // Helper untuk dapatkan nama halaman aktif bagi tajuk dropdown mobile
   const getActivePageName = () => {
     if (activePage === 'home') return t('home')
     if (activePage === 'records') return t('recordManager')
     if (activePage === 'inventory') return t('inventory')
+    if (activePage === 'receiptManager') return t('receiptManager')
     if (activePage === 'settings') return t('settings')
     if (activePage === 'privileges') return t('privileges')
     return t('home')
@@ -157,9 +160,8 @@ function App() {
           B.O.L. FOOD SERVICES
         </button>
         
-        {/* RESPONSIVE MENU STYLE */}
         <div className="flex items-center gap-2">
-          {/* MOBILE VERSION: GAYA DROPDOWN MENU (Sembunyi di Desktop) */}
+          {/* MOBILE VERSION: DROPDOWN MENU */}
           <div className="dropdown dropdown-end md:hidden">
             <div tabIndex={0} role="button" className="btn btn-sm btn-primary font-bold gap-1 rounded-xl">
               <span>{getActivePageName()}</span>
@@ -169,6 +171,7 @@ function App() {
               <li><button onClick={() => { setActivePage('home'); document.activeElement.blur(); }} className={activePage === 'home' ? 'active' : ''}>{t('home')}</button></li>
               {canAccessRecords && <li><button onClick={() => { setActivePage('records'); document.activeElement.blur(); }} className={activePage === 'records' ? 'active' : ''}>{t('recordManager')}</button></li>}
               {canAccessInventory && <li><button onClick={() => { setActivePage('inventory'); document.activeElement.blur(); }} className={activePage === 'inventory' ? 'active' : ''}>{t('inventory')}</button></li>}
+              {canAccessReceiptManager && <li><button onClick={() => { setActivePage('receiptManager'); document.activeElement.blur(); }} className={activePage === 'receiptManager' ? 'active' : ''}>{t('receiptManager')}</button></li>}
               <li><button onClick={() => { setActivePage('settings'); document.activeElement.blur(); }} className={activePage === 'settings' ? 'active' : ''}>{t('settings')}</button></li>
               {canAccessPrivileges && <li><button onClick={() => { setActivePage('privileges'); document.activeElement.blur(); }} className={activePage === 'privileges' ? 'active' : ''}>{t('privileges')}</button></li>}
               <div className="divider my-1"></div>
@@ -176,11 +179,12 @@ function App() {
             </ul>
           </div>
 
-          {/* DESKTOP VERSION: BUTTON TABS (Sembunyi di Mobile) */}
+          {/* DESKTOP VERSION: BUTTON TABS */}
           <div className="hidden md:flex gap-2">
             <button onClick={() => setActivePage('home')} className={`btn btn-sm ${activePage === 'home' ? 'btn-primary' : 'btn-ghost'}`}>{t('home')}</button>
             {canAccessRecords && <button onClick={() => setActivePage('records')} className={`btn btn-sm ${activePage === 'records' ? 'btn-primary' : 'btn-ghost'}`}>{t('recordManager')}</button>}
             {canAccessInventory && <button onClick={() => setActivePage('inventory')} className={`btn btn-sm ${activePage === 'inventory' ? 'btn-primary' : 'btn-ghost'}`}>{t('inventory')}</button>}
+            {canAccessReceiptManager && <button onClick={() => setActivePage('receiptManager')} className={`btn btn-sm ${activePage === 'receiptManager' ? 'btn-primary' : 'btn-ghost'}`}>{t('receiptManager')}</button>}
             <button onClick={() => setActivePage('settings')} className={`btn btn-sm ${activePage === 'settings' ? 'btn-primary' : 'btn-ghost'}`}>{t('settings')}</button>
             {canAccessPrivileges && <button onClick={() => setActivePage('privileges')} className={`btn btn-sm ${activePage === 'privileges' ? 'btn-primary' : 'btn-ghost'}`}>{t('privileges')}</button>}
             <button onClick={handleLogout} className="btn btn-error btn-sm btn-outline ml-2">{t('logOut')}</button>
@@ -241,6 +245,29 @@ function App() {
                     </div>
                   </div>
                 )}
+
+                {canAccessReceiptManager ? (
+                  <button onClick={() => setActivePage('receiptManager')} className="card bg-base-100 border border-base-200 hover:border-accent shadow-xl hover:shadow-2xl transition-all duration-300 text-left group">
+                    <div className="card-body p-6 flex flex-col justify-between h-48">
+                      <div className="p-3 bg-accent/10 text-accent w-fit rounded-xl group-hover:bg-accent group-hover:text-white transition-all">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Z" /></svg></div>
+                      <div>
+                        <h2 className="card-title text-lg font-bold group-hover:text-accent">{t('receiptManager')}</h2>
+                        <p className="text-xs opacity-60 mt-1">{t('receiptManagerDesc')}</p>
+                      </div>
+                    </div>
+                  </button>
+                ) : (
+                  <div className="card bg-base-100/40 border border-base-200/50 shadow-md opacity-40 cursor-not-allowed">
+                    <div className="card-body p-6 flex flex-col justify-between h-48">
+                      <div className="p-3 bg-base-content/10 rounded-xl w-fit"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6"><path d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" /></svg></div>
+                      <div>
+                        <h2 className="card-title text-base font-bold opacity-70">{t('receiptManager')}</h2>
+                        <p className="text-xs opacity-50 mt-1">{t('lockedModule')}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 
                 <button onClick={() => setActivePage('settings')} className="card bg-base-100 border border-base-200 hover:border-accent shadow-xl hover:shadow-2xl transition-all duration-300 text-left group">
                   <div className="card-body p-6 flex flex-col justify-between h-48">
@@ -251,28 +278,6 @@ function App() {
                     </div>
                   </div>
                 </button>
-                
-                {canAccessPrivileges ? (
-                  <button onClick={() => setActivePage('privileges')} className="card bg-base-100 border border-base-200 hover:border-warning shadow-xl hover:shadow-2xl transition-all duration-300 text-left group">
-                    <div className="card-body p-6 flex flex-col justify-between h-48">
-                      <div className="p-3 bg-warning/10 text-warning w-fit rounded-xl group-hover:bg-warning group-hover:text-white transition-all"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94-3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" /></svg></div>
-                      <div>
-                        <h2 className="card-title text-lg font-bold group-hover:text-warning">{t('privileges')}</h2>
-                        <p className="text-xs opacity-60 mt-1">{t('privilegesDesc')}</p>
-                      </div>
-                    </div>
-                  </button>
-                ) : (
-                  <div className="card bg-base-100/40 border border-base-200/50 shadow-md opacity-40 cursor-not-allowed">
-                    <div className="card-body p-6 flex flex-col justify-between h-48">
-                      <div className="p-3 bg-base-content/10 rounded-xl w-fit"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6"><path d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" /></svg></div>
-                      <div>
-                        <h2 className="card-title text-base font-bold opacity-70">{t('privileges')}</h2>
-                        <p className="text-xs opacity-50 mt-1">{t('lockedModule')}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
              </div>
            </div>
         )}
@@ -280,7 +285,10 @@ function App() {
         {activePage === 'settings' && <Settings session={session} themeMode={themeMode} setThemeMode={handleThemeChange} currentLang={lang} setCurrentLang={setLang} />}
         {activePage === 'privileges' && canAccessPrivileges && <Privileges session={session} />}
         {activePage === 'inventory' && canAccessInventory && (
-          <Inventory session={session} userRole={userRole} />
+          <Inventory session={session} userRole={userRole} lang={lang} />
+        )}
+        {activePage === 'receiptManager' && canAccessReceiptManager && (
+          <ReceiptManager session={session} userRole={userRole} allowedModules={allowedModules} />
         )}
       </div>
     </div>

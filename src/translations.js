@@ -127,7 +127,10 @@ export const translations = {
     productName: "Product Name",
     saveProduct: "Save Product",
     noProducts: "No products added to inventory yet.",
-    productNamePlaceholder: "e.g., Pes Kari Sambal"
+    productNamePlaceholder: "e.g., Pes Kari Sambal",
+
+    receiptManager: "Receipt Manager",
+    receiptManagerDesc: "Manage production receipt records and generate text format summaries.",
   },
   ms: {
     // Menu & Umum
@@ -257,7 +260,10 @@ export const translations = {
     productName: "Nama Produk",
     saveProduct: "Simpan Produk",
     noProducts: "Tiada produk ditambah ke dalam stok lagi.",
-    productNamePlaceholder: "cth: Pes Kari Ayam"
+    productNamePlaceholder: "cth: Pes Kari Ayam",
+
+    receiptManager: "Pengurus Resit",
+    receiptManagerDesc: "Urus rekod resit produksi dan jana ringkasan untuk ditiru/salin."
   },
   zh: {
     // Menu & 常用
