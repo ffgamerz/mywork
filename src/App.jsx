@@ -6,6 +6,7 @@ import Settings from './Settings'
 import Privileges from './Privileges'
 import Inventory from './Inventory' 
 import ReceiptManager from './ReceiptManager' 
+import WageCalculator from './WageCalculator' 
 import { translations } from './translations'
 
 function App() {
@@ -78,12 +79,13 @@ function App() {
   }, [session?.user?.id])
 
   const isSuperAdmin = userRole === 'super_admin'
-  const isAdmin = userRole === 'admin'
   
-  const canAccessRecords = isSuperAdmin || isAdmin || allowedModules['records'] === true
-  const canAccessPrivileges = isSuperAdmin || isAdmin || allowedModules['privileges'] === true
-  const canAccessInventory = isSuperAdmin || isAdmin || allowedModules['inventory'] === true
-  const canAccessReceiptManager = isSuperAdmin || isAdmin || allowedModules['receiptManager'] === true 
+  // KEPERLUAN BAHARU: Super Admin automatik lepas semua, yang lain (termasuk admin) wajib ada privilege
+  const canAccessRecords = isSuperAdmin || allowedModules['records'] === true
+  const canAccessPrivileges = isSuperAdmin || allowedModules['privileges'] === true
+  const canAccessInventory = isSuperAdmin || allowedModules['inventory'] === true
+  const canAccessReceiptManager = isSuperAdmin || allowedModules['receiptManager'] === true 
+  const canAccessWageCalculator = isSuperAdmin || allowedModules['wageCalculator'] === true 
 
   useEffect(() => {
     if (!session) return
@@ -91,6 +93,7 @@ function App() {
     if (activePage === 'privileges' && !canAccessPrivileges) setActivePage('home')
     if (activePage === 'inventory' && !canAccessInventory) setActivePage('home')
     if (activePage === 'receiptManager' && !canAccessReceiptManager) setActivePage('home')
+    if (activePage === 'wageCalculator' && !canAccessWageCalculator) setActivePage('home')
   }, [activePage, userRole, allowedModules, session])
 
   const handleThemeChange = async (newMode) => {
@@ -146,6 +149,7 @@ function App() {
     if (activePage === 'records') return t('recordManager')
     if (activePage === 'inventory') return t('inventory')
     if (activePage === 'receiptManager') return t('receiptManager')
+    if (activePage === 'wageCalculator') return t('wageCalculator') 
     if (activePage === 'settings') return t('settings')
     if (activePage === 'privileges') return t('privileges')
     return t('home')
@@ -161,7 +165,7 @@ function App() {
         </button>
         
         <div className="flex items-center gap-2">
-          {/* MOBILE VERSION: DROPDOWN MENU */}
+          {/* MOBILE VERSION */}
           <div className="dropdown dropdown-end md:hidden">
             <div tabIndex={0} role="button" className="btn btn-sm btn-primary font-bold gap-1 rounded-xl">
               <span>{getActivePageName()}</span>
@@ -172,6 +176,7 @@ function App() {
               {canAccessRecords && <li><button onClick={() => { setActivePage('records'); document.activeElement.blur(); }} className={activePage === 'records' ? 'active' : ''}>{t('recordManager')}</button></li>}
               {canAccessInventory && <li><button onClick={() => { setActivePage('inventory'); document.activeElement.blur(); }} className={activePage === 'inventory' ? 'active' : ''}>{t('inventory')}</button></li>}
               {canAccessReceiptManager && <li><button onClick={() => { setActivePage('receiptManager'); document.activeElement.blur(); }} className={activePage === 'receiptManager' ? 'active' : ''}>{t('receiptManager')}</button></li>}
+              {canAccessWageCalculator && <li><button onClick={() => { setActivePage('wageCalculator'); document.activeElement.blur(); }} className={activePage === 'wageCalculator' ? 'active' : ''}>{t('wageCalculator')}</button></li>}
               <li><button onClick={() => { setActivePage('settings'); document.activeElement.blur(); }} className={activePage === 'settings' ? 'active' : ''}>{t('settings')}</button></li>
               {canAccessPrivileges && <li><button onClick={() => { setActivePage('privileges'); document.activeElement.blur(); }} className={activePage === 'privileges' ? 'active' : ''}>{t('privileges')}</button></li>}
               <div className="divider my-1"></div>
@@ -179,12 +184,13 @@ function App() {
             </ul>
           </div>
 
-          {/* DESKTOP VERSION: BUTTON TABS */}
+          {/* DESKTOP VERSION */}
           <div className="hidden md:flex gap-2">
             <button onClick={() => setActivePage('home')} className={`btn btn-sm ${activePage === 'home' ? 'btn-primary' : 'btn-ghost'}`}>{t('home')}</button>
             {canAccessRecords && <button onClick={() => setActivePage('records')} className={`btn btn-sm ${activePage === 'records' ? 'btn-primary' : 'btn-ghost'}`}>{t('recordManager')}</button>}
             {canAccessInventory && <button onClick={() => setActivePage('inventory')} className={`btn btn-sm ${activePage === 'inventory' ? 'btn-primary' : 'btn-ghost'}`}>{t('inventory')}</button>}
             {canAccessReceiptManager && <button onClick={() => setActivePage('receiptManager')} className={`btn btn-sm ${activePage === 'receiptManager' ? 'btn-primary' : 'btn-ghost'}`}>{t('receiptManager')}</button>}
+            {canAccessWageCalculator && <button onClick={() => setActivePage('wageCalculator')} className={`btn btn-sm ${activePage === 'wageCalculator' ? 'btn-primary' : 'btn-ghost'}`}>{t('wageCalculator')}</button>}
             <button onClick={() => setActivePage('settings')} className={`btn btn-sm ${activePage === 'settings' ? 'btn-primary' : 'btn-ghost'}`}>{t('settings')}</button>
             {canAccessPrivileges && <button onClick={() => setActivePage('privileges')} className={`btn btn-sm ${activePage === 'privileges' ? 'btn-primary' : 'btn-ghost'}`}>{t('privileges')}</button>}
             <button onClick={handleLogout} className="btn btn-error btn-sm btn-outline ml-2">{t('logOut')}</button>
@@ -192,6 +198,7 @@ function App() {
         </div>
       </div>
       
+      {/* MAIN CONTENT */}
       <div className="p-4 md:p-8 max-w-7xl mx-auto">
         {activePage === 'home' && (
            <div className="space-y-6">
@@ -199,8 +206,10 @@ function App() {
                <h1 className="text-2xl md:text-3xl font-black tracking-tight">{t('dashboardTitle')}</h1>
                <p className="text-sm opacity-60">{t('dashboardDesc')}</p>
              </div>
+             
+             {/* KAD GRID UTAMA */}
              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                {canAccessRecords ? (
+                {canAccessRecords && (
                   <button onClick={() => setActivePage('records')} className="card bg-base-100 border border-base-200 hover:border-primary shadow-xl hover:shadow-2xl transition-all duration-300 text-left group">
                     <div className="card-body p-6 flex flex-col justify-between h-48">
                       <div className="p-3 bg-primary/10 text-primary w-fit rounded-xl group-hover:bg-primary group-hover:text-white transition-all"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" /></svg></div>
@@ -210,19 +219,9 @@ function App() {
                       </div>
                     </div>
                   </button>
-                ) : (
-                  <div className="card bg-base-100/40 border border-base-200/50 shadow-md opacity-40 cursor-not-allowed">
-                    <div className="card-body p-6 flex flex-col justify-between h-48">
-                      <div className="p-3 bg-base-content/10 rounded-xl w-fit"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6"><path d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" /></svg></div>
-                      <div>
-                        <h2 className="card-title text-base font-bold opacity-70">{t('recordManager')}</h2>
-                        <p className="text-xs opacity-50 mt-1">{t('lockedModule')}</p>
-                      </div>
-                    </div>
-                  </div>
                 )}
                 
-                {canAccessInventory ? (
+                {canAccessInventory && (
                   <button onClick={() => setActivePage('inventory')} className="card bg-base-100 border border-base-200 hover:border-success shadow-xl hover:shadow-2xl transition-all duration-300 text-left group">
                     <div className="card-body p-6 flex flex-col justify-between h-48">
                       <div className="p-3 bg-success/10 text-success w-fit rounded-xl group-hover:bg-success group-hover:text-white transition-all">
@@ -234,19 +233,9 @@ function App() {
                       </div>
                     </div>
                   </button>
-                ) : (
-                  <div className="card bg-base-100/40 border border-base-200/50 shadow-md opacity-40 cursor-not-allowed">
-                    <div className="card-body p-6 flex flex-col justify-between h-48">
-                      <div className="p-3 bg-base-content/10 rounded-xl w-fit"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6"><path d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" /></svg></div>
-                      <div>
-                        <h2 className="card-title text-base font-bold opacity-70">{t('inventory')}</h2>
-                        <p className="text-xs opacity-50 mt-1">{t('lockedModule')}</p>
-                      </div>
-                    </div>
-                  </div>
                 )}
 
-                {canAccessReceiptManager ? (
+                {canAccessReceiptManager && (
                   <button onClick={() => setActivePage('receiptManager')} className="card bg-base-100 border border-base-200 hover:border-accent shadow-xl hover:shadow-2xl transition-all duration-300 text-left group">
                     <div className="card-body p-6 flex flex-col justify-between h-48">
                       <div className="p-3 bg-accent/10 text-accent w-fit rounded-xl group-hover:bg-accent group-hover:text-white transition-all">
@@ -257,39 +246,30 @@ function App() {
                       </div>
                     </div>
                   </button>
-                ) : (
-                  <div className="card bg-base-100/40 border border-base-200/50 shadow-md opacity-40 cursor-not-allowed">
+                )}
+
+                {canAccessWageCalculator && (
+                  <button onClick={() => setActivePage('wageCalculator')} className="card bg-base-100 border border-base-200 hover:border-warning shadow-xl hover:shadow-2xl transition-all duration-300 text-left group">
                     <div className="card-body p-6 flex flex-col justify-between h-48">
-                      <div className="p-3 bg-base-content/10 rounded-xl w-fit"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6"><path d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" /></svg></div>
+                      <div className="p-3 bg-warning/10 text-warning w-fit rounded-xl group-hover:bg-warning group-hover:text-white transition-all">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 15.75V18m-3-3V18m-3-3V18M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM10.5 8.25h3l-3 4.5h3" /></svg></div>
                       <div>
-                        <h2 className="card-title text-base font-bold opacity-70">{t('receiptManager')}</h2>
-                        <p className="text-xs opacity-50 mt-1">{t('lockedModule')}</p>
+                        <h2 className="card-title text-lg font-bold group-hover:text-warning">{t('wageCalculator')}</h2>
+                        <p className="text-xs opacity-60 mt-1">{t('wageCalcDesc') || 'Kira upah bulanan staf.'}</p>
                       </div>
                     </div>
-                  </div>
+                  </button>
                 )}
-                
-                <button onClick={() => setActivePage('settings')} className="card bg-base-100 border border-base-200 hover:border-accent shadow-xl hover:shadow-2xl transition-all duration-300 text-left group">
-                  <div className="card-body p-6 flex flex-col justify-between h-48">
-                    <div className="p-3 bg-accent/10 text-accent w-fit rounded-xl group-hover:bg-accent group-hover:text-white transition-all"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.43l-1.003.767c-.307.235-.45.643-.366 1.023.004.022.006.045.008.068a1.124 1.124 0 0 1-.504 1.014l-1.12.756a1.126 1.126 0 0 1-1.34-.1l-.816-.677a1.123 1.123 0 0 0-1.284-.112l-1.12.639a1.125 1.125 0 0 1-1.3-.067l-.872-.705a1.123 1.123 0 0 0-1.246-.145l-1.112.556a1.125 1.125 0 0 1-1.31-.21l-1.196-1.196a1.125 1.125 0 0 1-.21-1.31l.556-1.112a1.122 1.122 0 0 0-.145-1.246l-.705-.872a1.125 1.125 0 0 1-.067-1.3l.639-1.12a1.123 1.123 0 0 0-.112-1.284l-.677-.816a1.125 1.125 0 0 1-.1-1.34l.756-1.12a1.124 1.124 0 0 1 1.014-.504c.023.002.046.004.068.008.38.084.788-.06 1.023-.366l.767-1.003a1.125 1.125 0 0 1 1.43-.26l2.247 1.296a1.125 1.125 0 0 1 .49 1.37l-.456 1.217a1.122 1.122 0 0 0 .124 1.075c.044.073.087.146.127.22.184.332.496.582.87.645l1.281.213Z" /></svg></div>
-                    <div>
-                      <h2 className="card-title text-lg font-bold group-hover:text-accent">{t('settings')}</h2>
-                      <p className="text-xs opacity-60 mt-1">{t('settingsDesc')}</p>
-                    </div>
-                  </div>
-                </button>
              </div>
            </div>
         )}
+        
         {activePage === 'records' && canAccessRecords && <RecordManager session={session} />}
         {activePage === 'settings' && <Settings session={session} themeMode={themeMode} setThemeMode={handleThemeChange} currentLang={lang} setCurrentLang={setLang} />}
         {activePage === 'privileges' && canAccessPrivileges && <Privileges session={session} />}
-        {activePage === 'inventory' && canAccessInventory && (
-          <Inventory session={session} userRole={userRole} lang={lang} />
-        )}
-        {activePage === 'receiptManager' && canAccessReceiptManager && (
-          <ReceiptManager session={session} userRole={userRole} allowedModules={allowedModules} />
-        )}
+        {activePage === 'inventory' && canAccessInventory && <Inventory session={session} userRole={userRole} allowedModules={allowedModules} lang={lang} />}
+        {activePage === 'receiptManager' && canAccessReceiptManager && <ReceiptManager session={session} userRole={userRole} allowedModules={allowedModules} />}
+        {activePage === 'wageCalculator' && canAccessWageCalculator && <WageCalculator session={session} userRole={userRole} allowedModules={allowedModules} />}
       </div>
     </div>
   )

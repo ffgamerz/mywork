@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
 import { translations } from './translations'
 
-export default function Inventory({ session, userRole, lang = 'en' }) {
+export default function Inventory({ session, userRole, allowedModules = {}, lang = 'en' }) {
   const [selectedProduct, setSelectedProduct] = useState(null)
 
   const [products, setProducts] = useState([])
   const [productName, setProductName] = useState('')
   const [expiryMonth, setExpiryMonth] = useState('12')
+  const [wageRate, setWageRate] = useState('0.00') 
   const [loadingProducts, setLoadingProducts] = useState(false)
   const [loadingProductions, setLoadingProductions] = useState(false)
   const [loadingSave, setLoadingSave] = useState(false)
@@ -16,7 +17,12 @@ export default function Inventory({ session, userRole, lang = 'en' }) {
 
   const [productions, setProductions] = useState([])
   const [staffList, setStaffList] = useState([])
+  
+  // State untuk Tambah/Edit Stok
   const [isStockModalOpen, setIsStockModalOpen] = useState(false)
+  const [isEditStockModalOpen, setIsEditStockModalOpen] = useState(false)
+  const [editingStock, setEditingStock] = useState(null)
+
   const [prodDate, setProdDate] = useState(new Date().toISOString().split('T')[0])
   const [prodQty, setProdQty] = useState('')
   const [prodName, setProdName] = useState('')
@@ -24,8 +30,22 @@ export default function Inventory({ session, userRole, lang = 'en' }) {
 
   const t = (key) => translations[lang]?.[key] || translations['en'][key]
 
+  // ─── KAWALAN HAK AKSES OPERASI BAHARU ─────────────────────────────────────
   const cleanedRole = String(userRole || '').trim().toLowerCase()
-  const isAuthorized = cleanedRole === 'super_admin' || cleanedRole === 'admin'
+  
+  // 1. Super Admin mempunyai kuasa mutlak
+  const isSuperAdmin = cleanedRole === 'super_admin'
+  const isAdmin = cleanedRole === 'admin'
+  
+  // 2. Akses Masuk Halaman: Super Admin atau sesiapa yang ada privilege modul
+  const hasPageAccess = isSuperAdmin || allowedModules['inventory'] === true || isAdmin
+
+  // 3. Kuasa Tambah/Edit Maklumat Stok: HANYA Super Admin
+  const canEditStockInfo = isSuperAdmin
+
+  // 4. Kuasa Set Stok Habis / Revert Semula: Super Admin & Admin boleh buat
+  const canToggleStockStatus = isSuperAdmin || isAdmin
+  // ───────────────────────────────────────────────────────────────────────────
 
   const showToast = (msg) => {
     setToastMessage(msg)
@@ -33,12 +53,13 @@ export default function Inventory({ session, userRole, lang = 'en' }) {
   }
 
   const fetchProducts = async () => {
+    if (!hasPageAccess) return
     setLoadingProducts(true)
     const { data, error } = await supabase
       .from('inventory')
       .select(`
         *,
-        stock_productions(id, batch_no, production_date, expiry_date, is_finished, created_at)
+        stock_productions(id, batch_no, production_date, expiry_date, is_finished, paid_amount, created_at)
       `)
       .order('created_at', { ascending: true })
 
@@ -62,7 +83,7 @@ export default function Inventory({ session, userRole, lang = 'en' }) {
       .from('stock_productions')
       .select('*')
       .eq('inventory_id', productId)
-      .order('created_at', { ascending: false })
+      .order('production_date', { ascending: false })
 
     if (error) console.error(error.message)
     else setProductions(data || [])
@@ -80,12 +101,14 @@ export default function Inventory({ session, userRole, lang = 'en' }) {
   }
 
   useEffect(() => {
-    fetchProducts()
-    fetchStaffList()
-  }, [])
+    if (hasPageAccess) {
+      fetchProducts()
+      fetchStaffList()
+    }
+  }, [hasPageAccess])
 
   useEffect(() => {
-    if (selectedProduct) fetchProductions(selectedProduct.id)
+    if (selectedProduct && hasPageAccess) fetchProductions(selectedProduct.id)
   }, [selectedProduct])
 
   useEffect(() => {
@@ -106,7 +129,20 @@ export default function Inventory({ session, userRole, lang = 'en' }) {
     }
   }, [isStockModalOpen, productions])
 
+  if (!hasPageAccess) {
+    return (
+      <div className="alert alert-error shadow-lg rounded-xl max-w-md mx-auto mt-12 border border-error/20 text-white font-bold">
+        <div><span>🔒 {lang === 'ms' ? 'Akses Disekat: Anda tiada kebenaran melihat halaman ini.' : 'Access Denied: Unauthorized.'}</span></div>
+      </div>
+    )
+  }
+
   const handleToggleStockFinished = async (productionId, currentStatus) => {
+    if (!canToggleStockStatus) {
+      alert(lang === 'ms' ? 'Akses ditolak. Anda tiada kebenaran menukar status kelompok.' : 'Access denied.')
+      return
+    }
+
     setLoadingSave(true)
     const { error } = await supabase
       .from('stock_productions')
@@ -116,7 +152,7 @@ export default function Inventory({ session, userRole, lang = 'en' }) {
     if (error) {
       alert(t('updateFailed') + error.message)
     } else {
-      showToast(lang === 'ms' ? 'Status kelompok berjaya dikemas kini!' : lang === 'zh' ? '批次状态更新成功！' : 'Batch status updated successfully!')
+      showToast(lang === 'ms' ? 'Status kelompok berjaya dikemas kini!' : 'Batch status updated!')
       if (selectedProduct) fetchProductions(selectedProduct.id)
     }
     setLoadingSave(false)
@@ -124,13 +160,14 @@ export default function Inventory({ session, userRole, lang = 'en' }) {
 
   const handleAddProduct = async (e) => {
     e.preventDefault()
-    if (!productName.trim() || !isAuthorized) return
+    if (!productName.trim() || !canEditStockInfo) return
 
     setLoadingSave(true)
     const { error } = await supabase.from('inventory').insert([{
       user_id: session.user.id,
       product_name: productName.trim(),
       expiry_month: parseInt(expiryMonth) || 12,
+      wage_rate: parseFloat(wageRate) || 0.00, 
       current_stock: 0
     }])
 
@@ -139,8 +176,9 @@ export default function Inventory({ session, userRole, lang = 'en' }) {
     } else {
       setProductName('')
       setExpiryMonth('12')
+      setWageRate('0.00')
       setIsModalOpen(false)
-      showToast(lang === 'ms' ? 'Produk berjaya ditambah!' : lang === 'zh' ? '产品添加成功！' : 'Product added successfully!')
+      showToast(lang === 'ms' ? 'Produk berjaya ditambah!' : 'Product added successfully!')
       fetchProducts()
     }
     setLoadingSave(false)
@@ -148,7 +186,7 @@ export default function Inventory({ session, userRole, lang = 'en' }) {
 
   const handleAddStock = async (e) => {
     e.preventDefault()
-    if (!isAuthorized || !selectedProduct) return
+    if (!canEditStockInfo || !selectedProduct) return
 
     setLoadingSave(true)
     const productionDateObj = new Date(prodDate)
@@ -166,7 +204,7 @@ export default function Inventory({ session, userRole, lang = 'en' }) {
       expiry_date: calculatedExpiryDate,
       is_finished: false,
       paid_date: null,
-      paid_amount: 0.00,
+      paid_amount: null,
       receipt_link: null
     }])
 
@@ -176,7 +214,58 @@ export default function Inventory({ session, userRole, lang = 'en' }) {
       setProdQty('')
       setProdName('')
       setIsStockModalOpen(false)
-      showToast(lang === 'ms' ? 'Rekod produksi berjaya disimpan!' : lang === 'zh' ? '生产记录保存成功！' : 'Production record saved!')
+      showToast(lang === 'ms' ? 'Rekod produksi berjaya disimpan!' : 'Production record saved!')
+      fetchProducts()
+      if (selectedProduct) fetchProductions(selectedProduct.id)
+    }
+    setLoadingSave(false)
+  }
+
+  const handleOpenEditStockModal = (stock) => {
+    if (!canEditStockInfo) {
+      alert(lang === 'ms' ? 'Akses ditolak. Hanya Super Admin boleh mengedit info stok.' : 'Access denied.')
+      return
+    }
+    setEditingStock(stock)
+    setProdDate(stock.production_date)
+    setProdBatch(stock.batch_no)
+    setProdQty(stock.quantity.toString())
+    setProdName(stock.production_name || '')
+    setIsEditStockModalOpen(true)
+  }
+
+  const handleUpdateStock = async (e) => {
+    e.preventDefault()
+    if (!canEditStockInfo || !editingStock || !selectedProduct) {
+      alert(lang === 'ms' ? 'Akses ditolak!' : 'Access denied!')
+      return
+    }
+
+    setLoadingSave(true)
+    
+    const productionDateObj = new Date(prodDate)
+    const monthsToAdd = selectedProduct.expiry_month || 12
+    productionDateObj.setMonth(productionDateObj.getMonth() + monthsToAdd)
+    const calculatedExpiryDate = productionDateObj.toISOString().split('T')[0]
+
+    const { error } = await supabase
+      .from('stock_productions')
+      .update({
+        production_date: prodDate,
+        batch_no: prodBatch.trim(),
+        quantity: parseInt(prodQty) || 0,
+        production_name: prodName || null,
+        expiry_date: calculatedExpiryDate,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', editingStock.id)
+
+    if (error) {
+      alert(t('updateFailed') + error.message)
+    } else {
+      setIsEditStockModalOpen(false)
+      setEditingStock(null)
+      showToast(lang === 'ms' ? 'Rekod stok berjaya dikemaskini!' : 'Stock record updated!')
       fetchProducts()
       if (selectedProduct) fetchProductions(selectedProduct.id)
     }
@@ -215,35 +304,47 @@ export default function Inventory({ session, userRole, lang = 'en' }) {
                   <span className="badge badge-md badge-outline font-bold font-mono text-secondary px-2.5 py-3 whitespace-nowrap self-start sm:self-auto shadow-sm">
                     Shelf Life: {selectedProduct.expiry_month || 12}M
                   </span>
+                  <span className="badge badge-md badge-primary font-bold text-white px-2.5 py-3 shadow-sm">
+                    Upah: RM {parseFloat(selectedProduct.wage_rate || 0).toFixed(2)}
+                  </span>
                 </div>
                 <div className="w-fit bg-warning/20 border border-warning/40 px-3 py-1 rounded-xl flex items-center gap-1.5 text-xs font-black text-warning-content shadow-sm">
                   <span className="w-2 h-2 rounded-full bg-warning animate-pulse"></span>
                   <span>
-                    {lang === 'ms' ? `Baki Stok: ${activeBatchCount} Batch`
-                      : lang === 'zh' ? `活跃库存: ${activeBatchCount} 批次`
-                      : `Active Stock: ${activeBatchCount} Batches`}
+                    {lang === 'ms' ? `Baki Stok: ${activeBatchCount} Batch` : `Active Stock: ${activeBatchCount} Batches`}
                   </span>
                 </div>
               </div>
             </div>
 
-            {isAuthorized && (
-              <button onClick={() => setIsStockModalOpen(true)} className="btn btn-sm btn-accent font-bold shadow-md rounded-xl whitespace-nowrap shrink-0 hidden sm:inline-flex">
+            {/* Butang Tambah Stok atas - Hanya muncul untuk Super Admin */}
+            {canEditStockInfo && (
+              <button onClick={() => {
+                setProdDate(new Date().toISOString().split('T')[0]);
+                setProdQty('');
+                setProdName('');
+                setIsStockModalOpen(true);
+              }} className="btn btn-sm btn-accent font-bold shadow-md rounded-xl whitespace-nowrap shrink-0 hidden sm:inline-flex">
                 + {t('addStock')}
               </button>
             )}
           </div>
 
-          {isAuthorized && (
+          {/* Butang Tambah Stok bawah (Mobile) - Hanya muncul untuk Super Admin */}
+          {canEditStockInfo && (
             <div className="block sm:hidden w-full pt-1">
-              <button onClick={() => setIsStockModalOpen(true)} className="btn btn-md btn-block btn-accent font-black shadow-md rounded-xl text-sm">
+              <button onClick={() => {
+                setProdDate(new Date().toISOString().split('T')[0]);
+                setProdQty('');
+                setProdName('');
+                setIsStockModalOpen(true);
+              }} className="btn btn-md btn-block btn-accent font-black shadow-md rounded-xl text-sm">
                 + {t('addStock')}
               </button>
             </div>
           )}
         </div>
 
-        {/* Loading state untuk productions */}
         {loadingProductions ? (
           <div className="flex justify-center py-12">
             <span className="loading loading-spinner loading-lg text-primary"></span>
@@ -253,9 +354,7 @@ export default function Inventory({ session, userRole, lang = 'en' }) {
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-12 h-12">
               <path strokeLinecap="round" strokeLinejoin="round" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
             </svg>
-            <p className="font-bold text-sm">
-              {lang === 'ms' ? 'Tiada rekod produksi lagi.' : lang === 'zh' ? '暂无生产记录。' : 'No production records yet.'}
-            </p>
+            <p className="font-bold text-sm">{lang === 'ms' ? 'Tiada rekod produksi lagi.' : 'No production records yet.'}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -275,9 +374,7 @@ export default function Inventory({ session, userRole, lang = 'en' }) {
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-sm py-0.5">
                     <div>
-                      <span className="text-[11px] block opacity-50 font-bold tracking-tight">
-                        {lang === 'ms' ? 'Staf Bertugas' : lang === 'zh' ? '负责员工' : 'Staff In-Charge'}
-                      </span>
+                      <span className="text-[11px] block opacity-50 font-bold tracking-tight">{lang === 'ms' ? 'Staf Bertugas' : 'Staff In-Charge'}</span>
                       <span className="font-black text-base-content/90 text-sm break-all">{p.production_name || '-'}</span>
                     </div>
                     <div className="text-right">
@@ -291,30 +388,56 @@ export default function Inventory({ session, userRole, lang = 'en' }) {
                       <span className="font-black text-sm text-error">{p.expiry_date || '-'}</span>
                     </div>
                     <div className="text-right">
-                      <span className={`badge badge-md font-black shadow-sm ${p.is_finished ? 'badge-success text-white' : 'badge-warning text-black'}`}>
-                        {p.is_finished ? t('statusDone') : t('statusActive')}
+                      <span className="text-[11px] block opacity-50 font-bold tracking-tight">{lang === 'ms' ? 'Upah Batch' : 'Batch Wage'}</span>
+                      <span className="font-mono text-sm font-black text-success">
+                        RM {p.paid_amount !== null && p.paid_amount !== undefined 
+                          ? parseFloat(p.paid_amount).toFixed(2) 
+                          : parseFloat(selectedProduct.wage_rate || 0).toFixed(2)}
                       </span>
                     </div>
                   </div>
                 </div>
-                <div className="pt-3 border-t border-base-200/40 mt-1">
-                  <button
-                    onClick={() => handleToggleStockFinished(p.id, p.is_finished)}
-                    disabled={loadingSave}
-                    className={`btn btn-xs btn-block font-bold rounded-xl shadow-sm transition-all ${p.is_finished ? 'btn-outline btn-success' : 'btn-neutral text-white'}`}
-                  >
-                    {p.is_finished
-                      ? (lang === 'ms' ? '🔄 Buka Semula Batch' : lang === 'zh' ? '🔄 重新开启批次' : '🔄 Re-open Batch')
-                      : (lang === 'ms' ? '✅ Tandakan Dah Habis' : lang === 'zh' ? '✅ 标记为已完成' : '✅ Mark as Finished')}
-                  </button>
+
+                <div className="pt-3 border-t border-base-200/40 mt-1 space-y-2">
+                  <div className="flex justify-between items-center text-xs font-bold px-1">
+                    <span className="opacity-60">Status Bayaran:</span>
+                    <span className={`px-2 py-0.5 rounded-lg text-[11px] font-black ${p.paid_date ? 'bg-success/10 text-success' : 'bg-error/10 text-error'}`}>
+                      {p.paid_date ? `Sudah Bayar (${p.paid_date})` : 'Belum Bayar'}
+                    </span>
+                  </div>
+                  <div className="flex gap-2">
+                    {/* Butang Dah Habis / Revert Semula: Boleh digunakan oleh Admin & Super Admin */}
+                    <button
+                      type="button"
+                      onClick={() => handleToggleStockFinished(p.id, p.is_finished)}
+                      disabled={loadingSave || !canToggleStockStatus}
+                      className={`btn btn-xs flex-1 font-bold rounded-xl shadow-sm transition-all ${
+                        !canToggleStockStatus ? 'btn-disabled opacity-50 cursor-not-allowed' :
+                        p.is_finished ? 'btn-outline btn-success' : 'btn-neutral text-white'
+                      }`}
+                    >
+                      {p.is_finished ? '🔄 Buka Semula' : '✅ Dah Habis'}
+                    </button>
+                    
+                    {/* Butang "Edit Info" (Tarikh/Batch/Kuantiti): HANYA dipaparkan untuk Super Admin */}
+                    {canEditStockInfo && (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEditStockModal(p)}
+                        className="btn btn-xs btn-outline btn-ghost text-secondary border-base-300 rounded-xl font-bold px-3"
+                      >
+                        📝 Edit Info
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
           </div>
         )}
 
-        {/* Modal Tambah Stok */}
-        {isStockModalOpen && isAuthorized && (
+        {/* Modal Tambah Stok - Sekatan Super Admin */}
+        {isStockModalOpen && canEditStockInfo && (
           <div className="modal modal-open z-50">
             <div className="modal-box max-w-md border border-base-200 shadow-2xl rounded-2xl p-6">
               <h3 className="font-bold text-xl text-accent mb-4">🏭 {t('addStock')}</h3>
@@ -328,50 +451,66 @@ export default function Inventory({ session, userRole, lang = 'en' }) {
                   <input type="text" readOnly className="input input-bordered w-full text-base rounded-xl font-mono bg-base-200 cursor-not-allowed font-black text-primary text-lg" value={prodBatch} />
                 </div>
                 <div className="form-control">
-                  <label className="label-text font-semibold mb-1">
-                    {lang === 'ms' ? 'Pilih Staf Bertugas' : lang === 'zh' ? '选择负责员工' : 'Select Staff In-Charge'}
-                  </label>
+                  <label className="label-text font-semibold mb-1">Pilih Staf Bertugas *</label>
                   {staffList.length > 0 ? (
-                    <select
-                      required
-                      className="select select-bordered w-full text-base rounded-xl font-bold"
-                      value={prodName}
-                      onChange={(e) => setProdName(e.target.value)}
-                    >
-                      <option value="">
-                        {lang === 'ms' ? '-- Pilih Nama Staf --' : lang === 'zh' ? '-- 选择员工姓名 --' : '-- Select Staff Name --'}
-                      </option>
+                    <select required className="select select-bordered w-full text-base rounded-xl font-bold" value={prodName} onChange={(e) => setProdName(e.target.value)}>
+                      <option value="">-- Pilih Nama Staf --</option>
                       {staffList.map((staff, sIdx) => (
                         <option key={sIdx} value={staff.full_name}>{staff.full_name}</option>
                       ))}
                     </select>
                   ) : (
-                    // Kalau staff list kosong, tunjuk input text supaya user tak stuck
-                    <input
-                      type="text"
-                      className="input input-bordered w-full text-base rounded-xl"
-                      placeholder={lang === 'ms' ? 'Tiada staf didaftarkan, taip nama' : lang === 'zh' ? '无员工记录，请手动输入' : 'No staff found, type a name'}
-                      value={prodName}
-                      onChange={(e) => setProdName(e.target.value)}
-                    />
+                    <input type="text" className="input input-bordered w-full text-base rounded-xl" placeholder="Taip nama staf" value={prodName} onChange={(e) => setProdName(e.target.value)} />
                   )}
                 </div>
                 <div className="form-control">
                   <label className="label-text font-semibold mb-1">{t('quantity')} *</label>
-                  <input
-                    type="number"
-                    required
-                    min="1"
-                    placeholder="0"
-                    className="input input-bordered w-full text-base rounded-xl font-bold"
-                    value={prodQty}
-                    onChange={(e) => setProdQty(e.target.value)}
-                  />
+                  <input type="number" required min="1" placeholder="0" className="input input-bordered w-full text-base rounded-xl font-bold" value={prodQty} onChange={(e) => setProdQty(e.target.value)} />
                 </div>
                 <div className="modal-action gap-2 pt-2 border-t border-base-200">
                   <button type="button" className="btn btn-sm btn-ghost rounded-lg" onClick={() => setIsStockModalOpen(false)}>{t('cancel')}</button>
-                  <button type="submit" disabled={loadingSave} className="btn btn-sm btn-accent rounded-lg font-bold px-4">
-                    {loadingSave ? t('saving') : t('saveRecord')}
+                  <button type="submit" disabled={loadingSave} className="btn btn-sm btn-accent rounded-lg font-bold px-4">{loadingSave ? t('saving') : t('saveRecord')}</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Modal Edit Stok - Sekatan Super Admin */}
+        {isEditStockModalOpen && canEditStockInfo && editingStock && (
+          <div className="modal modal-open z-50">
+            <div className="modal-box max-w-md border border-base-200 shadow-2xl rounded-2xl p-6">
+              <h3 className="font-bold text-xl text-secondary mb-4">📝 Edit Maklumat Stok</h3>
+              <form onSubmit={handleUpdateStock} className="space-y-4">
+                <div className="form-control">
+                  <label className="label-text font-semibold mb-1">Production Date *</label>
+                  <input type="date" required className="input input-bordered w-full text-base rounded-xl" value={prodDate} onChange={(e) => setProdDate(e.target.value)} />
+                </div>
+                <div className="form-control">
+                  <label className="label-text font-semibold mb-1">Batch No *</label>
+                  <input type="text" required className="input input-bordered w-full text-base rounded-xl font-mono font-bold" value={prodBatch} onChange={(e) => setProdBatch(e.target.value)} />
+                </div>
+                <div className="form-control">
+                  <label className="label-text font-semibold mb-1">Staf Bertugas *</label>
+                  {staffList.length > 0 ? (
+                    <select required className="select select-bordered w-full text-base rounded-xl font-bold" value={prodName} onChange={(e) => setProdName(e.target.value)}>
+                      <option value="">-- Pilih Nama Staf --</option>
+                      {staffList.map((staff, sIdx) => (
+                        <option key={sIdx} value={staff.full_name}>{staff.full_name}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input type="text" className="input input-bordered w-full text-base rounded-xl" value={prodName} onChange={(e) => setProdName(e.target.value)} />
+                  )}
+                </div>
+                <div className="form-control">
+                  <label className="label-text font-semibold mb-1">Quantity *</label>
+                  <input type="number" required min="1" className="input input-bordered w-full text-base rounded-xl font-bold" value={prodQty} onChange={(e) => setProdQty(e.target.value)} />
+                </div>
+                <div className="modal-action gap-2 pt-2 border-t border-base-200">
+                  <button type="button" className="btn btn-sm btn-ghost rounded-lg" onClick={() => { setIsEditStockModalOpen(false); setEditingStock(null); }}>{t('cancel')}</button>
+                  <button type="submit" disabled={loadingSave} className="btn btn-sm btn-secondary text-white rounded-lg font-bold px-4">
+                    {loadingSave ? 'Mengemaskini...' : 'Simpan Perubahan'}
                   </button>
                 </div>
               </form>
@@ -399,8 +538,9 @@ export default function Inventory({ session, userRole, lang = 'en' }) {
           <p className="text-sm opacity-60">{t('inventoryDesc')}</p>
         </div>
 
-        {isAuthorized && (
-          <button onClick={() => setIsModalOpen(true)} className="btn btn-primary font-bold shadow-lg gap-2 rounded-xl self-start sm:self-auto">
+        {/* Butang Tambah Produk Utama - Hanya dipaparkan untuk Super Admin */}
+        {canEditStockInfo && (
+          <button onClick={() => { setIsModalOpen(true); setProductName(''); setExpiryMonth('12'); setWageRate('0.00'); }} className="btn btn-primary font-bold shadow-lg gap-2 rounded-xl self-start sm:self-auto">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
             </svg>
@@ -409,114 +549,76 @@ export default function Inventory({ session, userRole, lang = 'en' }) {
         )}
       </div>
 
-      {/* Loading state */}
-      {loadingProducts ? (
-        <div className="flex justify-center py-16">
-          <span className="loading loading-spinner loading-lg text-primary"></span>
-        </div>
-      ) : products.length === 0 ? (
-        // Empty state
-        <div className="flex flex-col items-center justify-center py-20 gap-4 opacity-50">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-14 h-14">
-            <path strokeLinecap="round" strokeLinejoin="round" d="m20.25 7.5-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z" />
-          </svg>
-          <div className="text-center">
-            <p className="font-black text-base">{t('noProducts')}</p>
-            {isAuthorized && (
-              <p className="text-sm mt-1">
-                {lang === 'ms' ? 'Klik "Tambah Produk Baharu" untuk mula.' : lang === 'zh' ? '点击"添加新产品"开始。' : 'Click "Add New Product" to get started.'}
-              </p>
-            )}
-          </div>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {products.map((prod, index) => {
-            const activeCount = (prod.stock_productions || []).filter(p => !p.is_finished).length
-            return (
-              <div key={prod.id || index} className="card bg-base-100 border border-base-300 shadow-xl rounded-2xl p-5 space-y-4 relative overflow-hidden flex flex-col justify-between">
-                <div className="absolute top-0 right-0 left-0 h-1.5 bg-secondary"></div>
-                <div className="flex justify-between items-start gap-2 border-b border-base-200 pb-3">
-                  <div className="flex flex-col gap-1 flex-1">
-                    <button onClick={() => setSelectedProduct(prod)} className="font-black text-lg text-left link link-primary hover:text-primary-focus transition-all leading-tight">
-                      {prod.product_name}
-                    </button>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {products.map((prod, index) => {
+          const activeCount = (prod.stock_productions || []).filter(p => !p.is_finished).length
+          return (
+            <div key={prod.id || index} className="card bg-base-100 border border-base-300 shadow-xl rounded-2xl p-5 space-y-4 relative overflow-hidden flex flex-col justify-between">
+              <div className="absolute top-0 right-0 left-0 h-1.5 bg-secondary"></div>
+              <div className="flex justify-between items-start gap-2 border-b border-base-200 pb-3">
+                <div className="flex flex-col gap-1 flex-1">
+                  <button onClick={() => setSelectedProduct(prod)} className="font-black text-lg text-left link link-primary hover:text-primary-focus transition-all leading-tight break-words">
+                    {prod.product_name}
+                  </button>
+                  <div className="flex gap-1.5 items-center flex-wrap">
                     <div className={`w-fit text-[10px] font-black px-2 py-0.5 rounded-lg ${activeCount > 0 ? 'bg-success/10 text-success' : 'bg-error/10 text-error'}`}>
-                      {activeCount > 0
-                        ? (lang === 'ms' ? `${activeCount} Batch Aktif` : lang === 'zh' ? `${activeCount} 个活跃批次` : `${activeCount} Active Batches`)
-                        : (lang === 'ms' ? 'Tiada Stok Aktif' : lang === 'zh' ? '无活跃库存' : 'No Active Stock')}
+                      {activeCount > 0 ? `${activeCount} Batch Aktif` : 'Tiada Stok Aktif'}
+                    </div>
+                    <div className="w-fit text-[10px] font-black px-2 py-0.5 rounded-lg bg-primary/10 text-primary">
+                      Upah: RM {parseFloat(prod.wage_rate || 0).toFixed(2)}
                     </div>
                   </div>
-                  <span className="badge badge-sm badge-outline font-bold font-mono text-secondary p-2 whitespace-nowrap shadow-xs">{prod.expiry_month || 12}M</span>
                 </div>
-                <div className="bg-base-200/50 rounded-2xl p-3 border border-base-200 space-y-2">
-                  <span className="text-[10px] uppercase font-black opacity-50 tracking-wider text-error block">
-                    {lang === 'ms' ? 'Stok Lama Kena Keluar (FIFO)' : lang === 'zh' ? '最旧库存优先出库 (FIFO)' : 'Oldest Active Stock (FIFO)'}
-                  </span>
-                  {prod.fifo_stock ? (
-                    <div className="flex justify-between items-center gap-2">
-                      <div className="flex flex-col">
-                        <span className="text-[9px] uppercase font-bold opacity-40">{t('batchNo')}</span>
-                        <span className="font-mono font-black text-error text-lg tracking-wide">{prod.fifo_stock.batch_no}</span>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-[9px] uppercase font-bold opacity-40 block text-error">{t('expiryDate')}</span>
-                        <span className="font-black text-sm text-error tracking-wide">{prod.fifo_stock.expiry_date}</span>
-                      </div>
-                    </div>
-                  ) : (
-                    <span className="text-xs opacity-40 font-bold font-sans block py-1">
-                      {lang === 'ms' ? 'Tiada Baki Stok Aktif' : lang === 'zh' ? '无活跃库存余量' : 'No Active Stock'}
-                    </span>
-                  )}
-                </div>
-                <div className="pt-1">
-                  <button onClick={() => setSelectedProduct(prod)} className="btn btn-sm btn-block btn-outline btn-primary rounded-xl font-bold">
-                    {lang === 'ms' ? 'Lihat Rekod Stok ↗' : lang === 'zh' ? '查看库存记录 ↗' : 'View Stock Records ↗'}
-                  </button>
-                </div>
+                <span className="badge badge-sm badge-outline font-bold font-mono text-secondary p-2 whitespace-nowrap shadow-xs">{prod.expiry_month || 12}M</span>
               </div>
-            )
-          })}
-        </div>
-      )}
+              <div className="bg-base-200/50 rounded-2xl p-3 border border-base-200 space-y-2">
+                <span className="text-[10px] uppercase font-black opacity-50 tracking-wider text-error block">Oldest Active Stock (FIFO)</span>
+                {prod.fifo_stock ? (
+                  <div className="flex justify-between items-center gap-2">
+                    <div className="flex flex-col">
+                      <span className="text-[9px] uppercase font-bold opacity-40">{t('batchNo')}</span>
+                      <span className="font-mono font-black text-error text-lg tracking-wide">{prod.fifo_stock.batch_no}</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[9px] uppercase font-bold opacity-40 block text-error">{t('expiryDate')}</span>
+                      <span className="font-black text-sm text-error tracking-wide">{prod.fifo_stock.expiry_date}</span>
+                    </div>
+                  </div>
+                ) : (
+                  <span className="text-xs opacity-40 font-bold font-sans block py-1">Tiada Baki Stok Aktif</span>
+                )}
+              </div>
+              <div className="pt-1 flex gap-2">
+                <button onClick={() => setSelectedProduct(prod)} className="btn btn-sm btn-block btn-outline btn-primary rounded-xl font-bold">
+                  Stok & Rekod Masakan ↗
+                </button>
+              </div>
+            </div>
+          )
+        })}
+      </div>
 
-      {/* Modal Tambah Produk */}
-      {isModalOpen && isAuthorized && (
+      {/* Modal Tambah Produk Utama - Sekatan Super Admin */}
+      {isModalOpen && canEditStockInfo && (
         <div className="modal modal-open z-50">
           <div className="modal-box max-w-md border border-base-200 shadow-2xl rounded-2xl p-6">
             <h3 className="font-bold text-xl text-primary flex items-center gap-2 mb-4">📦 {t('addProduct')}</h3>
             <form onSubmit={handleAddProduct} className="space-y-4">
               <div className="form-control">
                 <label className="label-text font-semibold mb-1">{t('productName')} *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder={t('productNamePlaceholder')}
-                  className="input input-bordered w-full text-base rounded-xl"
-                  value={productName}
-                  onChange={(e) => setProductName(e.target.value)}
-                />
+                <input type="text" required placeholder={t('productNamePlaceholder')} className="input input-bordered w-full text-base rounded-xl" value={productName} onChange={(e) => setProductName(e.target.value)} />
               </div>
               <div className="form-control">
-                <label className="label-text font-semibold mb-1">
-                  {lang === 'ms' ? 'Tempoh Jangka Hayat (Bulan)' : lang === 'zh' ? '保质期（月）' : 'Shelf Life Duration (Months)'}
-                </label>
-                <input
-                  type="number"
-                  required
-                  min="1"
-                  placeholder="12"
-                  className="input input-bordered w-full text-base rounded-xl"
-                  value={expiryMonth}
-                  onChange={(e) => setExpiryMonth(e.target.value)}
-                />
+                <label className="label-text font-semibold mb-1">Tempoh Jangka Hayat (Bulan)</label>
+                <input type="number" required min="1" placeholder="12" className="input input-bordered w-full text-base rounded-xl" value={expiryMonth} onChange={(e) => setExpiryMonth(e.target.value)} />
+              </div>
+              <div className="form-control">
+                <label className="label-text font-semibold mb-1">Kadar Upah Masakan Per Unit (RM) *</label>
+                <input type="number" step="0.01" required min="0" placeholder="0.50" className="input input-bordered w-full text-base rounded-xl font-bold" value={wageRate} onChange={(e) => setWageRate(e.target.value)} />
               </div>
               <div className="modal-action gap-2 pt-2">
-                <button type="button" className="btn btn-sm btn-ghost rounded-lg" onClick={() => { setIsModalOpen(false); setProductName(''); setExpiryMonth('12') }}>{t('cancel')}</button>
-                <button type="submit" disabled={loadingSave} className="btn btn-sm btn-primary rounded-lg font-bold px-4">
-                  {loadingSave ? t('saving') : t('saveProduct')}
-                </button>
+                <button type="button" className="btn btn-sm btn-ghost rounded-lg" onClick={() => { setIsModalOpen(false); setProductName(''); setExpiryMonth('12'); setWageRate('0.00'); }}>{t('cancel')}</button>
+                <button type="submit" disabled={loadingSave} className="btn btn-sm btn-primary rounded-lg font-bold px-4">{loadingSave ? t('saving') : t('saveProduct')}</button>
               </div>
             </form>
           </div>
