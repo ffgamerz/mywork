@@ -22,6 +22,12 @@ export default function Inventory({ session, userRole, allowedModules = {}, lang
   const [isStockModalOpen, setIsStockModalOpen] = useState(false)
   const [isEditStockModalOpen, setIsEditStockModalOpen] = useState(false)
   const [editingStock, setEditingStock] = useState(null)
+  
+  // State untuk Edit Produk
+  const [isEditProductModalOpen, setIsEditProductModalOpen] = useState(false)
+  const [editingProduct, setEditingProduct] = useState(null)
+  const [editWageRate, setEditWageRate] = useState('0.00')
+  const [editExpiryMonth, setEditExpiryMonth] = useState('12')
 
   const [prodDate, setProdDate] = useState(new Date().toISOString().split('T')[0])
   const [prodQty, setProdQty] = useState('')
@@ -277,6 +283,46 @@ export default function Inventory({ session, userRole, allowedModules = {}, lang
     setLoadingSave(false)
   }
 
+  const handleOpenEditProductModal = (product) => {
+    if (!canEditStockInfo) {
+      showToast(lang === 'ms' ? 'Akses ditolak. Hanya Super Admin boleh mengedit produk.' : 'Access denied.')
+      return
+    }
+    setEditingProduct(product)
+    setEditWageRate(product.wage_rate ? String(product.wage_rate) : '0.00')
+    setEditExpiryMonth(product.expiry_month ? String(product.expiry_month) : '12')
+    setIsEditProductModalOpen(true)
+  }
+
+  const handleUpdateProduct = async (e) => {
+    e.preventDefault()
+    if (!canEditStockInfo || !editingProduct) {
+      showToast(lang === 'ms' ? 'Akses ditolak!' : 'Access denied!')
+      return
+    }
+
+    setLoadingSave(true)
+    
+    const { error } = await supabase
+      .from('inventory')
+      .update({
+        expiry_month: parseInt(editExpiryMonth) || 12,
+        wage_rate: parseFloat(editWageRate) || 0.00,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', editingProduct.id)
+
+    if (error) {
+      showToast(t('updateFailed') + error.message)
+    } else {
+      setIsEditProductModalOpen(false)
+      setEditingProduct(null)
+      showToast(lang === 'ms' ? 'Maklumat produk berjaya dikemaskini!' : 'Product updated successfully!')
+      fetchProducts()
+    }
+    setLoadingSave(false)
+  }
+
   const activeBatchCount = productions.filter(p => !p.is_finished).length
   const visibleProductions = productions.slice(0, visibleCount)
 
@@ -419,7 +465,7 @@ export default function Inventory({ session, userRole, allowedModules = {}, lang
                         type="button"
                         onClick={() => handleToggleStockFinished(p.id, p.is_finished)}
                         disabled={loadingSave || !canToggleStockStatus}
-                        className={`btn btn-xs flex-1 font-bold rounded-xl shadow-sm transition-all ${
+                        className={`btn btn-sm flex-1 font-bold ${
                           !canToggleStockStatus ? 'btn-disabled opacity-50 cursor-not-allowed' :
                           p.is_finished ? 'btn-outline btn-success' : 'btn-neutral text-white'
                         }`}
@@ -432,7 +478,7 @@ export default function Inventory({ session, userRole, allowedModules = {}, lang
                         <button
                           type="button"
                           onClick={() => handleOpenEditStockModal(p)}
-                          className="btn btn-xs btn-outline btn-ghost text-secondary border-base-300 font-bold px-3"
+                          className="btn btn-sm btn-outline btn-warning font-bold"
                         >
                           📝 Edit Info
                         </button>
@@ -612,9 +658,19 @@ export default function Inventory({ session, userRole, allowedModules = {}, lang
                 )}
               </div>
               <div className="pt-1 flex gap-2">
-                <button onClick={() => setSelectedProduct(prod)} className="btn btn-sm btn-block btn-outline btn-primary font-bold">
+                <button onClick={() => setSelectedProduct(prod)} className="btn btn-sm flex-1 btn-outline btn-primary font-bold">
                   Stok & Rekod Masakan ↗
                 </button>
+                {/* Butang Edit Produk - Hanya untuk Super Admin */}
+                {canEditStockInfo && (
+                  <button 
+                    type="button"
+                    onClick={() => handleOpenEditProductModal(prod)}
+                    className="btn btn-sm btn-outline btn-warning font-bold"
+                  >
+                    📝 Edit
+                  </button>
+                )}
               </div>
             </div>
           )
@@ -643,6 +699,36 @@ export default function Inventory({ session, userRole, allowedModules = {}, lang
               <div className="modal-action gap-2 pt-2">
                 <button type="button" className="btn btn-sm btn-ghost" onClick={() => { setIsModalOpen(false); setProductName(''); setExpiryMonth('12'); setWageRate('0.00'); }}>{t('cancel')}</button>
                 <button type="submit" disabled={loadingSave} className="btn btn-sm btn-primary text-white font-bold px-4">{loadingSave ? t('saving') : t('saveProduct')}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Edit Produk - Sekatan Super Admin */}
+      {isEditProductModalOpen && canEditStockInfo && editingProduct && (
+        <div className="modal modal-open">
+          <div className="modal-backdrop" onClick={() => { setIsEditProductModalOpen(false); setEditingProduct(null); }}></div>
+          <div className="modal-box--md" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-bold text-xl text-warning mb-4">📝 Edit Produk</h3>
+            <form onSubmit={handleUpdateProduct} className="space-y-4">
+              <div className="form-control">
+                <label className="label-text font-semibold mb-1">Nama Produk</label>
+                <input type="text" readOnly className="input input-bordered w-full text-base rounded-xl font-bold bg-base-200 cursor-not-allowed" value={editingProduct.product_name} />
+              </div>
+              <div className="form-control">
+                <label className="label-text font-semibold mb-1">Tempoh Jangka Hayat (Bulan) *</label>
+                <input type="number" required min="1" className="input input-bordered w-full text-base rounded-xl font-bold" value={editExpiryMonth} onChange={(e) => setEditExpiryMonth(e.target.value)} />
+              </div>
+              <div className="form-control">
+                <label className="label-text font-semibold mb-1">Kadar Upah Masakan Per Unit (RM) *</label>
+                <input type="number" step="0.01" required min="0" className="input input-bordered w-full text-base rounded-xl font-bold" value={editWageRate} onChange={(e) => setEditWageRate(e.target.value)} />
+              </div>
+              <div className="modal-action gap-2 pt-2 border-t border-base-200">
+                <button type="button" className="btn btn-sm btn-ghost" onClick={() => { setIsEditProductModalOpen(false); setEditingProduct(null); }}>{t('cancel')}</button>
+                <button type="submit" disabled={loadingSave} className="btn btn-sm btn-warning text-white font-bold px-4">
+                  {loadingSave ? t('saving') : 'Simpan Perubahan'}
+                </button>
               </div>
             </form>
           </div>

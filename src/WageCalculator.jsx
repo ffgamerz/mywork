@@ -19,7 +19,7 @@ export default function WageCalculator({ session, userRole, allowedModules = {},
   const [selectedIds, setSelectedIds] = useState([])
   const [generatedText, setGeneratedText] = useState('')
   const [loading, setLoading] = useState(false)
-  const [currentPage, setCurrentPage] = useState(1)
+  const [visibleCount, setVisibleCount] = useState(8)
   const pageSize = 8
 
   // Modals State
@@ -47,7 +47,7 @@ export default function WageCalculator({ session, userRole, allowedModules = {},
   }, [selectedStaff, paymentStatus, dateFrom, dateTo, hasPageAccess])
 
   useEffect(() => {
-    setCurrentPage(1)
+    setVisibleCount(8)
   }, [selectedStaff, paymentStatus, dateFrom, dateTo, searchTerm, monthFilter])
 
   if (!hasPageAccess) {
@@ -188,9 +188,7 @@ export default function WageCalculator({ session, userRole, allowedModules = {},
     return sum + parseFloat(item.inventory?.wage_rate || 0)
   }, 0)
 
-  const totalPages = Math.max(1, Math.ceil(displayRecords.length / pageSize))
-  const safePage = Math.min(currentPage, totalPages)
-  const paginatedRecords = displayRecords.slice((safePage - 1) * pageSize, safePage * pageSize)
+  const visibleRecords = displayRecords.slice(0, visibleCount)
 
   const handleMarkAsPaidSubmit = async (e) => {
     e.preventDefault()
@@ -363,7 +361,7 @@ export default function WageCalculator({ session, userRole, allowedModules = {},
               ) : displayRecords.length === 0 ? (
                 <tr><td colSpan="6" className="text-center opacity-50 py-8">{t('noRecordsForFilter')}</td></tr>
               ) : (
-                paginatedRecords.map((rec) => {
+                visibleRecords.map((rec) => {
                   const flatWage = parseFloat(rec.inventory?.wage_rate || 0)
                   const isPaid = Boolean(rec.paid_date)
                   return (
@@ -387,17 +385,15 @@ export default function WageCalculator({ session, userRole, allowedModules = {},
             </tbody>
           </table>
 
-          {displayRecords.length > 0 && (
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-4 border-t border-base-200 pt-4">
-              <span className="text-sm opacity-70">{t('pageOf').replace('{current}', safePage).replace('{total}', totalPages)}</span>
-              <div className="join">
-                <button type="button" className="join-item btn btn-sm" disabled={safePage === 1} onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}>
-                  {t('previousPage')}
-                </button>
-                <button type="button" className="join-item btn btn-sm" disabled={safePage === totalPages} onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}>
-                  {t('nextPage')}
-                </button>
-              </div>
+          {displayRecords.length > 0 && visibleCount < displayRecords.length && (
+            <div className="flex justify-center mt-4 pt-4">
+              <button 
+                type="button" 
+                className="btn btn-outline btn-primary font-bold"
+                onClick={() => setVisibleCount(prev => Math.min(prev + pageSize, displayRecords.length))}
+              >
+                {t('loadMore') || 'Load More'}
+              </button>
             </div>
           )}
         </div>
