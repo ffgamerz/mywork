@@ -267,9 +267,9 @@ export default function WageCalculator({ session, userRole, allowedModules = {},
       <ToastBar toast={toast} onClose={hideToast} />
 
       {/* FILTER PANEL */}
-      <div className="content-card p-6 space-y-4">
-        <h2 className="text-xl font-black">🧮 {t('wageCalculator')}</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-4 items-end">
+      <div className="content-card p-5 space-y-3">
+        <h2 className="text-lg font-bold">🧮 {t('wageCalculator')}</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-3 items-end">
           <div className="form-control w-full">
             <label className="label text-xs font-bold">{t('staffName')}</label>
             <select className="select select-bordered w-full font-bold" value={selectedStaff} onChange={(e) => setSelectedStaff(e.target.value)}>
@@ -316,7 +316,7 @@ export default function WageCalculator({ session, userRole, allowedModules = {},
           </div>
         </div>
         <div className="flex justify-end">
-          <button type="button" onClick={handleResetFilters} className="btn btn-ghost btn-sm rounded-xl">
+          <button type="button" onClick={handleResetFilters} className="btn btn-ghost btn-sm">
             {t('clearFilters')}
           </button>
         </div>
@@ -423,13 +423,14 @@ export default function WageCalculator({ session, userRole, allowedModules = {},
       {/* MODAL JANAAN TEKS */}
       {isTextModalOpen && (
         <div className="modal modal-open z-50">
-          <div className="modal-box--md">
+          <div className="modal-backdrop" onClick={() => setIsTextModalOpen(false)}></div>
+          <div className="modal-box--md" onClick={(e) => e.stopPropagation()}>
             <h3 className="font-bold text-xl text-primary mb-3">📋 {t('textCopyTitle')}</h3>
             <pre className="p-4 bg-base-300 rounded-xl text-xs font-mono whitespace-pre-wrap max-h-64 overflow-y-auto border border-base-200 select-all">
               {generatedText}
             </pre>
             <div className="modal-action gap-2 border-t border-base-200 pt-3">
-              <button type="button" className="btn btn-sm btn-ghost rounded-lg" onClick={() => setIsTextModalOpen(false)}>{t('cancel')}</button>
+              <button type="button" className="btn btn-sm btn-ghost" onClick={() => setIsTextModalOpen(false)}>{t('cancel')}</button>
               <button type="button" onClick={copyToClipboard} className="btn btn-sm btn-primary font-bold px-4">{t('copyText')}</button>
             </div>
           </div>
@@ -439,7 +440,8 @@ export default function WageCalculator({ session, userRole, allowedModules = {},
       {/* MODAL MARK AS PAID */}
       {isPaidModalOpen && (
         <div className="modal modal-open z-50">
-          <div className="modal-box--sm">
+          <div className="modal-backdrop" onClick={() => setIsPaidModalOpen(false)}></div>
+          <div className="modal-box--sm" onClick={(e) => e.stopPropagation()}>
             <h3 className="font-bold text-xl text-success mb-2">💸 {t('paymentConfirmation')}</h3>
             <p className="text-xs opacity-70 mb-4">{t('paymentConfirmationDesc')}</p>
             <form onSubmit={handleMarkAsPaidSubmit} className="space-y-4">
@@ -452,7 +454,7 @@ export default function WageCalculator({ session, userRole, allowedModules = {},
                 <span className="text-xl font-black text-success">RM {totalWagesDue.toFixed(2)}</span>
               </div>
               <div className="modal-action gap-2 border-t border-base-200 pt-3">
-                <button type="button" className="btn btn-sm btn-ghost rounded-lg" onClick={() => setIsPaidModalOpen(false)}>{t('cancel')}</button>
+                <button type="button" className="btn btn-sm btn-ghost" onClick={() => setIsPaidModalOpen(false)}>{t('cancel')}</button>
                 <button type="submit" disabled={loading} className="btn btn-sm btn-success text-white font-bold px-4">{t('confirmAndPay')}</button>
               </div>
             </form>

@@ -2,9 +2,15 @@ import React, { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
 import { getTranslation } from './utils/translation'
 
-export default function RecordManager({ session, lang = 'en' }) {
+const ADS_PLATFORMS = [
+  { value: 'tiktok', label: 'TikTok' },
+  { value: 'shopee', label: 'Shopee' }
+]
+
+export default function AdsRecordManager({ session, lang = 'en' }) {
   const [records, setRecords] = useState([])
   const [amount, setAmount] = useState('')
+  const [adsPlatform, setAdsPlatform] = useState('tiktok')
   const [date, setDate] = useState(new Date().toISOString().split('T')[0])
   const [loadingFetch, setLoadingFetch] = useState(false)
   const [loadingSave, setLoadingSave] = useState(false)
@@ -16,6 +22,7 @@ export default function RecordManager({ session, lang = 'en' }) {
 
   const [editingRecord, setEditingRecord] = useState(null)
   const [editAmount, setEditAmount] = useState('')
+  const [editAdsPlatform, setEditAdsPlatform] = useState('tiktok')
   const [editDate, setEditDate] = useState('')
 
   const activeLang = lang || 'en'
@@ -51,6 +58,7 @@ export default function RecordManager({ session, lang = 'en' }) {
       user_id: session.user.id,
       title: `RM ${parseFloat(amount).toFixed(2)}`,
       amount: parseFloat(amount) || 0,
+      ads_platform: adsPlatform,
       date,
     }])
 
@@ -58,6 +66,7 @@ export default function RecordManager({ session, lang = 'en' }) {
       showToast(t('saveFailed') + error.message)
     } else {
       setAmount('')
+      setAdsPlatform('tiktok')
       showToast(t('saveRecord') + '!')
       fetchRecords()
     }
@@ -67,7 +76,8 @@ export default function RecordManager({ session, lang = 'en' }) {
   const handleStartEdit = (rec) => {
     setEditingRecord(rec)
     setEditAmount(rec.amount)
-    setEditDate(rec.date)
+    setEditAdsPlatform(rec.ads_platform || 'tiktok')
+    setEditDate(rec.date || new Date().toISOString().split('T')[0])
   }
 
   const handleUpdateRecord = async (e) => {
@@ -79,6 +89,7 @@ export default function RecordManager({ session, lang = 'en' }) {
       .update({
         title: `RM ${parseFloat(editAmount).toFixed(2)}`,
         amount: parseFloat(editAmount) || 0,
+        ads_platform: editAdsPlatform,
         date: editDate,
       })
       .eq('id', editingRecord.id)
@@ -130,13 +141,12 @@ export default function RecordManager({ session, lang = 'en' }) {
 
     const selectedRecords = records.filter(rec => checkedIds.includes(rec.id))
     const lines = selectedRecords.map(rec =>
-      `${t('datePrefix')} : ${rec.date} - RM ${parseFloat(rec.amount).toFixed(2)}`
+      `Date : ${rec.date} - RM ${parseFloat(rec.amount).toFixed(2)} (${rec.ads_platform === 'tiktok' ? 'TikTok' : 'Shopee'})`
     )
 
     setGeneratedText([
-      t('transferTo'),
-      t('forCreditCard'),
-      t('tiktokAds'),
+      'For Credit Card Payment',
+      'Advertising',
       ...lines
     ].join('\n'))
   }
@@ -161,9 +171,6 @@ export default function RecordManager({ session, lang = 'en' }) {
       {toastMessage && (
         <div className="toast-success">
           <div className="alert-toast">
-            <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-5 w-5" fill="none" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
             <span>{toastMessage}</span>
           </div>
         </div>
@@ -174,10 +181,10 @@ export default function RecordManager({ session, lang = 'en' }) {
         <p className="page-subtitle">{t('recordManagerDesc')}</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
         {/* Form Tambah Rekod */}
-        <div className="content-card p-6 h-fit">
-          <h3 className="text-xl font-bold mb-4 text-primary">{t('addRecord')}</h3>
+        <div className="content-card p-5 h-fit">
+          <h3 className="text-lg font-bold mb-3 text-primary">{t('addRecord')}</h3>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="form-control">
               <label className="label-text font-semibold mb-1">{t('date')}</label>
@@ -202,6 +209,21 @@ export default function RecordManager({ session, lang = 'en' }) {
                 onChange={(e) => setAmount(e.target.value)}
               />
             </div>
+            <div className="form-control">
+              <label className="label-text font-semibold mb-1">{t('adsPlatform')}</label>
+              <select
+                required
+                className="select select-bordered w-full text-base"
+                value={adsPlatform}
+                onChange={(e) => setAdsPlatform(e.target.value)}
+              >
+                {ADS_PLATFORMS.map(platform => (
+                  <option key={platform.value} value={platform.value}>
+                    {platform.label}
+                  </option>
+                ))}
+              </select>
+            </div>
             <button type="submit" disabled={loadingSave} className="btn btn-primary font-bold w-full mt-2">
               {loadingSave ? <span className="loading loading-spinner"></span> : t('saveRecord')}
             </button>
@@ -209,23 +231,21 @@ export default function RecordManager({ session, lang = 'en' }) {
         </div>
 
         {/* Senarai Rekod */}
-        <div className="lg:col-span-2 content-card p-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-            <h3 className="text-xl font-bold text-secondary">{t('savedRecordsList')}</h3>
-            <div className="flex flex-wrap items-center gap-4">
+        <div className="lg:col-span-2 content-card p-5">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+            <h3 className="text-base font-bold text-base-content/80">{t('savedRecordsList')}</h3>
+            <div className="flex flex-wrap items-center gap-3">
               {checkedIds.length > 0 && (
                 <div className="selected-total-box">
-                  <span>{t('selectedTotal')}</span>
-                  <span className="font-bold text-success text-base">RM {totalSelectedAmount.toFixed(2)}</span>
+                  <span className="text-xs">{t('selectedTotal')}</span>
+                  <span className="font-bold text-base-content/90 text-sm">RM {totalSelectedAmount.toFixed(2)}</span>
                   <button
                     type="button"
                     onClick={handleCopyTotalNumberOnly}
                     className="btn btn-ghost btn-xs btn-circle"
                     title="Copy amount"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376A8.965 8.965 0 0 0 12 12.75c-.497 0-.982.04-1.455.12l-.179.03m1.608-3.033a13.96 13.96 0 0 1 2.5.553m-.553-1.376a13.518 13.518 0 0 1 4.722 3.208 13.518 13.518 0 0 1 3.208 4.722m-3.208-4.722a13.48 13.48 0 0 0-4.722-3.208M4.5 10.5h11.25c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125H4.5A1.125 1.125 0 0 1 3.375 21.375v-9.75c0-.621.504-1.125 1.125-1.125Z" />
-                    </svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376A8.965 8.965 0 0 0 12 12.75c-.497 0-.982.04-1.455.12l-.179.03m1.608-3.033a13.96 13.96 0 0 1 2.5.553m-.553-1.376a13.518 13.518 0 0 1 4.722 3.208 13.518 13.518 0 0 1 3.208 4.722m-3.208-4.722a13.48 13.48 0 0 0-4.722-3.208M4.5 10.5h11.25c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125H4.5A1.125 1.125 0 0 1 3.375 21.375v-9.75c0-.621.504-1.125 1.125-1.125Z" /></svg>
                   </button>
                 </div>
               )}
@@ -233,14 +253,14 @@ export default function RecordManager({ session, lang = 'en' }) {
                 <button
                   onClick={handleGenerate}
                   disabled={checkedIds.length === 0 || loadingSave}
-                  className="btn btn-sm btn-accent text-white font-bold"
+                  className="btn btn-sm btn-outline font-bold"
                 >
                   {t('generate')} ({checkedIds.length})
                 </button>
                 <button
                   onClick={handleDeleteChecked}
                   disabled={checkedIds.length === 0 || loadingDelete}
-                  className="btn btn-sm btn-error text-white font-bold"
+                  className="btn btn-sm btn-outline font-bold"
                 >
                   {loadingDelete ? <span className="loading loading-spinner loading-xs"></span> : t('delete')}
                 </button>
@@ -274,12 +294,13 @@ export default function RecordManager({ session, lang = 'en' }) {
                     </th>
                     <th className="w-16 text-center">{t('no')}</th>
                     <th>{t('date')}</th>
+                    <th>{t('adsPlatform')}</th>
                     <th className="text-right">{t('amount')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {records.map((rec, index) => (
-                    <tr key={rec.id} className={checkedIds.includes(rec.id) ? 'bg-base-200/50' : ''}>
+                    <tr key={rec.id} className={checkedIds.includes(rec.id) ? 'record-row--selected' : ''}>
                       <td>
                         <input
                           type="checkbox"
@@ -290,13 +311,14 @@ export default function RecordManager({ session, lang = 'en' }) {
                       </td>
                       <td className="text-center opacity-70 font-mono">{index + 1}</td>
                       <td className="whitespace-nowrap">{rec.date}</td>
-                      <td className="text-right font-bold text-success">
+                      <td className="whitespace-nowrap capitalize">{rec.ads_platform === 'tiktok' ? 'TikTok' : rec.ads_platform === 'shopee' ? 'Shopee' : rec.ads_platform}</td>
+                      <td className="text-right font-bold text-base-content/80">
                         <div className="flex items-center justify-end gap-2">
                           <span>{parseFloat(rec.amount).toFixed(2)}</span>
                           <button
                             type="button"
                             onClick={() => handleStartEdit(rec)}
-                            className="btn btn-ghost btn-xs btn-circle text-info hover:bg-info/20"
+                            className="btn btn-ghost btn-xs btn-circle"
                             title="Edit"
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
@@ -332,7 +354,8 @@ export default function RecordManager({ session, lang = 'en' }) {
       {/* Modal Edit Rekod */}
       {editingRecord && (
         <div className="modal modal-open z-50">
-          <div className="modal-box--sm">
+          <div className="modal-backdrop" onClick={() => setEditingRecord(null)}></div>
+          <div className="modal-box--sm" onClick={(e) => e.stopPropagation()}>
             <h3 className="font-bold text-lg text-info flex items-center gap-2 mb-4">✏️ {t('editRecord')}</h3>
             <form onSubmit={handleUpdateRecord} className="space-y-4">
               <div className="form-control">
@@ -356,6 +379,21 @@ export default function RecordManager({ session, lang = 'en' }) {
                   value={editAmount}
                   onChange={(e) => setEditAmount(e.target.value)}
                 />
+              </div>
+              <div className="form-control">
+                <label className="label-text font-semibold mb-1">{t('adsPlatform')}</label>
+                <select
+                  required
+                  className="select select-bordered w-full text-base"
+                  value={editAdsPlatform}
+                  onChange={(e) => setEditAdsPlatform(e.target.value)}
+                >
+                  {ADS_PLATFORMS.map(platform => (
+                    <option key={platform.value} value={platform.value}>
+                      {platform.label}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div className="modal-action gap-2 pt-2">
                 <button type="button" className="btn btn-sm btn-ghost" onClick={() => setEditingRecord(null)}>

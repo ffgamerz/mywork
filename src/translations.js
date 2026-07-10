@@ -2,7 +2,7 @@ export const translations = {
   en: {
     // Menu & Umum
     home: "Home",
-    recordManager: "Record Manager",
+    recordManager: "Ads Record Manager",
     settings: "Settings",
     privileges: "Privileges",
     inventory: "Inventory Manager",
@@ -24,6 +24,7 @@ export const translations = {
     addRecord: "Add New Record",
     date: "Date",
     amount: "Amount (RM)",
+    adsPlatform: "Ads Platform",
     saveRecord: "Save Record",
     savedRecordsList: "Saved Records List",
     selectedTotal: "Selected Total:",
@@ -255,7 +256,10 @@ export const translations = {
     paidText: "Paid",
     unpaidText: "Unpaid",
     reopenText: "Reopen",
-    finishedText: "Finished"
+    finishedText: "Finished",
+    activeStockBadge: "Active Stock Batch",
+    noActiveStockBadge: "No Active Stock",
+    wageRateLabel: "Wage: RM"
   },
   ms: {
     // Menu & Umum
@@ -282,6 +286,7 @@ export const translations = {
     addRecord: "Tambah Rekod Baharu",
     date: "Tarikh",
     amount: "Jumlah (RM)",
+    adsPlatform: "Platform Iklan",
     saveRecord: "Simpan Rekod",
     savedRecordsList: "Senarai Rekod Tersimpan",
     selectedTotal: "Jumlah Terpilih:",
@@ -516,6 +521,7 @@ export const translations = {
     addRecord: "添加新记录",
     date: "日期",
     amount: "金额 (RM)",
+    adsPlatform: "广告平台",
     saveRecord: "保存记录",
     savedRecordsList: "已保存记录列表",
     selectedTotal: "已选总计:",

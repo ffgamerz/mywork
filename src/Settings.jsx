@@ -91,9 +91,8 @@ export default function Settings({ session, themeMode, setThemeMode, lang = 'en'
   return (
     <div className="page-shell relative">
       {toastMessage && (
-        <div className="toast toast-top toast-end z-50 p-4">
-          <div className="alert alert-success shadow-lg text-white font-medium flex items-center gap-2 rounded-xl">
-            <svg xmlns="http://www.w3.org/2000/xl" className="stroke-current shrink-0 h-5 w-5" fill="none" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+        <div className="toast-success">
+          <div className="alert-toast">
             <span>{toastMessage}</span>
           </div>
         </div>
@@ -104,9 +103,9 @@ export default function Settings({ session, themeMode, setThemeMode, lang = 'en'
         <p className="page-subtitle">{t('settingsDesc')}</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="card bg-base-100 shadow-xl p-6 border border-base-200 h-fit">
-          <h3 className="text-lg font-bold mb-4 text-primary">{t('secPreferences')}</h3>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+        <div className="content-card p-5 h-fit">
+          <h3 className="text-base font-bold mb-3 text-primary">{t('secPreferences')}</h3>
           <form onSubmit={handleSaveGeneralSettings} className="space-y-4">
             <div className="form-control">
               <label className="label-text font-semibold mb-1">{t('lblTheme')}</label>
@@ -135,8 +134,8 @@ export default function Settings({ session, themeMode, setThemeMode, lang = 'en'
           </form>
         </div>
 
-        <div className="card bg-base-100 shadow-xl p-6 border border-base-200 h-fit">
-          <h3 className="text-lg font-bold mb-4 text-error">{t('secSecurity')}</h3>
+        <div className="content-card p-5 h-fit">
+          <h3 className="text-base font-bold mb-3 text-error">{t('secSecurity')}</h3>
           <form onSubmit={handleChangePassword} className="space-y-4">
             <div className="form-control">
               <label className="label-text font-semibold mb-1">{t('lblNewPass')}</label>

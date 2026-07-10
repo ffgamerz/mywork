@@ -343,7 +343,7 @@ export default function Inventory({ session, userRole, allowedModules = {}, lang
             <div className="flex items-start gap-3 flex-1">
               <button
                 onClick={() => { setSelectedProduct(null); fetchProducts() }}
-                className="btn btn-md btn-circle btn-active bg-base-200 hover:bg-base-300 border-base-300 text-base-content shrink-0 flex items-center justify-center font-black"
+                className="btn btn-sm btn-circle btn-active bg-base-200 hover:bg-base-300 border-base-300 text-base-content shrink-0 flex items-center justify-center font-black"
               >
                 ✕
               </button>
@@ -390,7 +390,7 @@ export default function Inventory({ session, userRole, allowedModules = {}, lang
                 setProdQty('');
                 setProdName('');
                 setIsStockModalOpen(true);
-              }} className="btn btn-md btn-block btn-accent text-white font-bold text-sm">
+              }} className="btn btn-sm btn-block btn-accent text-white font-bold text-sm">
                 + {t('addStock')}
               </button>
             </div>
@@ -402,7 +402,7 @@ export default function Inventory({ session, userRole, allowedModules = {}, lang
             <span className="loading loading-spinner loading-lg text-primary"></span>
           </div>
         ) : productions.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 gap-3 opacity-50">
+          <div className="empty-state py-12 gap-3 opacity-70">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-12 h-12">
               <path strokeLinecap="round" strokeLinejoin="round" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
             </svg>
@@ -413,37 +413,37 @@ export default function Inventory({ session, userRole, allowedModules = {}, lang
             {visibleProductions.map((p, pIdx) => {
               const flatWage = parseFloat(p.paid_amount || selectedProduct.wage_rate || 0)
               return (
-                <div key={p.id || pIdx} className="stock-card p-4 space-y-3">
-                  <div className={`absolute top-0 right-0 left-0 h-1.5 ${p.is_finished ? 'bg-success' : 'bg-primary'}`}></div>
+                <div key={p.id || pIdx} className="content-card p-4 space-y-3">
+                  <div className={`absolute top-0 right-0 left-0 h-1.5 ${p.is_finished ? 'bg-error' : 'bg-success'}`}></div>
                   <div className="space-y-3">
                     <div className="flex justify-between items-center border-b border-base-200/60 pb-2.5 gap-2">
                       <div className="flex flex-col">
-                        <span className="text-[10px] uppercase font-black opacity-50 tracking-wider text-primary">{t('batchNo')}</span>
-                        <span className="font-mono font-black text-primary text-xl tracking-wide">{p.batch_no}</span>
+                        <span className="text-[10px] uppercase font-bold opacity-50 tracking-wider">{t('batchNo')}</span>
+                        <span className={`font-mono font-bold text-xl tracking-wide ${p.is_finished ? 'text-error' : 'text-success'}`}>{p.batch_no}</span>
                       </div>
                       <div className="text-right">
-                        <span className="text-[10px] uppercase font-black opacity-50 tracking-wider block text-success">{t('date')}</span>
-                        <span className="font-black text-base text-success tracking-wide">{p.production_date}</span>
+                        <span className="text-[10px] uppercase font-bold opacity-50 tracking-wider block">{t('date')}</span>
+                        <span className="font-bold text-base-content/80 tracking-wide">{p.production_date}</span>
                       </div>
                     </div>
                       <div className="grid grid-cols-2 gap-2 text-sm py-0.5">
                       <div>
                         <span className="text-[11px] block opacity-50 font-bold tracking-tight">{t('staffInChargeText')}</span>
-                        <span className="font-black text-base-content/90 text-sm break-all">{p.production_name || '-'}</span>
+                        <span className="font-bold text-base-content/90 text-sm break-all">{p.production_name || '-'}</span>
                       </div>
                       <div className="text-right">
                         <span className="text-[11px] block opacity-50 font-bold tracking-tight">{t('quantity')}</span>
-                        <span className="font-black text-xl text-info">{p.quantity}</span>
+                        <span className={`font-bold text-xl ${p.is_finished ? 'text-error' : 'text-success'}`}>{p.quantity}</span>
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-sm border-t border-base-200/60 pt-2.5 items-center">
                       <div>
                         <span className="text-[11px] block opacity-50 font-bold tracking-tight">{t('expiryDate')}</span>
-                        <span className="font-black text-sm text-error">{p.expiry_date || '-'}</span>
+                        <span className="font-bold text-sm text-base-content/70">{p.expiry_date || '-'}</span>
                       </div>
                       <div className="text-right">
                         <span className="text-[11px] block opacity-50 font-bold tracking-tight">{t('batchWageText')}</span>
-                        <span className="font-mono text-sm font-black text-success">
+                        <span className="font-mono text-sm font-bold text-base-content/80">
                           RM {p.paid_amount !== null && p.paid_amount !== undefined 
                             ? parseFloat(p.paid_amount).toFixed(2) 
                             : parseFloat(selectedProduct.wage_rate || 0).toFixed(2)}
@@ -455,7 +455,7 @@ export default function Inventory({ session, userRole, allowedModules = {}, lang
                   <div className="pt-3 border-t border-base-200/40 mt-1 space-y-2">
                     <div className="flex justify-between items-center text-xs font-bold px-1">
                       <span className="opacity-60">{t('paymentStatusText')}:</span>
-                      <span className={`px-2 py-0.5 rounded-lg text-[11px] font-black ${p.paid_date ? 'bg-success/10 text-success' : 'bg-error/10 text-error'}`}>
+                      <span className={`px-2 py-0.5 rounded-lg text-[11px] font-bold ${p.paid_date ? 'bg-success/10 text-success' : 'bg-error/10 text-error'}`}>
                         {p.paid_date ? `${t('paidText')} (${p.paid_date})` : t('unpaidText')}
                       </span>
                     </div>
@@ -467,7 +467,7 @@ export default function Inventory({ session, userRole, allowedModules = {}, lang
                         disabled={loadingSave || !canToggleStockStatus}
                         className={`btn btn-sm flex-1 font-bold ${
                           !canToggleStockStatus ? 'btn-disabled opacity-50 cursor-not-allowed' :
-                          p.is_finished ? 'btn-outline btn-success' : 'btn-neutral text-white'
+                          p.is_finished ? 'btn-outline btn-success' : 'btn-outline btn-error'
                         }`}
                       >
                         {p.is_finished ? `🔄 ${t('reopenText')}` : `✅ ${t('finishedText')}`}
@@ -478,7 +478,7 @@ export default function Inventory({ session, userRole, allowedModules = {}, lang
                         <button
                           type="button"
                           onClick={() => handleOpenEditStockModal(p)}
-                          className="btn btn-sm btn-outline btn-warning font-bold"
+                          className="btn btn-sm btn-ghost font-bold"
                         >
                           📝 {t('editInfo')}
                         </button>
@@ -603,8 +603,8 @@ export default function Inventory({ session, userRole, allowedModules = {}, lang
 
       <div className="page-header sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex flex-col gap-1">
-          <h1 className="text-2xl md:text-3xl font-black tracking-tight">{t('inventory')}</h1>
-          <p className="text-sm opacity-60">{t('inventoryDesc')}</p>
+          <h1 className="page-title">{t('inventory')}</h1>
+          <p className="page-subtitle">{t('inventoryDesc')}</p>
         </div>
 
         {/* Butang Tambah Produk Utama - Hanya dipaparkan untuk Super Admin */}
@@ -618,47 +618,43 @@ export default function Inventory({ session, userRole, allowedModules = {}, lang
         )}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {products.map((prod, index) => {
           const activeCount = (prod.stock_productions || []).filter(p => !p.is_finished).length
           return (
-            <div key={prod.id || index} className="stock-card">
-              <div className="stock-card--header"></div>
-              <div className="flex justify-between items-start gap-2 border-b border-base-200 pb-3">
-                <div className="flex flex-col gap-1 flex-1">
-                  <button onClick={() => setSelectedProduct(prod)} className="font-black text-lg text-left link link-primary hover:text-primary-focus transition-all leading-tight break-words">
-                    {prod.product_name}
-                  </button>
-                  <div className="flex gap-1.5 items-center flex-wrap">
-                    <div className={activeCount > 0 ? 'status-badge-active' : 'status-badge-inactive'}>
-                      {activeCount > 0 ? `${activeCount} ${t('activeStockBadge')}` : t('noActiveStockBadge')}
-                    </div>
-                    <div className="w-fit text-[10px] font-black px-2 py-0.5 rounded-lg bg-primary/10 text-primary">
-                      {t('wageRateLabel')} {parseFloat(prod.wage_rate || 0).toFixed(2)}
-                    </div>
+            <div key={prod.id || index} className="content-card p-5 flex flex-col justify-between h-full">
+              <div className="flex flex-col gap-3">
+                <button onClick={() => setSelectedProduct(prod)} className="font-bold text-base text-left link link-hover transition-all leading-tight break-words">
+                  {prod.product_name}
+                </button>
+                <div className="flex gap-1.5 items-center flex-wrap">
+                  <div className={activeCount > 0 ? 'status-badge-active' : 'status-badge-inactive'}>
+                    {activeCount > 0 ? `${activeCount} ${t('activeStockBadge')}` : t('noActiveStockBadge')}
+                  </div>
+                  <div className="w-fit text-[10px] font-bold px-2 py-0.5 rounded-lg bg-base-200/50 text-base-content/70">
+                    {t('wageRateLabel')} {parseFloat(prod.wage_rate || 0).toFixed(2)}
                   </div>
                 </div>
-                <span className="badge badge-sm badge-outline font-bold font-mono text-secondary p-2 whitespace-nowrap shadow-xs">{prod.expiry_month || 12}M</span>
               </div>
-              <div className="fifo-info-box">
-                <span className="text-[10px] uppercase font-black opacity-50 tracking-wider text-error block">{t('oldestActiveStockText')}</span>
+              <div className="fifo-info-box mt-3">
+                <span className="text-[10px] uppercase font-bold opacity-50 tracking-wider block">{t('oldestActiveStockText')}</span>
                 {prod.fifo_stock ? (
                   <div className="flex justify-between items-center gap-2">
                     <div className="flex flex-col">
                       <span className="text-[9px] uppercase font-bold opacity-40">{t('batchNo')}</span>
-                      <span className="font-mono font-black text-error text-lg tracking-wide">{prod.fifo_stock.batch_no}</span>
+                      <span className="font-mono font-bold text-sm tracking-wide">{prod.fifo_stock.batch_no}</span>
                     </div>
                     <div className="text-right">
-                      <span className="text-[9px] uppercase font-bold opacity-40 block text-error">{t('expiryDate')}</span>
-                      <span className="font-black text-sm text-error tracking-wide">{prod.fifo_stock.expiry_date}</span>
+                      <span className="text-[9px] uppercase font-bold opacity-40 block">{t('expiryDate')}</span>
+                      <span className="font-bold text-xs tracking-wide">{prod.fifo_stock.expiry_date}</span>
                     </div>
                   </div>
                 ) : (
-                  <span className="text-xs opacity-40 font-bold font-sans block py-1">{t('noActiveStockAvailableText')}</span>
+                  <span className="text-xs opacity-40 font-sans block py-1">{t('noActiveStockAvailableText')}</span>
                 )}
               </div>
-              <div className="pt-1 flex gap-2">
-                <button onClick={() => setSelectedProduct(prod)} className="btn btn-sm flex-1 btn-outline btn-primary font-bold">
+              <div className="pt-3 flex gap-2">
+                <button onClick={() => setSelectedProduct(prod)} className="btn btn-sm flex-1 btn-outline font-bold">
                   {t('stockRecordView')}
                 </button>
                 {/* Butang Edit Produk - Hanya untuk Super Admin */}
@@ -666,7 +662,7 @@ export default function Inventory({ session, userRole, allowedModules = {}, lang
                   <button 
                     type="button"
                     onClick={() => handleOpenEditProductModal(prod)}
-                    className="btn btn-sm btn-outline btn-warning font-bold"
+                    className="btn btn-sm btn-ghost font-bold"
                   >
                     📝 {t('editInfo')}
                   </button>

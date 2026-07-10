@@ -193,8 +193,8 @@ export default function Privileges({ session, lang = 'en' }) {
   return (
     <div className="page-shell">
       {toast && (
-        <div className="toast toast-top toast-end z-[150] p-4">
-          <div className="alert alert-success shadow-lg text-white font-medium rounded-xl whitespace-pre-line max-w-md border border-success">
+        <div className="toast-success">
+          <div className="alert-toast">
             <span>{toast}</span>
           </div>
         </div>
@@ -216,8 +216,8 @@ export default function Privileges({ session, lang = 'en' }) {
         </button>
       </div>
 
-      <div className="content-card p-6">
-        <h3 className="section-title mb-4 text-secondary">{t('matrixTitle')}</h3>
+      <div className="content-card p-4">
+        <h3 className="text-base font-bold mb-3 text-secondary">{t('matrixTitle')}</h3>
 
         {loadingData ? (
           <div className="flex justify-center py-12">
@@ -320,7 +320,8 @@ export default function Privileges({ session, lang = 'en' }) {
       {/* Modal Tambah Staf */}
       {isCreateModalOpen && (
         <div className="modal modal-open z-[100]">
-          <div className="modal-box max-w-md border border-base-200 shadow-2xl rounded-2xl p-6">
+          <div className="modal-backdrop" onClick={closeCreateModal}></div>
+          <div className="modal-box--md" onClick={(e) => e.stopPropagation()}>
             <h3 className="font-bold text-xl text-primary flex items-center gap-2 mb-2">{t('modalCreateTitle')}</h3>
             <p className="text-xs opacity-60 mb-4">{t('modalCreateSubtitle')}</p>
             <form onSubmit={handlePreSubmitCheck} className="space-y-4">
@@ -378,8 +379,9 @@ export default function Privileges({ session, lang = 'en' }) {
       {/* Modal Confirm */}
       {showConfirmStep && (
         <div className="modal modal-open z-[200]">
-          <div className="modal-box max-w-sm border-2 border-warning shadow-2xl bg-base-100 rounded-2xl p-6 text-center">
-            <h3 className="font-black text-xl text-warning">{t('modalConfirmTitle')}</h3>
+          <div className="modal-backdrop" onClick={() => setShowConfirmStep(false)}></div>
+          <div className="modal-box--sm" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-bold text-xl text-warning mb-2">{t('modalConfirmTitle')}</h3>
             <p className="py-2 text-sm font-semibold opacity-90">{t('modalConfirmSubtitle')}</p>
             <div className="flex justify-center gap-3 mt-4">
               <button className="btn btn-sm btn-ghost flex-1" onClick={() => setShowConfirmStep(false)}>
@@ -400,7 +402,8 @@ export default function Privileges({ session, lang = 'en' }) {
       {/* Modal Reset Password */}
       {selectedUser && (
         <div className="modal modal-open z-[100]">
-          <div className="modal-box max-w-sm border border-base-200 rounded-2xl p-6">
+          <div className="modal-backdrop" onClick={() => { setSelectedUser(null); setAdminNewPassword('') }}></div>
+          <div className="modal-box--sm" onClick={(e) => e.stopPropagation()}>
             <h3 className="font-bold text-lg text-error">{t('modalResetTitle')}</h3>
             <p className="py-2 text-xs opacity-70">
               {t('modalResetTarget')}<strong>{selectedUser.email}</strong>
@@ -434,7 +437,8 @@ export default function Privileges({ session, lang = 'en' }) {
       {/* Modal Delete User */}
       {userToDelete && (
         <div className="modal modal-open z-[100]">
-          <div className="modal-box max-w-sm border border-base-200 rounded-2xl p-6">
+          <div className="modal-backdrop" onClick={() => setUserToDelete(null)}></div>
+          <div className="modal-box--sm" onClick={(e) => e.stopPropagation()}>
             <h3 className="font-bold text-lg text-error">{t('modalDeleteTitle')}</h3>
             <p className="py-2 text-xs opacity-70">
               {t('modalDeleteDesc').replace('{email}', userToDelete.email)}

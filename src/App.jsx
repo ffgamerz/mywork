@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
 import Login from './Login'
-import RecordManager from './RecordManager'
+import AdsRecordManager from './AdsRecordManager'
 import Settings from './Settings'
 import Privileges from './Privileges'
 import Inventory from './Inventory' 
@@ -163,34 +163,15 @@ function App() {
       <ToastBar toast={toast} onClose={hideToast} />
       <div data-theme={currentTheme} className="min-h-screen bg-base-300 text-base-content font-sans transition-colors duration-300">
         
-        {/* TOPBAR NAVIGATION */}
-        <div className="bg-base-100 shadow-sm px-4 py-3 md:h-16 flex items-center justify-between gap-3 relative z-30 border-b border-base-200/70">
-          <button onClick={() => setActivePage('home')} className="text-lg md:text-xl font-black tracking-wider text-primary btn btn-ghost px-1 md:px-4">
-            B.O.L. FOOD SERVICES
+        {/* TOPBAR NAVIGATION - Minimalist */}
+        <div className="bg-base-100 border-b border-base-200 h-14 flex items-center justify-between px-4 relative z-30">
+          <button onClick={() => setActivePage('home')} className="text-lg font-bold text-primary btn btn-ghost px-2">
+            B.O.L.
           </button>
           
-          <div className="flex items-center gap-2">
-            {/* MOBILE VERSION */}
-            <div className="dropdown dropdown-end md:hidden">
-              <div tabIndex={0} role="button" className="btn btn-sm btn-primary font-bold gap-1 rounded-xl">
-                <span>{getActivePageName()}</span>
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-3.5 h-3.5 opacity-70"><path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" /></svg>
-              </div>
-              <ul tabIndex={0} className="dropdown-content menu p-2 shadow-2xl bg-base-200 rounded-2xl w-52 mt-2 border border-base-300 font-semibold gap-1">
-                <li><button onClick={() => { setActivePage('home'); document.activeElement.blur(); }} className={activePage === 'home' ? 'active' : ''}>{t('home')}</button></li>
-                {canAccessRecords && <li><button onClick={() => { setActivePage('records'); document.activeElement.blur(); }} className={activePage === 'records' ? 'active' : ''}>{t('recordManager')}</button></li>}
-                {canAccessInventory && <li><button onClick={() => { setActivePage('inventory'); document.activeElement.blur(); }} className={activePage === 'inventory' ? 'active' : ''}>{t('inventory')}</button></li>}
-                {canAccessReceiptManager && <li><button onClick={() => { setActivePage('receiptManager'); document.activeElement.blur(); }} className={activePage === 'receiptManager' ? 'active' : ''}>{t('receiptManager')}</button></li>}
-                {canAccessWageCalculator && <li><button onClick={() => { setActivePage('wageCalculator'); document.activeElement.blur(); }} className={activePage === 'wageCalculator' ? 'active' : ''}>{t('wageCalculator')}</button></li>}
-                <li><button onClick={() => { setActivePage('settings'); document.activeElement.blur(); }} className={activePage === 'settings' ? 'active' : ''}>{t('settings')}</button></li>
-                {canAccessPrivileges && <li><button onClick={() => { setActivePage('privileges'); document.activeElement.blur(); }} className={activePage === 'privileges' ? 'active' : ''}>{t('privileges')}</button></li>}
-                <div className="divider my-1"></div>
-                <li><button onClick={handleLogout} className="text-error hover:bg-error/20">{t('logOut')}</button></li>
-              </ul>
-            </div>
-
-            {/* DESKTOP VERSION */}
-            <div className="hidden md:flex gap-2">
+          <div className="flex items-center gap-1">
+            {/* DESKTOP VERSION - Minimalist */}
+            <div className="hidden md:flex gap-1">
               <button onClick={() => setActivePage('home')} className={`btn btn-sm ${activePage === 'home' ? 'btn-primary' : 'btn-ghost'}`}>{t('home')}</button>
               {canAccessRecords && <button onClick={() => setActivePage('records')} className={`btn btn-sm ${activePage === 'records' ? 'btn-primary' : 'btn-ghost'}`}>{t('recordManager')}</button>}
               {canAccessInventory && <button onClick={() => setActivePage('inventory')} className={`btn btn-sm ${activePage === 'inventory' ? 'btn-primary' : 'btn-ghost'}`}>{t('inventory')}</button>}
@@ -198,13 +179,23 @@ function App() {
               {canAccessWageCalculator && <button onClick={() => setActivePage('wageCalculator')} className={`btn btn-sm ${activePage === 'wageCalculator' ? 'btn-primary' : 'btn-ghost'}`}>{t('wageCalculator')}</button>}
               <button onClick={() => setActivePage('settings')} className={`btn btn-sm ${activePage === 'settings' ? 'btn-primary' : 'btn-ghost'}`}>{t('settings')}</button>
               {canAccessPrivileges && <button onClick={() => setActivePage('privileges')} className={`btn btn-sm ${activePage === 'privileges' ? 'btn-primary' : 'btn-ghost'}`}>{t('privileges')}</button>}
-              <button onClick={handleLogout} className="btn btn-error btn-sm btn-outline font-bold ml-2">{t('logOut')}</button>
+              <button onClick={handleLogout} className="btn btn-ghost btn-sm">{t('logOut')}</button>
+            </div>
+            
+            {/* MOBILE VERSION - Bottom Navigation */}
+            <div className="md:hidden mobile-nav">
+              <button onClick={() => setActivePage('home')} className={`mobile-nav-btn ${activePage === 'home' ? 'text-primary' : ''}`} title={t('home')}>🏠</button>
+              {canAccessRecords && <button onClick={() => setActivePage('records')} className={`mobile-nav-btn ${activePage === 'records' ? 'text-primary' : ''}`} title={t('recordManager')}>📊</button>}
+              {canAccessInventory && <button onClick={() => setActivePage('inventory')} className={`mobile-nav-btn ${activePage === 'inventory' ? 'text-primary' : ''}`} title={t('inventory')}>📦</button>}
+              {canAccessReceiptManager && <button onClick={() => setActivePage('receiptManager')} className={`mobile-nav-btn ${activePage === 'receiptManager' ? 'text-primary' : ''}`} title={t('receiptManager')}>🧾</button>}
+              {canAccessWageCalculator && <button onClick={() => setActivePage('wageCalculator')} className={`mobile-nav-btn ${activePage === 'wageCalculator' ? 'text-primary' : ''}`} title={t('wageCalculator')}>💰</button>}
+              <button onClick={() => setActivePage('settings')} className={`mobile-nav-btn ${activePage === 'settings' ? 'text-primary' : ''}`} title={t('settings')}>⚙️</button>
             </div>
           </div>
         </div>
         
         {/* MAIN CONTENT */}
-        <div className="p-4 md:p-8 max-w-7xl mx-auto">
+        <div className="p-4 md:p-6 max-w-7xl mx-auto pb-20 md:pb-8">
           {activePage === 'home' && (
              <div className="page-shell">
                <div className="page-header">
@@ -212,56 +203,52 @@ function App() {
                  <p className="page-subtitle">{t('dashboardDesc')}</p>
                </div>
                
-               {/* KAD GRID UTAMA */}
-               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                  {canAccessRecords && (
-                    <button onClick={() => setActivePage('records')} className="content-card hover:border-primary shadow-sm hover:shadow-md transition-all duration-300 text-left group">
-                      <div className="card-body p-6 flex flex-col justify-between h-48">
-                        <div className="p-3 bg-primary/10 text-primary w-fit rounded-xl group-hover:bg-primary group-hover:text-white transition-all"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" /></svg></div>
-                        <div>
-                          <h2 className="card-title text-lg font-bold group-hover:text-primary">{t('recordManager')}</h2>
-                          <p className="text-xs opacity-60 mt-1">{t('recordManagerDesc')}</p>
-                        </div>
+               {/* KAD GRID UTAMA - Minimalist */}
+               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                   {canAccessRecords && (
+                    <button onClick={() => setActivePage('records')} className="minimal-card flex flex-col items-center text-center gap-4 p-6">
+                      <div className="minimal-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" /></svg>
+                      </div>
+                      <div>
+                        <h2 className="font-bold text-base md:text-lg">{t('recordManager')}</h2>
+                        <p className="text-xs opacity-60 mt-1 hidden sm:block">{t('recordManagerDesc')}</p>
                       </div>
                     </button>
                   )}
                   
                   {canAccessInventory && (
-                    <button onClick={() => setActivePage('inventory')} className="content-card hover:border-success shadow-sm hover:shadow-md transition-all duration-300 text-left group">
-                      <div className="card-body p-6 flex flex-col justify-between h-48">
-                        <div className="p-3 bg-success/10 text-success w-fit rounded-xl group-hover:bg-success group-hover:text-white transition-all">
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" /></svg>
-                        </div>
-                        <div>
-                          <h2 className="card-title text-lg font-bold group-hover:text-success">{t('inventory')}</h2>
-                          <p className="text-xs opacity-60 mt-1">{t('inventoryDesc')}</p>
-                        </div>
+                    <button onClick={() => setActivePage('inventory')} className="minimal-card flex flex-col items-center text-center gap-4 p-6">
+                      <div className="minimal-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" /></svg>
+                      </div>
+                      <div>
+                        <h2 className="font-bold text-base md:text-lg">{t('inventory')}</h2>
+                        <p className="text-xs opacity-60 mt-1 hidden sm:block">{t('inventoryDesc')}</p>
                       </div>
                     </button>
                   )}
 
                   {canAccessReceiptManager && (
-                    <button onClick={() => setActivePage('receiptManager')} className="content-card hover:border-accent shadow-sm hover:shadow-md transition-all duration-300 text-left group">
-                      <div className="card-body p-6 flex flex-col justify-between h-48">
-                        <div className="p-3 bg-accent/10 text-accent w-fit rounded-xl group-hover:bg-accent group-hover:text-white transition-all">
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Z" /></svg></div>
-                        <div>
-                          <h2 className="card-title text-lg font-bold group-hover:text-accent">{t('receiptManager')}</h2>
-                          <p className="text-xs opacity-60 mt-1">{t('receiptManagerDesc')}</p>
-                        </div>
+                    <button onClick={() => setActivePage('receiptManager')} className="minimal-card flex flex-col items-center text-center gap-4 p-6">
+                      <div className="minimal-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Z" /></svg>
+                      </div>
+                      <div>
+                        <h2 className="font-bold text-base md:text-lg">{t('receiptManager')}</h2>
+                        <p className="text-xs opacity-60 mt-1 hidden sm:block">{t('receiptManagerDesc')}</p>
                       </div>
                     </button>
                   )}
 
                   {canAccessWageCalculator && (
-                    <button onClick={() => setActivePage('wageCalculator')} className="content-card hover:border-warning shadow-sm hover:shadow-md transition-all duration-300 text-left group">
-                      <div className="card-body p-6 flex flex-col justify-between h-48">
-                        <div className="p-3 bg-warning/10 text-warning w-fit rounded-xl group-hover:bg-warning group-hover:text-white transition-all">
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 15.75V18m-3-3V18m-3-3V18M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM10.5 8.25h3l-3 4.5h3" /></svg></div>
-                        <div>
-                          <h2 className="card-title text-lg font-bold group-hover:text-warning">{t('wageCalculator')}</h2>
-                          <p className="text-xs opacity-60 mt-1">{t('wageCalcDesc') || 'Kira upah bulanan staf.'}</p>
-                        </div>
+                    <button onClick={() => setActivePage('wageCalculator')} className="minimal-card flex flex-col items-center text-center gap-4 p-6">
+                      <div className="minimal-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 15.75V18m-3-3V18m-3-3V18M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM10.5 8.25h3l-3 4.5h3" /></svg>
+                      </div>
+                      <div>
+                        <h2 className="font-bold text-base md:text-lg">{t('wageCalculator')}</h2>
+                        <p className="text-xs opacity-60 mt-1 hidden sm:block">{t('wageCalcDesc') || 'Kira upah bulanan staf.'}</p>
                       </div>
                     </button>
                   )}
@@ -269,7 +256,7 @@ function App() {
              </div>
           )}
           
-          {activePage === 'records' && canAccessRecords && <RecordManager session={session} lang={lang} />}
+          {activePage === 'records' && canAccessRecords && <AdsRecordManager session={session} lang={lang} />}
           {activePage === 'settings' && <Settings session={session} themeMode={themeMode} setThemeMode={handleThemeChange} lang={lang} setLang={setLang} />}
           {activePage === 'privileges' && canAccessPrivileges && <Privileges session={session} lang={lang} />}
           {activePage === 'inventory' && canAccessInventory && <Inventory session={session} userRole={userRole} allowedModules={allowedModules} lang={lang} />}

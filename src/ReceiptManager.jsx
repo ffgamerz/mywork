@@ -30,10 +30,9 @@ export default function ReceiptManager({ session, userRole, allowedModules = {},
 
   if (!isAuthorized) {
     return (
-      <div className="alert alert-error shadow-lg rounded-xl max-w-md mx-auto mt-12 border border-error/20 text-white font-bold">
+      <div className="alert-unauthorized">
         <div>
-          <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current flex-shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-          <span>{t('rmAccessDenied')}</span>
+          <span>🔒 {t('rmAccessDenied')}</span>
         </div>
       </div>
     )
@@ -144,9 +143,9 @@ export default function ReceiptManager({ session, userRole, allowedModules = {},
   return (
     <div className="page-shell">
       <ToastBar toast={toast} onClose={hideToast} />
-      <div className="content-card p-6">
-        <h2 className="text-xl font-black mb-4">📝 {editingId ? t('rmUpdateReceipt') : t('rmNewReceipt')}</h2>
-        <form onSubmit={handleSubmit} className="flex flex-wrap gap-4 items-end">
+      <div className="content-card p-5">
+        <h2 className="text-lg font-bold mb-3">📝 {editingId ? t('rmUpdateReceipt') : t('rmNewReceipt')}</h2>
+        <form onSubmit={handleSubmit} className="flex flex-wrap gap-3 items-end">
           <div className="form-control w-full sm:w-auto">
             <label className="label text-xs font-bold">{t('rmReceiptDate')}</label>
             <input type="date" className="input input-bordered w-full" value={receiptDate} onChange={(e) => setReceiptDate(e.target.value)} required />

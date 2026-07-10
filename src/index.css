@@ -9,7 +9,7 @@
   }
 
   .card {
-    @apply rounded-2xl border border-base-200 shadow-sm;
+    @apply rounded-2xl border border-base-200/30 shadow-sm;
   }
 
   .input,
@@ -21,6 +21,15 @@
   .btn {
     @apply rounded-xl;
   }
+  
+  /* Minimalist button styles */
+  .btn-ghost {
+    @apply rounded-lg;
+  }
+  
+  .btn-sm {
+    @apply btn-xs;
+  }
 }
 
 @layer components {
@@ -29,15 +38,15 @@
   }
 
   .page-header {
-    @apply flex flex-col gap-1 border-b border-base-200/70 pb-4;
+    @apply flex flex-col gap-1 pb-3 mb-4;
   }
 
   .page-title {
-    @apply text-2xl md:text-3xl font-black tracking-tight text-base-content;
+    @apply text-xl md:text-2xl font-bold tracking-tight text-base-content;
   }
 
   .page-subtitle {
-    @apply text-sm opacity-70;
+    @apply text-xs opacity-60;
   }
 
   .content-card {
@@ -102,7 +111,7 @@
   }
 
   .modal-box--sm {
-    @apply modal-box border border-base-200 shadow-2xl rounded-2xl p-6 max-w-sm;
+    @apply fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-base-100 border border-base-200 shadow-2xl rounded-2xl p-6 max-w-sm z-50;
   }
 
   .payment-summary {
@@ -111,7 +120,7 @@
 
   /* RecordManager reusable components */
   .toast-success {
-    @apply toast toast-top toast-end z-50 p-4;
+    @apply fixed top-16 right-0 z-50 p-4;
   }
 
   .alert-toast {
@@ -132,14 +141,32 @@
   }
 
   .status-badge-active {
-    @apply w-fit text-[10px] font-black px-2 py-0.5 rounded-lg bg-success/10 text-success;
+    @apply w-fit text-[10px] font-bold px-2 py-0.5 rounded-lg bg-base-200/50 text-base-content/70;
   }
 
   .status-badge-inactive {
-    @apply w-fit text-[10px] font-black px-2 py-0.5 rounded-lg bg-error/10 text-error;
+    @apply w-fit text-[10px] font-bold px-2 py-0.5 rounded-lg bg-base-200/30 text-base-content/50;
   }
 
   .fifo-info-box {
     @apply bg-base-200/50 rounded-2xl p-3 border border-base-200 space-y-2;
+  }
+  
+  /* Mobile bottom navigation */
+  .mobile-nav {
+    @apply fixed bottom-0 left-0 right-0 bg-base-100 border-t border-base-200 h-16 flex items-center justify-around z-50;
+  }
+  
+  .mobile-nav-btn {
+    @apply btn btn-ghost btn-circle;
+  }
+  
+  /* Minimalist card for home page */
+  .minimal-card {
+    @apply bg-base-100 rounded-2xl p-6 border border-base-200/20 hover:bg-base-200/20 transition-all duration-200;
+  }
+  
+  .minimal-icon {
+    @apply p-3.5 bg-base-200/40 text-base-content/60 rounded-2xl;
   }
 }
