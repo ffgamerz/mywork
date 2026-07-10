@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
-import { translations } from './translations'
+import { getTranslation } from './utils/translation'
 
 export default function Privileges({ session, lang = 'en' }) {
   const [users, setUsers] = useState([])
@@ -22,7 +22,7 @@ export default function Privileges({ session, lang = 'en' }) {
 
   const [userToDelete, setUserToDelete] = useState(null)
 
-  const t = (key) => translations[lang]?.[key] || translations['en'][key]
+  const t = (key) => getTranslation(lang, key)
 
   const showToast = (msg) => {
     setToast(msg)
@@ -49,7 +49,7 @@ export default function Privileges({ session, lang = 'en' }) {
       }
     } catch (err) {
       console.error('Ralat memuatkan data:', err.message)
-      alert(t('errLoad') + err.message)
+      showToast(t('errLoad') + err.message)
     } finally {
       setLoadingData(false)
     }
@@ -69,7 +69,7 @@ export default function Privileges({ session, lang = 'en' }) {
   const handlePreSubmitCheck = (e) => {
     e.preventDefault()
     if (!generatedPassword) {
-      alert(t('alertGeneratePass'))
+      showToast(t('alertGeneratePass'))
       return
     }
     setShowConfirmStep(true)
@@ -82,7 +82,7 @@ export default function Privileges({ session, lang = 'en' }) {
     })
 
     if (error) {
-      alert(t('errCreate') + error.message)
+      showToast(t('errCreate') + error.message)
     } else {
       if (newFullName.trim()) {
         await supabase
@@ -113,7 +113,7 @@ export default function Privileges({ session, lang = 'en' }) {
       body: { userId: userToDelete.id }
     })
     if (error) {
-      alert(error.message)
+      showToast(error.message)
     } else {
       showToast(t('toastDeletedSuccess'))
       setUserToDelete(null)
@@ -133,7 +133,7 @@ export default function Privileges({ session, lang = 'en' }) {
       loadData()
     } catch (err) {
       console.error('Gagal menukar peranan:', err.message)
-      alert(err.message)
+      showToast(err.message)
     } finally {
       setActionLoading(false)
     }
@@ -149,7 +149,7 @@ export default function Privileges({ session, lang = 'en' }) {
     }, { onConflict: 'user_id,module_id' })
 
     if (error) {
-      alert(error.message)
+      showToast(error.message)
     } else {
       setPermissions(prev => ({ ...prev, [`${userId}-${moduleId}`]: newStatus }))
       showToast(t('toastPermSuccess'))
@@ -176,7 +176,7 @@ export default function Privileges({ session, lang = 'en' }) {
       setSelectedUser(null)
       loadData()
     } catch (err) {
-      alert(t('errReset') + err.message)
+      showToast(t('errReset') + err.message)
     } finally {
       setActionLoading(false)
     }
@@ -191,7 +191,7 @@ export default function Privileges({ session, lang = 'en' }) {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="page-shell">
       {toast && (
         <div className="toast toast-top toast-end z-[150] p-4">
           <div className="alert alert-success shadow-lg text-white font-medium rounded-xl whitespace-pre-line max-w-md border border-success">
@@ -200,14 +200,14 @@ export default function Privileges({ session, lang = 'en' }) {
         </div>
       )}
 
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-base-100 pb-5">
+      <div className="page-header sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex flex-col gap-1">
-          <h1 className="text-2xl md:text-3xl font-black tracking-tight">{t('privTitle')}</h1>
-          <p className="text-sm opacity-60">{t('privSubtitle')}</p>
+          <h1 className="page-title">{t('privTitle')}</h1>
+          <p className="page-subtitle">{t('privSubtitle')}</p>
         </div>
         <button
           onClick={() => setIsCreateModalOpen(true)}
-          className="btn btn-primary font-bold shadow-lg gap-2 self-start sm:self-auto rounded-xl"
+          className="primary-action gap-2 self-start sm:self-auto"
         >
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -216,15 +216,15 @@ export default function Privileges({ session, lang = 'en' }) {
         </button>
       </div>
 
-      <div className="card bg-base-100 shadow-xl p-6 border border-base-200">
-        <h3 className="text-lg font-bold mb-4 text-secondary">{t('matrixTitle')}</h3>
+      <div className="content-card p-6">
+        <h3 className="section-title mb-4 text-secondary">{t('matrixTitle')}</h3>
 
         {loadingData ? (
           <div className="flex justify-center py-12">
             <span className="loading loading-spinner loading-lg text-primary"></span>
           </div>
         ) : users.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 gap-3 opacity-50">
+          <div className="empty-state py-12 gap-3 opacity-70">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-12 h-12">
               <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94-3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" />
             </svg>
@@ -357,16 +357,16 @@ export default function Privileges({ session, lang = 'en' }) {
                     value={generatedPassword}
                     required
                   />
-                  <button type="button" onClick={generateRandomPassword} className="btn btn-secondary font-bold rounded-xl px-4">
+                  <button type="button" onClick={generateRandomPassword} className="btn btn-secondary text-white font-bold px-4">
                     {t('btnGenerate')}
                   </button>
                 </div>
               </div>
               <div className="modal-action gap-2 pt-2">
-                <button type="button" className="btn btn-sm btn-ghost rounded-lg" onClick={closeCreateModal}>
+                <button type="button" className="btn btn-sm btn-ghost" onClick={closeCreateModal}>
                   {t('cancel')}
                 </button>
-                <button type="submit" className="btn btn-sm btn-primary rounded-lg font-bold px-4">
+                <button type="submit" className="btn btn-sm btn-primary text-white font-bold px-4">
                   {t('btnCreateUser')}
                 </button>
               </div>
@@ -382,13 +382,13 @@ export default function Privileges({ session, lang = 'en' }) {
             <h3 className="font-black text-xl text-warning">{t('modalConfirmTitle')}</h3>
             <p className="py-2 text-sm font-semibold opacity-90">{t('modalConfirmSubtitle')}</p>
             <div className="flex justify-center gap-3 mt-4">
-              <button className="btn btn-sm btn-ghost rounded-lg flex-1" onClick={() => setShowConfirmStep(false)}>
+              <button className="btn btn-sm btn-ghost flex-1" onClick={() => setShowConfirmStep(false)}>
                 {t('btnGoBack')}
               </button>
               <button
                 disabled={createLoading}
                 onClick={handleExecuteCreateUser}
-                className="btn btn-sm btn-warning text-black font-bold flex-1 rounded-lg"
+                className="btn btn-sm btn-warning text-black font-bold flex-1"
               >
                 {createLoading ? t('btnProvisioning') : t('btnConfirmYes')}
               </button>
@@ -417,12 +417,12 @@ export default function Privileges({ session, lang = 'en' }) {
               <div className="modal-action">
                 <button
                   type="button"
-                  className="btn btn-sm btn-ghost rounded-lg"
+                  className="btn btn-sm btn-ghost"
                   onClick={() => { setSelectedUser(null); setAdminNewPassword('') }}
                 >
                   {t('cancel')}
                 </button>
-                <button type="submit" disabled={actionLoading} className="btn btn-sm btn-error text-white rounded-lg px-4">
+                <button type="submit" disabled={actionLoading} className="btn btn-sm btn-error text-white font-bold px-4">
                   {actionLoading ? <span className="loading loading-spinner loading-xs"></span> : t('btnConfirm')}
                 </button>
               </div>
@@ -444,7 +444,7 @@ export default function Privileges({ session, lang = 'en' }) {
                 {t('cancel')}
               </button>
               <button
-                className="btn btn-sm btn-error text-white font-bold rounded-lg px-4"
+                className="btn btn-sm btn-error text-white font-bold px-4"
                 disabled={actionLoading}
                 onClick={handleDeleteUser}
               >

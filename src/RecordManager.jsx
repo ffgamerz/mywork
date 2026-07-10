@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
-import { translations } from './translations'
+import { getTranslation } from './utils/translation'
 
 export default function RecordManager({ session, lang = 'en' }) {
   const [records, setRecords] = useState([])
@@ -18,7 +18,8 @@ export default function RecordManager({ session, lang = 'en' }) {
   const [editAmount, setEditAmount] = useState('')
   const [editDate, setEditDate] = useState('')
 
-  const t = (key) => translations[lang]?.[key] || translations['en'][key]
+  const activeLang = lang || 'en'
+  const t = (key) => getTranslation(activeLang, key)
 
   const showToast = (msg) => {
     setToastMessage(msg)
@@ -39,8 +40,8 @@ export default function RecordManager({ session, lang = 'en' }) {
   }
 
   useEffect(() => {
-    fetchRecords()
-  }, [])
+    if (session?.user?.id) fetchRecords()
+  }, [session?.user?.id])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -54,7 +55,7 @@ export default function RecordManager({ session, lang = 'en' }) {
     }])
 
     if (error) {
-      alert(t('saveFailed') + error.message)
+      showToast(t('saveFailed') + error.message)
     } else {
       setAmount('')
       showToast(t('saveRecord') + '!')
@@ -83,7 +84,7 @@ export default function RecordManager({ session, lang = 'en' }) {
       .eq('id', editingRecord.id)
 
     if (error) {
-      alert(t('updateFailed') + error.message)
+      showToast(t('updateFailed') + error.message)
     } else {
       setEditingRecord(null)
       showToast(t('updateSuccess'))
@@ -115,7 +116,7 @@ export default function RecordManager({ session, lang = 'en' }) {
       .in('id', checkedIds)
 
     if (error) {
-      alert(t('deleteFailed') + error.message)
+      showToast(t('deleteFailed') + error.message)
     } else {
       setCheckedIds([])
       setGeneratedText('')
@@ -156,10 +157,10 @@ export default function RecordManager({ session, lang = 'en' }) {
   }
 
   return (
-    <div className="space-y-8 relative">
+    <div className="page-shell relative">
       {toastMessage && (
-        <div className="toast toast-top toast-end z-50 p-4">
-          <div className="alert alert-success shadow-lg border border-success/20 text-white font-medium flex items-center gap-2 rounded-xl">
+        <div className="toast-success">
+          <div className="alert-toast">
             <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-5 w-5" fill="none" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
@@ -168,18 +169,14 @@ export default function RecordManager({ session, lang = 'en' }) {
         </div>
       )}
 
-      <div className="flex flex-col gap-1 border-b border-base-100 pb-4">
-        <h1 className="text-2xl md:text-3xl font-black tracking-tight">{t('recordManager')}</h1>
-        <p className="text-sm opacity-60">
-          {lang === 'ms' ? 'Tambah entri transaksi baharu dan jana format output kewangan.'
-            : lang === 'zh' ? '添加新的交易记录并生成财务格式输出。'
-            : 'Add new transaction entries and generate formatted financial outputs.'}
-        </p>
+      <div className="page-header">
+        <h1 className="page-title">{t('recordManager')}</h1>
+        <p className="page-subtitle">{t('recordManagerDesc')}</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Form Tambah Rekod */}
-        <div className="card bg-base-100 shadow-xl p-6 border border-base-200 h-fit">
+        <div className="content-card p-6 h-fit">
           <h3 className="text-xl font-bold mb-4 text-primary">{t('addRecord')}</h3>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="form-control">
@@ -205,19 +202,19 @@ export default function RecordManager({ session, lang = 'en' }) {
                 onChange={(e) => setAmount(e.target.value)}
               />
             </div>
-            <button type="submit" disabled={loadingSave} className="btn btn-primary w-full mt-2">
+            <button type="submit" disabled={loadingSave} className="btn btn-primary font-bold w-full mt-2">
               {loadingSave ? <span className="loading loading-spinner"></span> : t('saveRecord')}
             </button>
           </form>
         </div>
 
         {/* Senarai Rekod */}
-        <div className="lg:col-span-2 card bg-base-100 shadow-xl p-6 border border-base-200">
+        <div className="lg:col-span-2 content-card p-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
             <h3 className="text-xl font-bold text-secondary">{t('savedRecordsList')}</h3>
             <div className="flex flex-wrap items-center gap-4">
               {checkedIds.length > 0 && (
-                <div className="bg-base-200 px-3 py-1.5 rounded-xl border border-base-300 text-sm flex items-center gap-1.5">
+                <div className="selected-total-box">
                   <span>{t('selectedTotal')}</span>
                   <span className="font-bold text-success text-base">RM {totalSelectedAmount.toFixed(2)}</span>
                   <button
@@ -236,14 +233,14 @@ export default function RecordManager({ session, lang = 'en' }) {
                 <button
                   onClick={handleGenerate}
                   disabled={checkedIds.length === 0 || loadingSave}
-                  className="btn btn-sm btn-accent text-white"
+                  className="btn btn-sm btn-accent text-white font-bold"
                 >
                   {t('generate')} ({checkedIds.length})
                 </button>
                 <button
                   onClick={handleDeleteChecked}
                   disabled={checkedIds.length === 0 || loadingDelete}
-                  className="btn btn-sm btn-error text-white"
+                  className="btn btn-sm btn-error text-white font-bold"
                 >
                   {loadingDelete ? <span className="loading loading-spinner loading-xs"></span> : t('delete')}
                 </button>
@@ -256,7 +253,7 @@ export default function RecordManager({ session, lang = 'en' }) {
               <span className="loading loading-spinner loading-lg text-primary"></span>
             </div>
           ) : records.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 gap-3 opacity-50">
+            <div className="empty-state py-12 gap-3 opacity-70">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-12 h-12">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
               </svg>
@@ -319,10 +316,10 @@ export default function RecordManager({ session, lang = 'en' }) {
 
       {/* Generated Output */}
       {generatedText && (
-        <div className="card bg-base-100 shadow-xl p-6 border border-base-200 w-full">
+        <div className="content-card p-6 w-full">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-bold text-accent">{t('generatedResult')}</h3>
-            <button onClick={handleCopyToClipboard} className="btn btn-sm btn-outline btn-accent">
+            <button onClick={handleCopyToClipboard} className="btn btn-sm btn-outline btn-accent font-bold">
               {t('copyText')}
             </button>
           </div>
@@ -335,7 +332,7 @@ export default function RecordManager({ session, lang = 'en' }) {
       {/* Modal Edit Rekod */}
       {editingRecord && (
         <div className="modal modal-open z-50">
-          <div className="modal-box max-w-sm border border-base-200 shadow-2xl rounded-2xl p-6">
+          <div className="modal-box--sm">
             <h3 className="font-bold text-lg text-info flex items-center gap-2 mb-4">✏️ {t('editRecord')}</h3>
             <form onSubmit={handleUpdateRecord} className="space-y-4">
               <div className="form-control">
@@ -364,7 +361,7 @@ export default function RecordManager({ session, lang = 'en' }) {
                 <button type="button" className="btn btn-sm btn-ghost" onClick={() => setEditingRecord(null)}>
                   {t('cancel')}
                 </button>
-                <button type="submit" disabled={loadingSave} className="btn btn-sm btn-info text-white font-bold px-4">
+                <button type="submit" disabled={loadingSave} className="btn btn-sm btn-primary text-white font-bold px-4">
                   {loadingSave ? <span className="loading loading-spinner loading-xs"></span> : t('saveChanges')}
                 </button>
               </div>

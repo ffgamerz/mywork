@@ -84,7 +84,7 @@ export default function Login() {
           </div>
 
           <div className="form-control mt-6">
-            <button type="submit" disabled={loading} className="btn btn-primary w-full mt-2">
+            <button type="submit" disabled={loading} className="btn btn-primary font-bold w-full mt-2">
               {loading ? <span className="loading loading-spinner"></span> : (isSignUp ? 'Register Account' : 'Log In')}
             </button>
           </div>

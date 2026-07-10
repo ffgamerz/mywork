@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
-import { translations } from './translations'
+import { getTranslation } from './utils/translation'
+import ToastBar from './components/ToastBar'
+import { useToast } from './utils/useToast'
 
-export default function ReceiptManager({ session, userRole, allowedModules = {} }) {
+export default function ReceiptManager({ session, userRole, allowedModules = {}, lang = 'en' }) {
+  const { toast, showToast, hideToast } = useToast()
   const [records, setRecords] = useState([])
   const [receiptDate, setReceiptDate] = useState(new Date().toISOString().split('T')[0])
   const [amount, setAmount] = useState('')
@@ -12,9 +15,8 @@ export default function ReceiptManager({ session, userRole, allowedModules = {} 
   const [generatedText, setGeneratedText] = useState('')
   const [loading, setLoading] = useState(false)
 
-  // System Translation
-  const lang = localStorage.getItem('bol_lang') || 'en'
-  const t = (key) => translations[lang]?.[key] || translations['en'][key]
+  const activeLang = lang || 'en'
+  const t = (key) => getTranslation(activeLang, key)
 
   // Security checking
   const cleanedRole = String(userRole || '').trim().toLowerCase()
@@ -136,12 +138,13 @@ export default function ReceiptManager({ session, userRole, allowedModules = {} 
   const copyToClipboard = () => {
     if (!generatedText) return
     navigator.clipboard.writeText(generatedText)
-    alert(t('rmCopiedAlert'))
+    showToast(t('rmCopiedAlert'))
   }
 
   return (
-    <div className="space-y-6">
-      <div className="card bg-base-100 border border-base-200 shadow-xl p-6">
+    <div className="page-shell">
+      <ToastBar toast={toast} onClose={hideToast} />
+      <div className="content-card p-6">
         <h2 className="text-xl font-black mb-4">📝 {editingId ? t('rmUpdateReceipt') : t('rmNewReceipt')}</h2>
         <form onSubmit={handleSubmit} className="flex flex-wrap gap-4 items-end">
           <div className="form-control w-full sm:w-auto">
@@ -153,7 +156,7 @@ export default function ReceiptManager({ session, userRole, allowedModules = {} 
             <input type="number" step="0.01" placeholder="407.90" className="input input-bordered w-full" value={amount} onChange={(e) => setAmount(e.target.value)} required />
           </div>
           <div className="w-full sm:w-auto flex gap-2">
-            <button type="submit" disabled={loading} className="btn btn-primary font-bold">
+            <button type="submit" disabled={loading} className="btn btn-primary text-white font-bold">
               {editingId ? t('rmSave') : t('rmAdd')}
             </button>
             {editingId && (
@@ -166,7 +169,7 @@ export default function ReceiptManager({ session, userRole, allowedModules = {} 
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 card bg-base-100 border border-base-200 shadow-xl p-6 overflow-x-auto">
+        <div className="lg:col-span-2 content-card p-6 overflow-x-auto">
           <div className="flex justify-between items-center mb-4 gap-2">
             <h2 className="text-lg font-black">📋 {t('rmListTitle')}</h2>
             {selectedIds.length > 0 && (
@@ -211,7 +214,7 @@ export default function ReceiptManager({ session, userRole, allowedModules = {} 
           </table>
         </div>
 
-        <div className="card bg-base-100 border border-base-200 shadow-xl p-6 space-y-4">
+        <div className="content-card p-6 space-y-4">
           <h2 className="text-lg font-black">⚙️ {t('rmConfigTitle')}</h2>
           
           <div className="form-control">
@@ -219,7 +222,7 @@ export default function ReceiptManager({ session, userRole, allowedModules = {} 
             <input type="number" step="0.01" className="input input-bordered w-full font-bold" value={upahAmount} onChange={(e) => setUpahAmount(e.target.value)} />
           </div>
 
-          <button onClick={generateFormatText} className="btn btn-accent w-full font-bold text-white">
+          <button onClick={generateFormatText} className="btn btn-accent w-full text-white font-bold">
             {t('rmGenerateBtn')}
           </button>
 
@@ -228,7 +231,7 @@ export default function ReceiptManager({ session, userRole, allowedModules = {} 
               <pre className="p-3 bg-base-300 rounded-xl text-xs font-mono whitespace-pre-wrap select-all max-h-48 overflow-y-auto">
                 {generatedText}
               </pre>
-              <button onClick={copyToClipboard} className="btn btn-sm btn-outline btn-block rounded-xl font-bold">
+              <button onClick={copyToClipboard} className="btn btn-sm btn-outline btn-block font-bold">
                 {t('rmCopyBtn')}
               </button>
             </div>

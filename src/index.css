@@ -2,3 +2,144 @@
 
 /* Seterusnya kita import DaisyUI versi v4 (ia dipanggil sebagai plugin berciri @theme) */
 @plugin "daisyui";
+
+@layer base {
+  body {
+    @apply bg-base-300 text-base-content antialiased;
+  }
+
+  .card {
+    @apply rounded-2xl border border-base-200 shadow-sm;
+  }
+
+  .input,
+  .select,
+  .textarea {
+    @apply rounded-xl border-base-300;
+  }
+
+  .btn {
+    @apply rounded-xl;
+  }
+}
+
+@layer components {
+  .page-shell {
+    @apply space-y-6 md:space-y-8;
+  }
+
+  .page-header {
+    @apply flex flex-col gap-1 border-b border-base-200/70 pb-4;
+  }
+
+  .page-title {
+    @apply text-2xl md:text-3xl font-black tracking-tight text-base-content;
+  }
+
+  .page-subtitle {
+    @apply text-sm opacity-70;
+  }
+
+  .content-card {
+    @apply card bg-base-100 shadow-sm;
+  }
+
+  .content-card--elevated {
+    @apply shadow-md;
+  }
+
+  .section-title {
+    @apply text-lg font-bold text-base-content;
+  }
+
+  .empty-state {
+    @apply flex flex-col items-center justify-center rounded-2xl border border-dashed border-base-300 bg-base-200/40 py-12 text-center;
+  }
+
+  .primary-action {
+    @apply btn btn-primary font-bold shadow-sm;
+  }
+
+  .secondary-action {
+    @apply btn btn-outline font-bold;
+  }
+
+  /* WageCalculator reusable components */
+  .alert-unauthorized {
+    @apply alert alert-error shadow-lg rounded-xl max-w-md mx-auto mt-12 border border-error/20 text-white font-bold;
+  }
+
+  .record-row--selected {
+    @apply bg-base-200/50;
+  }
+
+  .record-row--paid {
+    @apply border-l-4 border-success;
+  }
+
+  .record-row--unpaid {
+    @apply border-l-4 border-warning;
+  }
+
+  .summary-box {
+    @apply p-4 bg-base-200 rounded-2xl border border-base-300 flex flex-col gap-1;
+  }
+
+  .modal {
+    @apply fixed inset-0 z-50 hidden;
+  }
+
+  .modal.modal-open {
+    @apply block;
+  }
+
+  .modal-backdrop {
+    @apply absolute inset-0 bg-black/30 cursor-pointer;
+  }
+
+  .modal-box--md {
+    @apply relative bg-base-100 border border-base-200 shadow-2xl rounded-2xl p-6 max-w-md z-50;
+  }
+
+  .modal-box--sm {
+    @apply modal-box border border-base-200 shadow-2xl rounded-2xl p-6 max-w-sm;
+  }
+
+  .payment-summary {
+    @apply p-3 bg-base-200 rounded-xl text-center border border-base-300;
+  }
+
+  /* RecordManager reusable components */
+  .toast-success {
+    @apply toast toast-top toast-end z-50 p-4;
+  }
+
+  .alert-toast {
+    @apply alert alert-success shadow-lg border border-success/20 text-white font-medium flex items-center gap-2 rounded-xl;
+  }
+
+  .selected-total-box {
+    @apply bg-base-200 px-3 py-1.5 rounded-xl border border-base-300 text-sm flex items-center gap-1.5;
+  }
+
+  /* Inventory reusable components */
+  .stock-card {
+    @apply card bg-base-100 border border-base-300 shadow-xl rounded-2xl p-5 space-y-4 relative overflow-hidden flex flex-col justify-between;
+  }
+
+  .stock-card--header {
+    @apply absolute top-0 right-0 left-0 h-1.5 bg-secondary;
+  }
+
+  .status-badge-active {
+    @apply w-fit text-[10px] font-black px-2 py-0.5 rounded-lg bg-success/10 text-success;
+  }
+
+  .status-badge-inactive {
+    @apply w-fit text-[10px] font-black px-2 py-0.5 rounded-lg bg-error/10 text-error;
+  }
+
+  .fifo-info-box {
+    @apply bg-base-200/50 rounded-2xl p-3 border border-base-200 space-y-2;
+  }
+}

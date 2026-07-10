@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
-import { translations } from './translations' // IMPORT PUSAT
+import { getTranslation } from './utils/translation'
 
-export default function Settings({ session, themeMode, setThemeMode, currentLang, setCurrentLang }) {
+export default function Settings({ session, themeMode, setThemeMode, lang = 'en', setLang }) {
   const [loading, setLoading] = useState(false)
   const [toastMessage, setToastMessage] = useState('')
   
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
 
-  const lang = currentLang || 'en'
-  const t = (key) => translations[lang]?.[key] || translations['en'][key]
+  const activeLang = lang || 'en'
+  const t = (key) => getTranslation(activeLang, key)
 
   const showToast = (msg) => {
     setToastMessage(msg)
@@ -26,7 +26,7 @@ export default function Settings({ session, themeMode, setThemeMode, currentLang
         .single()
 
       if (data) {
-        if (data.preferred_language) setCurrentLang(data.preferred_language)
+        if (data.preferred_language) setLang(data.preferred_language)
       } else if (error && error.code === 'PGRST116') {
         await supabase.from('profiles').insert([
           { id: session.user.id, theme_mode: themeMode, preferred_language: lang }
@@ -45,19 +45,19 @@ export default function Settings({ session, themeMode, setThemeMode, currentLang
         .from('profiles')
         .update({ 
           theme_mode: themeMode,
-          preferred_language: lang, 
+          preferred_language: activeLang, 
           updated_at: new Date().toISOString() 
         })
         .eq('id', session.user.id)
 
       if (error) {
-        alert(t('errUpdatePref') + error.message)
+        showToast(t('errUpdatePref') + error.message)
       } else {
         setThemeMode(themeMode)
         showToast(t('toastPrefSuccess'))
       }
     } catch (err) {
-      alert(t('errUnexpected') + err.message)
+      showToast(t('errUnexpected') + err.message)
     } finally {
       setLoading(false)
     }
@@ -66,7 +66,7 @@ export default function Settings({ session, themeMode, setThemeMode, currentLang
   const handleChangePassword = async (e) => {
     e.preventDefault()
     if (newPassword !== confirmPassword) {
-      alert(t('alertPassMatch'))
+      showToast(t('alertPassMatch'))
       return
     }
 
@@ -75,21 +75,21 @@ export default function Settings({ session, themeMode, setThemeMode, currentLang
       const { error } = await supabase.auth.updateUser({ password: newPassword })
 
       if (error) {
-        alert(t('errUpdatePass') + error.message)
+        showToast(t('errUpdatePass') + error.message)
       } else {
         showToast(t('toastPassSuccess'))
         setNewPassword('')
         setConfirmPassword('')
       }
     } catch (err) {
-      alert(t('errUnexpected') + err.message)
+      showToast(t('errUnexpected') + err.message)
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="space-y-8 relative">
+    <div className="page-shell relative">
       {toastMessage && (
         <div className="toast toast-top toast-end z-50 p-4">
           <div className="alert alert-success shadow-lg text-white font-medium flex items-center gap-2 rounded-xl">
@@ -99,9 +99,9 @@ export default function Settings({ session, themeMode, setThemeMode, currentLang
         </div>
       )}
 
-      <div className="flex flex-col gap-1 border-b border-base-100 pb-4">
-        <h1 className="text-2xl md:text-3xl font-black tracking-tight">{t('title')}</h1>
-        <p className="text-sm opacity-60">{t('subtitle')}</p>
+      <div className="page-header">
+        <h1 className="page-title">{t('settings')}</h1>
+        <p className="page-subtitle">{t('settingsDesc')}</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -121,15 +121,15 @@ export default function Settings({ session, themeMode, setThemeMode, currentLang
               <label className="label-text font-semibold mb-1">{t('lblLang')}</label>
               <select 
                 className="select select-bordered w-full text-base"
-                value={lang}
-                onChange={(e) => setCurrentLang(e.target.value)}
+                value={activeLang}
+                onChange={(e) => setLang(e.target.value)}
               >
                 <option value="en">English 🇬🇧</option>
                 <option value="ms">Bahasa Melayu 🇲🇾</option>
                 <option value="zh">简体中文 (马来西亚) 🇲🇾/🇨🇳</option> {/* TAMBAH BARIS INI */}
               </select>
             </div>
-            <button type="submit" disabled={loading} className="btn btn-primary w-full mt-2">
+            <button type="submit" disabled={loading} className="btn btn-primary font-bold w-full mt-2">
               {loading ? <span className="loading loading-spinner"></span> : t('btnSavePref')}
             </button>
           </form>
@@ -146,7 +146,7 @@ export default function Settings({ session, themeMode, setThemeMode, currentLang
               <label className="label-text font-semibold mb-1">{t('lblConfirmPass')}</label>
               <input type="password" required placeholder={t('placeholderReType')} className="input input-bordered w-full text-base" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
             </div>
-            <button type="submit" disabled={loading} className="btn btn-error btn-outline w-full mt-2">
+            <button type="submit" disabled={loading} className="btn btn-error btn-outline font-bold w-full mt-2">
               {loading ? <span className="loading loading-spinner"></span> : t('btnUpdatePass')}
             </button>
           </form>
