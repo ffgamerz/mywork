@@ -460,20 +460,21 @@ export default function Inventory({ session, userRole, allowedModules = {}, lang
                       </span>
                     </div>
                     <div className="flex gap-2">
-                      {/* Butang Dah Habis / Revert Semula: Boleh digunakan oleh Admin & Super Admin */}
-                      <button
-                        type="button"
-                        onClick={() => handleToggleStockFinished(p.id, p.is_finished)}
-                        disabled={loadingSave || !canToggleStockStatus}
-                        className={`btn btn-sm flex-1 font-bold ${
-                          !canToggleStockStatus ? 'btn-disabled opacity-50 cursor-not-allowed' :
-                          p.is_finished ? 'btn-outline btn-success' : 'btn-outline btn-error'
-                        }`}
-                      >
-                        {p.is_finished ? `🔄 ${t('reopenText')}` : `✅ ${t('finishedText')}`}
-                      </button>
+                      {/* Butang Dah Habis / Revert Semula: Hanya untuk Admin & Super Admin */}
+                      {canToggleStockStatus && (
+                        <button
+                          type="button"
+                          onClick={() => handleToggleStockFinished(p.id, p.is_finished)}
+                          disabled={loadingSave}
+                          className={`btn btn-sm flex-1 font-bold ${
+                            p.is_finished ? 'btn-outline btn-success' : 'btn-outline btn-error'
+                          }`}
+                        >
+                          {p.is_finished ? `🔄 ${t('reopenText')}` : `✅ ${t('finishedText')}`}
+                        </button>
+                      )}
                       
-                      {/* Butang "Edit Info" (Tarikh/Batch/Kuantiti): HANYA dipaparkan untuk Super Admin */}
+                      {/* Butang "Edit Info" (Tarikh/Batch/Kuantiti): HANYA untuk Super Admin */}
                       {canEditStockInfo && (
                         <button
                           type="button"
