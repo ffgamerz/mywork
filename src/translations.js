@@ -259,7 +259,20 @@ export const translations = {
     finishedText: "Finished",
     activeStockBadge: "Active Stock Batch",
     noActiveStockBadge: "No Active Stock",
-    wageRateLabel: "Wage: RM"
+    wageRateLabel: "Wage: RM",
+
+    // MyWage.jsx
+    myWage: "My Wage",
+    myWageTitle: "My Wage",
+    myWageDesc: "View your wage records and payment history.",
+    unpaidWageTab: "Unpaid Wage",
+    wageHistoryTab: "Wage History",
+    wageHistoryTitle: "Payment History",
+    totalPayment: "Total Payment",
+    noPaymentHistory: "No payment history found.",
+    paymentDetailTitle: "Payment Details",
+    close: "Close",
+    batches: "Batches"
   },
   ms: {
     // Menu & Umum
@@ -494,7 +507,20 @@ export const translations = {
     finishedText: "Dah Habis",
     activeStockBadge: "Batch Aktif",
     noActiveStockBadge: "Tiada Stok Aktif",
-    wageRateLabel: "Upah: RM"
+    wageRateLabel: "Upah: RM",
+
+    // MyWage.jsx
+    myWage: "Gaji Saya",
+    myWageTitle: "Gaji Saya",
+    myWageDesc: "Lihat rekod gaji dan sejarah pembayaran anda.",
+    unpaidWageTab: "Gaji Belum Bayar",
+    wageHistoryTab: "Sejarah Gaji",
+    wageHistoryTitle: "Sejarah Pembayaran",
+    totalPayment: "Jumlah Pembayaran",
+    noPaymentHistory: "Tiada sejarah pembayaran.",
+    paymentDetailTitle: "Butiran Pembayaran",
+    close: "Tutup",
+    batches: "Batch"
   },
   zh: {
     // Menu & 常用
@@ -756,8 +782,19 @@ export const translations = {
     finishedText: "已完成",
     activeStockBadge: "活跃批次",
     noActiveStockBadge: "无活跃库存",
-    wageRateLabel: "工资: RM"
+    wageRateLabel: "工资: RM",
+
+    // MyWage.jsx
+    myWage: "我的工资",
+    myWageTitle: "我的工资",
+    myWageDesc: "查看您的工资记录和支付历史。",
+    unpaidWageTab: "未付工资",
+    wageHistoryTab: "工资历史",
+    wageHistoryTitle: "支付历史",
+    totalPayment: "总支付金额",
+    noPaymentHistory: "暂无支付历史。",
+    paymentDetailTitle: "支付详情",
+    close: "关闭",
+    batches: "批次"
   }
 }
-
-

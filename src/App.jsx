@@ -6,7 +6,8 @@ import Settings from './Settings'
 import Privileges from './Privileges'
 import Inventory from './Inventory' 
 import ReceiptManager from './ReceiptManager' 
-import WageCalculator from './WageCalculator' 
+import WageCalculator from './WageCalculator'
+import MyWage from './MyWage'
 import { getTranslation } from './utils/translation'
 import ToastBar from './components/ToastBar'
 import { useToast } from './utils/useToast'
@@ -88,6 +89,7 @@ function App() {
   const canAccessInventory = isSuperAdmin || allowedModules['inventory'] === true
   const canAccessReceiptManager = isSuperAdmin || allowedModules['receiptManager'] === true 
   const canAccessWageCalculator = isSuperAdmin || allowedModules['wageCalculator'] === true 
+  const canAccessMyWage = isSuperAdmin || allowedModules['myWage'] === true 
 
   useEffect(() => {
     if (!session) return
@@ -96,6 +98,7 @@ function App() {
     if (activePage === 'inventory' && !canAccessInventory) setActivePage('home')
     if (activePage === 'receiptManager' && !canAccessReceiptManager) setActivePage('home')
     if (activePage === 'wageCalculator' && !canAccessWageCalculator) setActivePage('home')
+    if (activePage === 'myWage' && !canAccessMyWage) setActivePage('home')
   }, [activePage, userRole, allowedModules, session])
 
   const handleThemeChange = async (newMode) => {
@@ -147,12 +150,13 @@ function App() {
     )
   }
 
-  const getActivePageName = () => {
+    const getActivePageName = () => {
     if (activePage === 'home') return t('home')
     if (activePage === 'records') return t('recordManager')
     if (activePage === 'inventory') return t('inventory')
     if (activePage === 'receiptManager') return t('receiptManager')
     if (activePage === 'wageCalculator') return t('wageCalculator') 
+    if (activePage === 'myWage') return t('myWage')
     if (activePage === 'settings') return t('settings')
     if (activePage === 'privileges') return t('privileges')
     return t('home')
@@ -177,6 +181,7 @@ function App() {
               {canAccessInventory && <button onClick={() => setActivePage('inventory')} className={`btn btn-sm ${activePage === 'inventory' ? 'btn-primary' : 'btn-ghost'}`}>{t('inventory')}</button>}
               {canAccessReceiptManager && <button onClick={() => setActivePage('receiptManager')} className={`btn btn-sm ${activePage === 'receiptManager' ? 'btn-primary' : 'btn-ghost'}`}>{t('receiptManager')}</button>}
               {canAccessWageCalculator && <button onClick={() => setActivePage('wageCalculator')} className={`btn btn-sm ${activePage === 'wageCalculator' ? 'btn-primary' : 'btn-ghost'}`}>{t('wageCalculator')}</button>}
+              {canAccessMyWage && <button onClick={() => setActivePage('myWage')} className={`btn btn-sm ${activePage === 'myWage' ? 'btn-primary' : 'btn-ghost'}`}>{t('myWage')}</button>}
               <button onClick={() => setActivePage('settings')} className={`btn btn-sm ${activePage === 'settings' ? 'btn-primary' : 'btn-ghost'}`}>{t('settings')}</button>
               {canAccessPrivileges && <button onClick={() => setActivePage('privileges')} className={`btn btn-sm ${activePage === 'privileges' ? 'btn-primary' : 'btn-ghost'}`}>{t('privileges')}</button>}
               <button onClick={handleLogout} className="btn btn-ghost btn-sm">{t('logOut')}</button>
@@ -241,7 +246,7 @@ function App() {
                     </button>
                   )}
 
-                  {canAccessWageCalculator && (
+                   {canAccessWageCalculator && (
                     <button onClick={() => setActivePage('wageCalculator')} className="minimal-card flex flex-col items-center text-center gap-4 p-6">
                       <div className="minimal-icon">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 15.75V18m-3-3V18m-3-3V18M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM10.5 8.25h3l-3 4.5h3" /></svg>
@@ -252,8 +257,20 @@ function App() {
                       </div>
                     </button>
                   )}
+
+                   {canAccessMyWage && (
+                    <button onClick={() => setActivePage('myWage')} className="minimal-card flex flex-col items-center text-center gap-4 p-6">
+                      <div className="minimal-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 15.75V18m-3-3V18m-3-3V18M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM10.5 8.25h3l-3 4.5h3" /></svg>
+                      </div>
+                      <div>
+                        <h2 className="font-bold text-base md:text-lg">{t('myWage')}</h2>
+                        <p className="text-xs opacity-60 mt-1 hidden sm:block">{t('myWageDesc') || 'View your wage records.'}</p>
+                      </div>
+                    </button>
+                  )}
                </div>
-             </div>
+              </div>
           )}
           
           {activePage === 'records' && canAccessRecords && <AdsRecordManager session={session} lang={lang} />}
@@ -262,6 +279,7 @@ function App() {
           {activePage === 'inventory' && canAccessInventory && <Inventory session={session} userRole={userRole} allowedModules={allowedModules} lang={lang} />}
           {activePage === 'receiptManager' && canAccessReceiptManager && <ReceiptManager session={session} userRole={userRole} allowedModules={allowedModules} lang={lang} />}
           {activePage === 'wageCalculator' && canAccessWageCalculator && <WageCalculator session={session} userRole={userRole} allowedModules={allowedModules} lang={lang} />}
+          {activePage === 'myWage' && canAccessMyWage && <MyWage session={session} lang={lang} />}
         </div>
       </div>
     </>
