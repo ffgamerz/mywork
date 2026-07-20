@@ -142,7 +142,7 @@ export default function ReceiptManager({ session, userRole, allowedModules = {},
 
   const copyTotalAmount = () => {
     if (selectedIds.length === 0) return
-    const total = totalSelectedAmount.toFixed(2).replace(/,/g, '')
+    const total = (totalSelectedAmount + parseFloat(upahAmount || 0)).toFixed(2).replace(/,/g, '')
     navigator.clipboard.writeText(total)
     showToast(t('rmCopiedAlert'))
   }
@@ -187,7 +187,7 @@ export default function ReceiptManager({ session, userRole, allowedModules = {},
             {selectedIds.length > 0 && (
               <div className="flex items-center gap-2">
                 <span className="font-bold text-primary">
-                  {t('rmTotalSelected')}: RM {totalSelectedAmount.toFixed(2)}
+                  {t('rmTotalSelected')}: RM {(totalSelectedAmount + parseFloat(upahAmount || 0)).toFixed(2)}
                 </span>
                 <button onClick={copyTotalAmount} className="btn btn-sm btn-outline font-bold">
                   📋 {t('rmCopyBtn')}
