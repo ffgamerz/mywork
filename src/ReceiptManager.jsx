@@ -142,8 +142,8 @@ export default function ReceiptManager({ session, userRole, allowedModules = {},
 
   const copyTotalAmount = () => {
     if (selectedIds.length === 0) return
-    const total = totalSelectedAmount.toFixed(2)
-    navigator.clipboard.writeText(`RM ${total}`)
+    const total = totalSelectedAmount.toFixed(2).replace(/,/g, '')
+    navigator.clipboard.writeText(total)
     showToast(t('rmCopiedAlert'))
   }
 
