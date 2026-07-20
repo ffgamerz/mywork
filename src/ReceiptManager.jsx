@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { supabase } from './supabaseClient'
 import { getTranslation } from './utils/translation'
 import ToastBar from './components/ToastBar'
@@ -140,6 +140,19 @@ export default function ReceiptManager({ session, userRole, allowedModules = {},
     showToast(t('rmCopiedAlert'))
   }
 
+  const copyTotalAmount = () => {
+    if (selectedIds.length === 0) return
+    const total = totalSelectedAmount.toFixed(2)
+    navigator.clipboard.writeText(`RM ${total}`)
+    showToast(t('rmCopiedAlert'))
+  }
+
+  const totalSelectedAmount = useMemo(() => {
+    return records
+      .filter(r => selectedIds.includes(r.id))
+      .reduce((sum, r) => sum + (r.amount || 0), 0)
+  }, [records, selectedIds])
+
   return (
     <div className="page-shell">
       <ToastBar toast={toast} onClose={hideToast} />
@@ -169,12 +182,20 @@ export default function ReceiptManager({ session, userRole, allowedModules = {},
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 content-card p-6 overflow-x-auto">
-          <div className="flex justify-between items-center mb-4 gap-2">
+          <div className="flex justify-between items-center mb-4 gap-2 flex-wrap">
             <h2 className="text-lg font-black">📋 {t('rmListTitle')}</h2>
             {selectedIds.length > 0 && (
-              <button onClick={handleDeleteSelected} className="btn btn-error btn-sm text-white font-bold">
-                {t('rmDeleteSelected')} ({selectedIds.length})
-              </button>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-primary">
+                  {t('rmTotalSelected')}: RM {totalSelectedAmount.toFixed(2)}
+                </span>
+                <button onClick={copyTotalAmount} className="btn btn-sm btn-outline font-bold">
+                  📋 {t('rmCopyBtn')}
+                </button>
+                <button onClick={handleDeleteSelected} className="btn btn-error btn-sm text-white font-bold">
+                  {t('rmDeleteSelected')} ({selectedIds.length})
+                </button>
+              </div>
             )}
           </div>
 

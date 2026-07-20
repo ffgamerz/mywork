@@ -155,6 +155,7 @@ export const translations = {
     rmConfirmDelete: "Are you sure you want to delete this record?",
     rmConfirmDeleteSel: "Are you sure you want to delete {count} selected records?",
     rmAccessDenied: "Access Denied: You do not have permission to view this page.",
+    rmTotalSelected: "Total Selected",
 
     wageCalculator: "Staff Wage Calculator",
     wageCalcDesc: "Calculate staff wages based on unpaid cooking production batches.",
@@ -430,6 +431,7 @@ export const translations = {
     rmConfirmDelete: "Adakah anda pasti mahu memadam rekod ini?",
     rmConfirmDeleteSel: "Adakah anda pasti mahu memadam {count} rekod yang dipilih?",
     rmAccessDenied: "Akses Disekat: Anda tidak mempunyai kebenaran untuk melihat halaman ini.",
+    rmTotalSelected: "Jumlah Terpilih",
 
     wageCalculator: "Kira Upah Staf",
     wageCalcDesc: "Kira upah pekerja berdasarkan rekod batch masakan yang belum dibayar.",
@@ -678,6 +680,7 @@ export const translations = {
     rmConfirmDelete: "您确定要删除此记录吗？",
     rmConfirmDeleteSel: "您确定要删除所选的 {count} 条记录吗？",
     rmAccessDenied: "拒绝访问：您没有权限查看此页面。",
+    rmTotalSelected: "已选总计",
 
     wageCalculator: "员工工资计算器",
     wageCalcDesc: "根据未付的烹饪生产批次计算员工工资。",
