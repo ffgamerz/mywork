@@ -65,10 +65,21 @@ CREATE TABLE IF NOT EXISTS purchase_plan_items (
   purchase_plan_id UUID NOT NULL REFERENCES purchase_plans(id) ON DELETE CASCADE,
   raw_material_id UUID NOT NULL REFERENCES raw_materials(id) ON DELETE CASCADE,
   total_quantity_needed NUMERIC NOT NULL DEFAULT 0,
+  raw_quantity_needed NUMERIC,
   unit TEXT NOT NULL DEFAULT 'g',
+  raw_unit TEXT,
   estimated_cost NUMERIC(10,2) DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'purchase_plan_items' AND column_name = 'raw_quantity_needed') THEN
+    ALTER TABLE purchase_plan_items ADD COLUMN raw_quantity_needed NUMERIC;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'purchase_plan_items' AND column_name = 'raw_unit') THEN
+    ALTER TABLE purchase_plan_items ADD COLUMN raw_unit TEXT;
+  END IF;
+END $$;
 
 -- 6. PURCHASE PLAN BATCHES (Produk + batch yang diplan)
 CREATE TABLE IF NOT EXISTS purchase_plan_batches (

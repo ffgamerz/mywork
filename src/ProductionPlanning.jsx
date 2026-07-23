@@ -1,12 +1,10 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { supabase } from './supabaseClient'
-import { jsPDF } from 'jspdf'
-import 'jspdf-autotable'
 
 // ─── HELPERS ────────────────────────────────────────────────────
-function calcIngredientCost(material, qtyUsed) {
+function calcIngredientCost(material, qtyUsed, priceOverride = null) {
   if (!material) return 0
-  const price = parseFloat(material.price) || 0
+  const price = priceOverride != null ? (parseFloat(priceOverride) || 0) : (parseFloat(material.price) || 0)
   const used = parseFloat(qtyUsed) || 0
 
   if (material.calculation_mode === 'fraction') {
@@ -43,6 +41,26 @@ function formatDisplayQty(qty, unit, material) {
     return { qty: (val / 1000).toFixed(3), unit: 'L', isRoundedUp: false }
   }
   return { qty: val.toFixed(2), unit, isRoundedUp: false }
+}
+
+function formatPurchaseQty(item) {
+  const val = parseFloat(item.qty) || 0
+  if (item.rawQty != null && item.rawUnit) {
+    return {
+      qty: val.toFixed(2),
+      unit: item.unit,
+      isRoundedUp: true,
+      note: `Rounded up from ${parseFloat(item.rawQty).toFixed(2)} ${item.rawUnit}`,
+    }
+  }
+
+  if (item.unit === 'g' && val >= 1000) {
+    return { qty: (val / 1000).toFixed(3), unit: 'kg', isRoundedUp: false }
+  }
+  if (item.unit === 'ml' && val >= 1000) {
+    return { qty: (val / 1000).toFixed(3), unit: 'L', isRoundedUp: false }
+  }
+  return { qty: val.toFixed(2), unit: item.unit, isRoundedUp: false }
 }
 
 // ─── SEARCHABLE SELECT ──────────────────────────────────────────
@@ -125,6 +143,34 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
   const [purchaseRecords, setPurchaseRecords] = useState([])
   const [selectedPurchase, setSelectedPurchase] = useState(null)
   const [purchaseNotes, setPurchaseNotes] = useState('')
+  const [manualQty, setManualQty] = useState({})
+
+  const updateManualQty = (materialId, value) => {
+    setManualQty(prev => ({ ...prev, [materialId]: value }))
+  }
+
+  const getDisplayQty = (item) => {
+    if (manualQty[item.material_id] !== undefined && manualQty[item.material_id] !== '') {
+      const val = parseFloat(manualQty[item.material_id])
+      return isNaN(val) ? item.qty : val
+    }
+    return item.qty
+  }
+
+  const getItemCost = (item) => {
+    const currentQty = getDisplayQty(item)
+
+    if (!item.rawMaterial) {
+      return parseFloat(item.cost || 0)
+    }
+
+    if (item.rawMaterial.calculation_mode === 'fraction') {
+      const perUnit = parseFloat(item.rawMaterial.fraction_grams) || 1
+      return calcIngredientCost(item.rawMaterial, currentQty * perUnit)
+    }
+
+    return calcIngredientCost(item.rawMaterial, currentQty)
+  }
 
   const fetchMaterials = async () => {
     const { data, error } = await supabase.from('raw_materials').select('*').order('name')
@@ -143,7 +189,7 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
   }
 
   const fetchPurchaseRecords = async () => {
-    const { data, error } = await supabase.from('purchase_plans').select('*, purchase_plan_items(*, raw_material:raw_material_id(name)), purchase_plan_batches(*, inventory:inventory_id(product_name))').order('created_at', { ascending: false })
+    const { data, error } = await supabase.from('purchase_plans').select('*, purchase_plan_items(*, raw_material:raw_material_id(name, price, calculation_mode, fraction_unit)), purchase_plan_batches(*, inventory:inventory_id(product_name))').order('created_at', { ascending: false })
     if (!error && data) setPurchaseRecords(data)
   }
 
@@ -259,48 +305,99 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
 
     const items = Object.values(agg).map(a => {
       const mat = a.mat
-      let displayQty = a.qty, displayUnit = a.unit, finalCost = calcIngredientCost(mat, a.qty)
       if (mat.calculation_mode === 'fraction') {
         const perUnit = parseFloat(mat.fraction_grams) || 1
         const unitsNeeded = Math.ceil(a.qty / perUnit)
-        // For cost: use rounded-up quantity
-        finalCost = calcIngredientCost(mat, unitsNeeded * perUnit)
-        // For display: keep original qty, but show unit as botol/guni if >= perUnit
-        displayQty = a.qty
-        displayUnit = a.unit
+        const finalCost = calcIngredientCost(mat, unitsNeeded * perUnit)
+        return {
+          material_id: mat.id,
+          material_name: mat.name,
+          qty: unitsNeeded,
+          unit: mat.unit,
+          cost: finalCost,
+          rawMaterial: mat,
+          recipeQty: a.recipeQty,
+          rawQty: a.qty,
+          rawUnit: mat.fraction_unit,
+        }
       }
-      return { material_id: mat.id, material_name: mat.name, qty: displayQty, unit: displayUnit, cost: finalCost, rawMaterial: mat, recipeQty: a.recipeQty }
+
+      return {
+        material_id: mat.id,
+        material_name: mat.name,
+        qty: a.qty,
+        unit: a.unit,
+        cost: calcIngredientCost(mat, a.qty),
+        rawMaterial: mat,
+        recipeQty: a.recipeQty,
+      }
     })
 
     const totalCost = items.reduce((s, i) => s + i.cost, 0)
     setPurchaseSummary({ items, totalCost, batchDetails })
+    setManualQty({})
     setLoading(false)
   }
 
   const handleSavePurchase = async () => {
     if (!purchaseSummary) return showMsg('Generate summary first')
     setLoading(true)
-    const { data: plan, error: planErr } = await supabase.from('purchase_plans').insert([{ user_id: session.user.id, notes: purchaseNotes || null, total_estimated_cost: purchaseSummary.totalCost }]).select().single()
+    const itemsToSave = purchaseSummary.items.map(i => {
+      const qty = getDisplayQty(i)
+      return { purchase_plan_id: null, raw_material_id: i.material_id, total_quantity_needed: qty, raw_quantity_needed: i.rawQty ?? null, unit: i.unit, raw_unit: i.rawUnit ?? null, estimated_cost: getItemCost(i) }
+    })
+    const totalCost = itemsToSave.reduce((s, i) => s + i.estimated_cost, 0)
+    const { data: plan, error: planErr } = await supabase.from('purchase_plans').insert([{ user_id: session.user.id, notes: purchaseNotes || null, total_estimated_cost: totalCost }]).select().single()
     if (planErr) { showMsg('Error: ' + planErr.message); setLoading(false); return }
-    await supabase.from('purchase_plan_items').insert(purchaseSummary.items.map(i => ({ purchase_plan_id: plan.id, raw_material_id: i.material_id, total_quantity_needed: i.qty, unit: i.unit, estimated_cost: i.cost })))
+    await supabase.from('purchase_plan_items').insert(itemsToSave.map(i => ({ ...i, purchase_plan_id: plan.id })))
     await supabase.from('purchase_plan_batches').insert(purchaseSummary.batchDetails.map(b => ({ purchase_plan_id: plan.id, inventory_id: b.inventory_id, batch_count: b.batch_count })))
     showMsg('Purchase plan saved!')
-    setPurchaseSummary(null); setPurchaseProducts([]); setPurchaseNotes(''); fetchPurchaseRecords()
+    setPurchaseSummary(null); setPurchaseProducts([]); setPurchaseNotes(''); setManualQty({}); fetchPurchaseRecords()
     setLoading(false)
   }
 
-  const buildPdfRows = (items) => {
+  const handleDeletePurchase = async (purchaseId) => {
+    if (!confirm('Delete this purchase record? This cannot be undone.')) return
+    setLoading(true)
+    const { error } = await supabase.from('purchase_plans').delete().eq('id', purchaseId)
+    if (error) {
+      showMsg('Error: ' + error.message)
+      setLoading(false)
+      return
+    }
+    showMsg('Purchase record deleted!')
+    if (selectedPurchase?.id === purchaseId) setSelectedPurchase(null)
+    fetchPurchaseRecords()
+    setLoading(false)
+  }
+
+  const buildPdfRows = (items, manualQtys = {}) => {
     return items.map((item) => {
-      const display = formatDisplayQty(item.qty, item.unit, item.rawMaterial)
+      const qty = manualQtys[item.material_id] !== undefined && manualQtys[item.material_id] !== ''
+        ? parseFloat(manualQtys[item.material_id])
+        : (item.qty ?? item.total_quantity_needed)
+      const normalizedItem = {
+        qty,
+        unit: item.unit,
+        rawMaterial: item.rawMaterial ?? item.raw_material,
+        cost: parseFloat(item.cost ?? item.estimated_cost) || 0,
+        material_name: item.material_name ?? item.raw_material?.name ?? 'Unknown',
+        recipeQty: item.recipeQty ?? 0,
+        rawQty: item.rawQty ?? item.raw_quantity_needed ?? null,
+        rawUnit: item.rawUnit ?? item.raw_unit ?? item.raw_material?.fraction_unit ?? item.unit,
+      }
+
+      const display = formatPurchaseQty(normalizedItem)
+      const itemCost = normalizedItem.rawMaterial && normalizedItem.rawMaterial.price != null
+        ? getItemCost(normalizedItem)
+        : normalizedItem.cost
       const qtyText = `${display.qty} ${display.unit}`
-      const noteText = display.isRoundedUp && item.rawMaterial
-        ? `Rounded up from ${parseFloat(item.qty).toFixed(2)} ${item.rawMaterial.fraction_unit || item.unit}`
-        : ''
+      const noteText = display.isRoundedUp ? display.note : ''
       return {
-        material: item.material_name,
+        material: normalizedItem.material_name,
         quantity: qtyText,
         unit: display.unit,
-        cost: `RM ${item.cost.toFixed(2)}`,
+        cost: `RM ${itemCost.toFixed(2)}`,
         note: noteText,
       }
     })
@@ -316,62 +413,74 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
     } : purchaseSummary
 
     if (!summary || !summary.items || summary.items.length === 0) return showMsg('No purchase summary available to export.')
-    const doc = new jsPDF({ unit: 'pt' })
-    const pageWidth = doc.internal.pageSize.getWidth()
-    const pageMargin = 40
-    doc.setFontSize(18)
-    doc.text('Production Shopping List', pageWidth / 2, 50, { align: 'center' })
-    doc.setFontSize(10)
-    doc.text(`Date: ${summary.planDate}`, pageWidth / 2, 66, { align: 'center' })
-    if (summary.notes) {
-      doc.text(`Notes: ${summary.notes}`, pageMargin, 88)
-    }
 
-    let y = summary.notes ? 108 : 96
-    doc.setFontSize(11)
-    doc.text('Products / Batches:', pageMargin, y)
-    y += 16
-    summary.batchDetails.forEach((b) => {
+    const windowTitle = record ? `Purchase Record ${record.id || ''}` : 'Shopping List Preview'
+    const rows = record ? buildPdfRows(summary.items) : buildPdfRows(summary.items, manualQty)
+    const itemsHtml = rows.map((row) => {
+      const noteHtml = row.note ? `<div class="item-note">${row.note}</div>` : ''
+      return `<tr><td>${row.material}${noteHtml}</td><td>${row.quantity}</td><td>${row.cost}</td></tr>`
+    }).join('')
+
+    const batchesHtml = summary.batchDetails.map((b) => {
       const prod = products.find((p) => p.id === b.inventory_id)
       const productLabel = prod?.product_name || b.inventory?.product_name || 'Unknown'
-      doc.setFontSize(10)
-      doc.text(`• ${productLabel} — ${b.batch_count} batch(es)`, pageMargin + 8, y)
-      y += 14
-    })
+      return `<div class="batch-line">• ${productLabel} — ${b.batch_count} batch(es)</div>`
+    }).join('')
 
-    const tableRows = buildPdfRows(summary.items)
-    const body = tableRows.map((row) => [row.material, row.quantity, row.cost])
-    const foot = [['', 'TOTAL', `RM ${summary.totalCost.toFixed(2)}`]]
+    const notesHtml = summary.notes ? `<div class="section-row"><span class="section-label">Notes:</span><span>${summary.notes}</span></div>` : ''
+    const html = `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>${windowTitle}</title>
+  <style>
+    body { margin: 0; background: #f6f6f6; color: #111; font-family: Arial, sans-serif; }
+    .page { width: 210mm; min-height: 297mm; padding: 20mm; margin: 10mm auto; background: #fff; box-shadow: 0 0 12px rgba(0,0,0,0.08); }
+    h1 { margin: 0 0 8px; font-size: 22px; letter-spacing: -0.5px; }
+    .meta { margin: 0 0 18px; font-size: 13px; color: #444; }
+    .section-label { font-weight: 700; margin-right: 6px; }
+    .section-row { margin-bottom: 10px; }
+    .batch-line { margin-left: 14px; margin-bottom: 4px; font-size: 13px; }
+    .preview-table { width: 100%; border-collapse: collapse; margin-top: 18px; }
+    .preview-table th, .preview-table td { border: 1px solid #ccc; padding: 10px 12px; text-align: left; font-size: 13px; }
+    .preview-table th { background: #f3f4f6; }
+    .item-note { margin-top: 4px; font-size: 11px; color: #555; }
+    .summary { margin-top: 16px; display: flex; justify-content: flex-end; gap: 10px; font-size: 14px; font-weight: 700; }
+    .summary-label { color: #555; font-weight: 500; }
+    @page { size: A4 portrait; margin: 20mm; }
+    @media print {
+      body { background: #fff; }
+      .page { box-shadow: none; margin: 0; width: auto; min-height: auto; padding: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <h1>${windowTitle}</h1>
+    <div class="meta">Date: ${summary.planDate}</div>
+    ${notesHtml}
+    <div class="section-row"><span class="section-label">Products / Batches:</span>${batchesHtml || 'None'}</div>
+    <table class="preview-table">
+      <thead><tr><th>Material</th><th>Qty Needed</th><th>Estimated Cost</th></tr></thead>
+      <tbody>${itemsHtml}</tbody>
+    </table>
+    <div class="summary"><span class="summary-label">TOTAL:</span><span>RM ${summary.totalCost.toFixed(2)}</span></div>
+  </div>
+</body>
+</html>`
 
-    doc.autoTable({
-      startY: y + 10,
-      head: [['Material', 'Qty Needed', 'Est. Cost']],
-      body,
-      foot,
-      theme: 'grid',
-      headStyles: { fillColor: [59, 130, 246], textColor: 255 },
-      footStyles: { fillColor: [30, 30, 30], textColor: 255, fontStyle: 'bold' },
-      styles: { fontSize: 10 },
-      didDrawCell: (data) => {
-        if (data.row.section === 'body' && tableRows[data.row.index].note && data.column.index === 0) {
-          doc.setFontSize(8)
-          doc.setTextColor(100)
-          doc.text(`(${tableRows[data.row.index].note})`, data.cell.x + 2, data.cell.y + data.cell.height - 4)
-          doc.setTextColor(0)
-          doc.setFontSize(10)
-        }
-      },
-    })
-
-    const fileName = record ? `Purchase_Record_${record.id || Date.now()}.pdf` : `Shopping_List_${Date.now()}.pdf`
-    doc.save(fileName)
+    const previewWindow = window.open('', '_blank')
+    if (!previewWindow) return showMsg('Unable to open print preview. Please allow pop-ups for this site.')
+    previewWindow.document.write(html)
+    previewWindow.document.close()
+    previewWindow.focus()
   }
 
   const viewPurchaseDetail = (record) => setSelectedPurchase(record)
 
   if (!hasAccess) return <div className="alert-unauthorized"><div><span>🔒 Access Denied: Unauthorized.</span></div></div>
 
-  const tabs = [{ id: 'materials', label: '🧂 Bahan' }, { id: 'recipes', label: '📖 Resepi' }, { id: 'purchase', label: '🛒 Pembelian' }, { id: 'records', label: '📋 Rekod' }]
+  const tabs = [{ id: 'materials', label: '🧂 Materials' }, { id: 'recipes', label: '📖 Recipes' }, { id: 'purchase', label: '🛒 Purchase' }, { id: 'records', label: '📋 Records' }]
 
   return (
     <div className="page-shell relative">
@@ -407,11 +516,11 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
                 </div>
                 <div className="text-sm space-y-1.5">
                   <div className="flex justify-between items-center"><span className="opacity-60">Unit:</span><span className="font-bold">{m.unit}</span></div>
-                  <div className="flex justify-between items-center"><span className="opacity-60">Harga:</span><span className="font-bold text-accent text-base">RM {parseFloat(m.price).toFixed(2)}</span></div>
+                  <div className="flex justify-between items-center"><span className="opacity-60">Price:</span><span className="font-bold text-accent text-base">RM {parseFloat(m.price).toFixed(2)}</span></div>
                   {m.calculation_mode === 'fraction' ? (
                     <>
                       <div className="flex justify-between items-center"><span className="opacity-60">1 {m.unit} =</span><span className="font-bold">{m.fraction_grams}{m.fraction_unit}</span></div>
-                      <div className="flex justify-between items-center border-t border-base-200/40 pt-1.5 mt-1"><span className="opacity-60">Harga/{m.fraction_unit}:</span><span className="font-mono font-bold text-xs text-warning">RM {(parseFloat(m.price) / parseFloat(m.fraction_grams || 1)).toFixed(4)}</span></div>
+                      <div className="flex justify-between items-center border-t border-base-200/40 pt-1.5 mt-1"><span className="opacity-60">Price/{m.fraction_unit}:</span><span className="font-mono font-bold text-xs text-warning">RM {(parseFloat(m.price) / parseFloat(m.fraction_grams || 1)).toFixed(4)}</span></div>
                     </>
                   ) : (
                     <div className="flex justify-between items-center border-t border-base-200/40 pt-1.5 mt-1"><span className="opacity-60">Mode:</span><span className="badge badge-sm badge-info font-bold">Unit</span></div>
@@ -470,7 +579,7 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
                 <option value="">-- Select Product --</option>
                 {products.map(p => <option key={p.id} value={p.id}>{p.product_name}</option>)}
               </select>
-              {selectedProduct && (<div className="badge badge-ghost gap-1 p-3 font-bold w-full justify-center">{currentRecipeId ? '✅ Resipi sedia — tambah bahan di sebelah' : '🔄 Pilih produk untuk mula'}</div>)}
+              {selectedProduct && (<div className="badge badge-ghost gap-1 p-3 font-bold w-full justify-center">{currentRecipeId ? '✅ Recipe ready — add ingredients on the side' : '🔄 Select a product to start'}</div>)}
             </div>
           </div>
           <div className="lg:col-span-2">
@@ -536,30 +645,58 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
                 <div className="bg-base-200/50 p-3 rounded-xl text-sm">
                   {purchaseSummary.batchDetails.map((b, i) => { const prod = products.find(p => p.id === b.inventory_id); return <div key={i} className="font-bold">• {prod?.product_name} — {b.batch_count} batch(es)</div> })}
                 </div>
-                <div className="divide-y divide-base-200 max-h-64 overflow-y-auto">
-                  {purchaseSummary.items.map((item, i) => {
-                    const display = formatDisplayQty(item.qty, item.unit, item.rawMaterial)
-                    return (
-                      <div key={i} className="flex justify-between py-2 text-sm">
-                        <div>
-                          <span className="font-bold">{item.material_name}</span>
-                          {display.isRoundedUp ? (
-                            <div className="flex flex-col mt-0.5">
-                              <span><span className="font-bold text-warning">{display.qty}</span><span className="opacity-60"> {display.unit}</span></span>
-                              <span className="text-[10px] opacity-40">← {item.recipeQty.toFixed(2)}{display.rawUnit} (per batch)</span>
-                            </div>
-                          ) : (
-                            <span className="ml-2 opacity-60">{display.qty} {display.unit}</span>
-                          )}
-                        </div>
-                        <span className="font-mono font-bold text-accent">RM {item.cost.toFixed(2)}</span>
-                      </div>
-                    )
-                  })}
+                <div className="overflow-x-auto">
+                  <table className="table w-full table-sm">
+                    <thead className="bg-base-200">
+                      <tr>
+                        <th>Material</th>
+                        <th className="text-center">Original</th>
+                        <th className="text-center">Buy</th>
+                        <th className="text-center">Unit</th>
+                        <th className="text-right">Cost (RM)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {purchaseSummary.items.map((item, i) => {
+                        const display = formatPurchaseQty(item)
+                        const currentQty = getDisplayQty(item)
+                        const isManualQty = manualQty[item.material_id] !== undefined && manualQty[item.material_id] !== ''
+                        const originalQtyText = item.rawQty != null && item.rawUnit ? `${parseFloat(item.rawQty).toFixed(2)} ${item.rawUnit}` : `${item.qty.toFixed(2)} ${item.unit}`
+                        const currentCost = getItemCost(item)
+                        return (
+                          <tr key={i} className="hover:bg-base-200/30">
+                            <td className="font-bold">{item.material_name}</td>
+                            <td className="text-center text-sm opacity-70">{originalQtyText}</td>
+                            <td className="text-center">
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                className={`input input-xs input-bordered w-20 text-center ${isManualQty ? 'border-warning' : ''}`}
+                                value={isManualQty ? manualQty[item.material_id] : ''}
+                                onChange={(e) => updateManualQty(item.material_id, e.target.value)}
+                                placeholder={item.qty.toFixed(2)}
+                              />
+                            </td>
+                            <td className="text-center opacity-60">{display.unit}</td>
+                            <td className="text-right font-mono font-bold text-accent">RM {currentCost.toFixed(2)}</td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
                 </div>
-                <div className="border-t border-base-300 pt-3 flex justify-between items-center"><span className="font-black text-lg">TOTAL</span><span className="font-mono font-black text-xl text-primary">RM {purchaseSummary.totalCost.toFixed(2)}</span></div>
-                <div className="form-control"><label className="label-text font-semibold mb-1">Notes (optional)</label><input type="text" className="input input-bordered w-full rounded-xl text-sm" placeholder="e.g., Beli untuk event hujung minggu" value={purchaseNotes} onChange={(e) => setPurchaseNotes(e.target.value)} /></div>
-                <div className="flex gap-2 pt-2"><button onClick={handleSavePurchase} disabled={loading} className="btn btn-accent text-white font-bold flex-1">💾 Save Record</button><button onClick={handleDownloadPDF} className="btn btn-primary text-white font-bold">📥 PDF</button></div>
+                <div className="border-t border-base-300 pt-3 flex justify-between items-center">
+                  <span className="font-black text-lg">TOTAL</span>
+                  <span className="font-mono font-black text-xl text-primary">RM {purchaseSummary.items.reduce((sum, item) => sum + getItemCost(item), 0).toFixed(2)}</span>
+                </div>
+                <div className="form-control">
+                  <label className="label-text font-semibold mb-1">Notes (optional)</label>
+                  <input type="text" className="input input-bordered w-full rounded-xl text-sm" placeholder="e.g., Purchase for weekend event" value={purchaseNotes} onChange={(e) => setPurchaseNotes(e.target.value)} />
+                </div>
+                <div className="flex gap-2 pt-2">
+                  <button onClick={handleSavePurchase} disabled={loading} className="btn btn-accent text-white font-bold w-full">💾 Save Record</button>
+                </div>
               </div>
             ) : (<div className="text-center py-12 opacity-50 font-bold">Select products and batches on the left, then click Generate.</div>)}
           </div>
@@ -573,12 +710,47 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
             <div>
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                 <button onClick={() => setSelectedPurchase(null)} className="btn btn-sm btn-ghost">← Back to Records</button>
-                <button onClick={() => handleDownloadPDF(selectedPurchase)} className="btn btn-sm btn-primary text-white">📥 Download PDF</button>
+                <div className="flex gap-2 justify-end">
+                  <button onClick={() => handleDeletePurchase(selectedPurchase.id)} className="btn btn-sm btn-error text-white">🗑️ Delete</button>
+                  <button onClick={() => handleDownloadPDF(selectedPurchase)} className="btn btn-sm btn-primary text-white">📥 Download PDF</button>
+                </div>
               </div>
               <div className="content-card p-4 space-y-3">
                 <div className="flex justify-between items-start"><div><h2 className="font-bold text-lg">Purchase Record</h2><p className="text-sm opacity-60">{selectedPurchase.plan_date} {selectedPurchase.notes && `— ${selectedPurchase.notes}`}</p></div><span className="font-mono font-black text-xl text-primary">RM {parseFloat(selectedPurchase.total_estimated_cost || 0).toFixed(2)}</span></div>
                 <div className="border-t border-base-200 pt-3"><h3 className="font-bold text-sm mb-2">Batches:</h3>{(selectedPurchase.purchase_plan_batches || []).map((b, i) => { const prod = products.find(p => p.id === b.inventory_id); return <div key={i} className="text-sm font-bold">• {prod?.product_name || b.inventory?.product_name || 'Unknown'} — {b.batch_count} batch(es)</div> })}</div>
-                <div className="border-t border-base-200 pt-3"><h3 className="font-bold text-sm mb-2">Materials:</h3><div className="divide-y divide-base-200">{(selectedPurchase.purchase_plan_items || []).map((item, i) => (<div key={i} className="flex justify-between py-2 text-sm"><span className="font-bold">{item.raw_material?.name || 'Unknown'}</span><div className="text-right"><span className="opacity-60">{item.total_quantity_needed} {item.unit}</span><span className="ml-2 font-mono font-bold text-accent">RM {parseFloat(item.estimated_cost).toFixed(2)}</span></div></div>))}</div></div>
+                <div className="border-t border-base-200 pt-3">
+                  <h3 className="font-bold text-sm mb-3">Materials:</h3>
+                  <div className="overflow-x-auto">
+                    <table className="table w-full table-compact table-zebra text-sm">
+                      <thead>
+                        <tr>
+                          <th>Material</th>
+                          <th className="text-center">Qty</th>
+                          <th className="text-center">Unit</th>
+                          <th className="text-right">Cost (RM)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(selectedPurchase.purchase_plan_items || []).map((item, i) => {
+                          const display = formatPurchaseQty({
+                            qty: item.total_quantity_needed,
+                            unit: item.unit,
+                            rawQty: item.raw_quantity_needed || null,
+                            rawUnit: item.raw_unit || item.raw_material?.fraction_unit || null,
+                          })
+                          return (
+                            <tr key={i}>
+                              <td className="font-bold">{item.raw_material?.name || 'Unknown'}</td>
+                              <td className="text-center text-sm opacity-80">{display.qty}</td>
+                              <td className="text-center text-sm opacity-80">{display.unit}</td>
+                              <td className="text-right font-mono font-bold text-accent">RM {parseFloat(item.estimated_cost).toFixed(2)}</td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
             </div>
           ) : (
@@ -586,7 +758,13 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
               {purchaseRecords.length === 0 ? (<div className="text-center py-12 opacity-50 font-bold">No purchase records yet.</div>) : (
                 purchaseRecords.map((rec, i) => (
                   <div key={rec.id || i} className="content-card p-4 cursor-pointer hover:bg-base-200/50 transition-colors" onClick={() => viewPurchaseDetail(rec)}>
-                    <div className="flex justify-between items-center"><div><span className="font-bold text-sm">{rec.plan_date}</span>{rec.notes && <span className="ml-2 text-sm opacity-60">— {rec.notes}</span>}</div><span className="font-mono font-black text-primary">RM {parseFloat(rec.total_estimated_cost || 0).toFixed(2)}</span></div>
+                    <div className="flex justify-between items-center">
+                      <div><span className="font-bold text-sm">{rec.plan_date}</span>{rec.notes && <span className="ml-2 text-sm opacity-60">— {rec.notes}</span>}</div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-black text-primary">RM {parseFloat(rec.total_estimated_cost || 0).toFixed(2)}</span>
+                        <button onClick={(e) => { e.stopPropagation(); handleDeletePurchase(rec.id) }} className="btn btn-xs btn-error text-white">✕</button>
+                      </div>
+                    </div>
                     <div className="text-xs opacity-50 mt-1">{(rec.purchase_plan_batches || []).length} product(s) · {(rec.purchase_plan_items || []).length} material(s)</div>
                   </div>
                 ))
