@@ -17,12 +17,12 @@ export default function Inventory({ session, userRole, allowedModules = {} }) {
   const [productions, setProductions] = useState([])
   const [staffList, setStaffList] = useState([])
   
-  // State untuk Tambah/Edit Stok
+  // State for Add/Edit Stock
   const [isStockModalOpen, setIsStockModalOpen] = useState(false)
   const [isEditStockModalOpen, setIsEditStockModalOpen] = useState(false)
   const [editingStock, setEditingStock] = useState(null)
   
-  // State untuk Edit Produk
+  // State for Edit Product
   const [isEditProductModalOpen, setIsEditProductModalOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState(null)
   const [editWageRate, setEditWageRate] = useState('0.00')
@@ -45,10 +45,10 @@ export default function Inventory({ session, userRole, allowedModules = {} }) {
   // 2. Akses Masuk Halaman: Super Admin atau sesiapa yang ada privilege modul
   const hasPageAccess = isSuperAdmin || allowedModules['inventory'] === true || isAdmin
 
-  // 3. Kuasa Tambah/Edit Maklumat Stok: HANYA Super Admin
+  // 3. Permission to Add/Edit Stock Info: ONLY Super Admin
   const canEditStockInfo = isSuperAdmin
 
-  // 4. Kuasa Set Stok Habis / Revert Semula: Super Admin & Admin boleh buat
+  // 4. Permission to Set Stock Finished / Revert: Super Admin & Admin can do
   const canToggleStockStatus = isSuperAdmin || isAdmin
   // ───────────────────────────────────────────────────────────────────────────
 
@@ -366,7 +366,7 @@ export default function Inventory({ session, userRole, allowedModules = {} }) {
               </div>
             </div>
 
-            {/* Butang Tambah Stok atas - Hanya muncul untuk Super Admin */}
+            {/* Add Stock button at top - visible to Super Admin only */}
             {canEditStockInfo && (
               <button onClick={() => {
                 setProdDate(new Date().toISOString().split('T')[0]);
@@ -379,7 +379,7 @@ export default function Inventory({ session, userRole, allowedModules = {} }) {
             )}
           </div>
 
-          {/* Butang Tambah Stok bawah (Mobile) - Hanya muncul untuk Super Admin */}
+          {/* Add Stock button at bottom (mobile) - visible to Super Admin only */}
           {canEditStockInfo && (
             <div className="block sm:hidden w-full pt-1">
               <button onClick={() => {
@@ -457,7 +457,7 @@ export default function Inventory({ session, userRole, allowedModules = {} }) {
                       </span>
                     </div>
                     <div className="flex gap-2">
-                      {/* Butang Dah Habis / Revert Semula: Hanya untuk Admin & Super Admin */}
+                      {/* Finished / Reopen button: only for Admin & Super Admin */}
                       {canToggleStockStatus && (
                         <button
                           type="button"
@@ -471,7 +471,7 @@ export default function Inventory({ session, userRole, allowedModules = {} }) {
                         </button>
                       )}
                       
-                      {/* Butang "Edit Info" (Tarikh/Batch/Kuantiti): HANYA untuk Super Admin */}
+                      {/* Edit Info button (Date/Batch/Quantity): only for Super Admin */}
                       {canEditStockInfo && (
                         <button
                           type="button"
@@ -501,7 +501,7 @@ export default function Inventory({ session, userRole, allowedModules = {} }) {
           </div>
         )}
 
-        {/* Modal Tambah Stok - Sekatan Super Admin */}
+        {/* Add Stock Modal - Super Admin restriction */}
         {isStockModalOpen && canEditStockInfo && (
           <div className="modal modal-open">
             <div className="modal-backdrop" onClick={() => setIsStockModalOpen(false)}></div>
@@ -542,7 +542,7 @@ export default function Inventory({ session, userRole, allowedModules = {} }) {
           </div>
         )}
 
-        {/* Modal Edit Stok - Sekatan Super Admin */}
+        {/* Edit Stock Modal - Super Admin restriction */}
         {isEditStockModalOpen && canEditStockInfo && editingStock && (
           <div className="modal modal-open">
             <div className="modal-backdrop" onClick={() => { setIsEditStockModalOpen(false); setEditingStock(null); }}></div>
@@ -605,7 +605,7 @@ export default function Inventory({ session, userRole, allowedModules = {} }) {
           <p className="page-subtitle">Monitor product batches and current physical stock levels.</p>
         </div>
 
-        {/* Butang Tambah Produk Utama - Hanya dipaparkan untuk Super Admin */}
+        {/* Add Main Product button - only shown to Super Admin */}
         {canEditStockInfo && (
           <button onClick={() => { setIsModalOpen(true); setProductName(''); setExpiryMonth('12'); setWageRate('0.00'); }} className="btn btn-primary font-bold gap-2 self-start sm:self-auto">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4">
@@ -655,7 +655,7 @@ export default function Inventory({ session, userRole, allowedModules = {} }) {
                 <button onClick={() => setSelectedProduct(prod)} className="btn btn-sm flex-1 btn-outline font-bold">
                   Stock & Cooking Record ↗
                 </button>
-                {/* Butang Edit Produk - Hanya untuk Super Admin */}
+                {/* Edit Product button - only for Super Admin */}
                 {canEditStockInfo && (
                   <button 
                     type="button"
@@ -671,7 +671,7 @@ export default function Inventory({ session, userRole, allowedModules = {} }) {
         })}
       </div>
 
-      {/* Modal Tambah Produk Utama - Sekatan Super Admin */}
+      {/* Add Main Product Modal - Super Admin restriction */}
       {isModalOpen && canEditStockInfo && (
         <div className="modal modal-open">
           <div className="modal-backdrop" onClick={() => { setIsModalOpen(false); setProductName(''); setExpiryMonth('12'); setWageRate('0.00'); }}></div>
@@ -699,7 +699,7 @@ export default function Inventory({ session, userRole, allowedModules = {} }) {
         </div>
       )}
 
-      {/* Modal Edit Produk - Sekatan Super Admin */}
+      {/* Edit Product Modal - Super Admin restriction */}
       {isEditProductModalOpen && canEditStockInfo && editingProduct && (
         <div className="modal modal-open">
           <div className="modal-backdrop" onClick={() => { setIsEditProductModalOpen(false); setEditingProduct(null); }}></div>

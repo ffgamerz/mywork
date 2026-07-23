@@ -8,7 +8,7 @@ export default function ReceiptManager({ session, userRole, allowedModules = {} 
   const [records, setRecords] = useState([])
   const [receiptDate, setReceiptDate] = useState(new Date().toISOString().split('T')[0])
   const [amount, setAmount] = useState('')
-  const [upahAmount, setUpahAmount] = useState('35.00')
+  const [wageAmount, setWageAmount] = useState('35.00')
   const [editingId, setEditingId] = useState(null)
   const [selectedIds, setSelectedIds] = useState([])
   const [generatedText, setGeneratedText] = useState('')
@@ -119,14 +119,14 @@ export default function ReceiptManager({ session, userRole, allowedModules = {} 
 
     const sorted = [...selectedRecords].sort((a, b) => new Date(a.receipt_date) - new Date(b.receipt_date))
 
-    let text = `Beli Barang Untuk Pes Production\n`
+    let text = `Purchase Items for Pes Production\n`
     sorted.forEach((rec, index) => {
       const [year, month, day] = rec.receipt_date.split('-')
       const formattedDate = `${parseInt(day)}/${parseInt(month)}/${year}`
-      text += `Resit ${index + 1} : RM${rec.amount.toFixed(2)} - ${formattedDate}\n`
+      text += `Receipt ${index + 1}: RM${rec.amount.toFixed(2)} - ${formattedDate}\n`
     })
 
-    text += `\nUpah : RM${parseFloat(upahAmount || 0).toFixed(2)}`
+    text += `\nWage: RM${parseFloat(wageAmount || 0).toFixed(2)}`
     setGeneratedText(text)
   }
 
@@ -138,7 +138,7 @@ export default function ReceiptManager({ session, userRole, allowedModules = {} 
 
   const copyTotalAmount = () => {
     if (selectedIds.length === 0) return
-    const total = (totalSelectedAmount + parseFloat(upahAmount || 0)).toFixed(2).replace(/,/g, '')
+    const total = (totalSelectedAmount + parseFloat(wageAmount || 0)).toFixed(2).replace(/,/g, '')
     navigator.clipboard.writeText(total)
     showToast('Text copied successfully!')
   }
@@ -183,7 +183,7 @@ export default function ReceiptManager({ session, userRole, allowedModules = {} 
             {selectedIds.length > 0 && (
               <div className="flex items-center gap-2">
                 <span className="font-bold text-primary">
-                  Total Selected: RM {(totalSelectedAmount + parseFloat(upahAmount || 0)).toFixed(2)}
+                  Total Selected: RM {(totalSelectedAmount + parseFloat(wageAmount || 0)).toFixed(2)}
                 </span>
                 <button onClick={copyTotalAmount} className="btn btn-sm btn-outline font-bold">
                   📋 Copy Text
@@ -235,7 +235,7 @@ export default function ReceiptManager({ session, userRole, allowedModules = {} 
           
           <div className="form-control">
             <label className="label text-xs font-bold">Wage Rate (RM)</label>
-            <input type="number" step="0.01" className="input input-bordered w-full font-bold" value={upahAmount} onChange={(e) => setUpahAmount(e.target.value)} />
+            <input type="number" step="0.01" className="input input-bordered w-full font-bold" value={wageAmount} onChange={(e) => setWageAmount(e.target.value)} />
           </div>
 
           <button onClick={generateFormatText} className="btn btn-accent w-full text-white font-bold">

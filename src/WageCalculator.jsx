@@ -33,11 +33,11 @@ export default function WageCalculator({ session, userRole, allowedModules = {} 
   const [selectedPayment, setSelectedPayment] = useState(null)
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
 
-  // ─── LOGIK KEBENARAN AKSES BAHARU ──────────────────────────────────────────
+  // ─── ACCESS CONTROL LOGIC ──────────────────────────────────────────
   const cleanedRole = String(userRole || '').trim().toLowerCase()
   const isSuperAdmin = cleanedRole === 'super_admin'
   
-  // Super Admin bypass privilege, manakala Admin/Staff mengikut configuration allowedModules
+  // Super Admin bypass privilege, while Admin/Staff follow allowedModules configuration
   const hasPageAccess = isSuperAdmin || allowedModules['wageCalculator'] === true || cleanedRole === 'admin'
   // ───────────────────────────────────────────────────────────────────────────
 
@@ -248,7 +248,7 @@ export default function WageCalculator({ session, userRole, allowedModules = {} 
     const { data: paymentData, error: paymentError } = await supabase
       .from('wage_payments')
       .insert([{
-        staff_name: selectedStaff || selectedRecords[0]?.production_name || 'Kakitangan',
+        staff_name: selectedStaff || selectedRecords[0]?.production_name || 'Staff',
         total_paid: totalWagesDue,
         date_paid: customPaidDate
       }])
@@ -293,12 +293,12 @@ export default function WageCalculator({ session, userRole, allowedModules = {} 
       return
     }
     
-    let text = `Upah\n${selectedStaff || 'Kakitangan'}\n`
+    let text = `Wage\n${selectedStaff || 'Staff'}\n`
     selectedRecords.forEach((rec) => {
       const [year, month, day] = rec.production_date.split('-')
       const formattedDate = `${parseInt(day)}/${parseInt(month)}/${year}`
       const flatWage = parseFloat(rec.inventory?.wage_rate || 0).toFixed(2)
-      text += `\n${rec.inventory?.product_name || 'Produk'} (${rec.batch_no})\nDate : ${formattedDate}\nRM${flatWage}\n`
+      text += `\n${rec.inventory?.product_name || 'Product'} (${rec.batch_no})\nDate : ${formattedDate}\nRM${flatWage}\n`
     })
 
     setGeneratedText(text.trim())
@@ -421,7 +421,7 @@ export default function WageCalculator({ session, userRole, allowedModules = {} 
       {/* ─── RECORDS TAB ───────────────────────────────────────────────────── */}
       {activeTab === 'records' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* REKOD TABLE */}
+          {/* RECORD TABLE */}
           <div className="lg:col-span-2 content-card p-6 overflow-x-auto">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
               <h3 className="text-lg font-black text-secondary">📦 Batch Records ({displayRecords.length})</h3>

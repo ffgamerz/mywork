@@ -178,7 +178,7 @@ export default function AdsRecordManager({ session }) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
-        {/* Form Tambah Rekod */}
+        {/* Add Record Form */}
         <div className="content-card p-5 h-fit">
           <h3 className="text-lg font-bold mb-3 text-primary">Add New Record</h3>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -226,7 +226,7 @@ export default function AdsRecordManager({ session }) {
           </form>
         </div>
 
-        {/* Senarai Rekod */}
+        {/* Records List */}
         <div className="lg:col-span-2 content-card p-5">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
             <h3 className="text-base font-bold text-base-content/80">Saved Records List</h3>
@@ -347,7 +347,7 @@ export default function AdsRecordManager({ session }) {
         </div>
       )}
 
-      {/* Modal Edit Rekod */}
+      {/* Edit Record Modal */}
       {editingRecord && (
         <div className="modal modal-open z-50">
           <div className="modal-backdrop" onClick={() => setEditingRecord(null)}></div>
