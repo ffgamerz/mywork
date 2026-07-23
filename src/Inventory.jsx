@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
-import { getTranslation } from './utils/translation'
 
-export default function Inventory({ session, userRole, allowedModules = {}, lang = 'en' }) {
+export default function Inventory({ session, userRole, allowedModules = {} }) {
   const [selectedProduct, setSelectedProduct] = useState(null)
 
   const [products, setProducts] = useState([])
@@ -35,8 +34,6 @@ export default function Inventory({ session, userRole, allowedModules = {}, lang
   const [prodBatch, setProdBatch] = useState('BATCH-001')
   const [visibleCount, setVisibleCount] = useState(6)
   const prodPageSize = 6
-
-  const t = (key) => getTranslation(lang, key)
 
   // ─── KAWALAN HAK AKSES OPERASI BAHARU ─────────────────────────────────────
   const cleanedRole = String(userRole || '').trim().toLowerCase()
@@ -143,14 +140,14 @@ export default function Inventory({ session, userRole, allowedModules = {}, lang
   if (!hasPageAccess) {
     return (
       <div className="alert-unauthorized">
-        <div><span>🔒 {t('accessDeniedPage')}</span></div>
+        <div><span>🔒 Access Denied: Unauthorized.</span></div>
       </div>
     )
   }
 
   const handleToggleStockFinished = async (productionId, currentStatus) => {
     if (!canToggleStockStatus) {
-      showToast(t('accessDeniedToggle'))
+      showToast('Access denied. You do not have permission to change batch status.')
       return
     }
 
@@ -161,9 +158,9 @@ export default function Inventory({ session, userRole, allowedModules = {}, lang
       .eq('id', productionId)
 
     if (error) {
-      showToast(t('updateFailed') + error.message)
+      showToast('Failed to update data: ' + error.message)
     } else {
-      showToast(t('batchStatusUpdated'))
+      showToast('Batch status updated!')
       if (selectedProduct) fetchProductions(selectedProduct.id)
     }
     setLoadingSave(false)
@@ -183,13 +180,13 @@ export default function Inventory({ session, userRole, allowedModules = {}, lang
     }])
 
     if (error) {
-      showToast(t('saveFailed') + error.message)
+      showToast('Failed to save data: ' + error.message)
     } else {
       setProductName('')
       setExpiryMonth('12')
       setWageRate('0.00')
       setIsModalOpen(false)
-      showToast(t('productAdded'))
+      showToast('Product added successfully!')
       fetchProducts()
     }
     setLoadingSave(false)
@@ -220,12 +217,12 @@ export default function Inventory({ session, userRole, allowedModules = {}, lang
     }])
 
     if (error) {
-      showToast(t('saveFailed') + error.message)
+      showToast('Failed to save data: ' + error.message)
     } else {
       setProdQty('')
       setProdName('')
       setIsStockModalOpen(false)
-      showToast(t('productionRecordSaved'))
+      showToast('Production record saved!')
       fetchProducts()
       if (selectedProduct) fetchProductions(selectedProduct.id)
     }
@@ -234,7 +231,7 @@ export default function Inventory({ session, userRole, allowedModules = {}, lang
 
   const handleOpenEditStockModal = (stock) => {
     if (!canEditStockInfo) {
-      showToast(t('accessDeniedEditStock'))
+      showToast('Access denied. Only Super Admin can edit stock info.')
       return
     }
     setEditingStock(stock)
@@ -248,7 +245,7 @@ export default function Inventory({ session, userRole, allowedModules = {}, lang
   const handleUpdateStock = async (e) => {
     e.preventDefault()
     if (!canEditStockInfo || !editingStock || !selectedProduct) {
-      showToast(t('accessDenied'))
+      showToast('Access denied.')
       return
     }
 
@@ -272,11 +269,11 @@ export default function Inventory({ session, userRole, allowedModules = {}, lang
       .eq('id', editingStock.id)
 
     if (error) {
-      showToast(t('updateFailed') + error.message)
+      showToast('Failed to update data: ' + error.message)
     } else {
       setIsEditStockModalOpen(false)
       setEditingStock(null)
-      showToast(t('stockRecordUpdated'))
+      showToast('Stock record updated!')
       fetchProducts()
       if (selectedProduct) fetchProductions(selectedProduct.id)
     }
@@ -285,7 +282,7 @@ export default function Inventory({ session, userRole, allowedModules = {}, lang
 
   const handleOpenEditProductModal = (product) => {
     if (!canEditStockInfo) {
-      showToast(t('accessDeniedEditProduct'))
+      showToast('Access denied. Only Super Admin can edit products.')
       return
     }
     setEditingProduct(product)
@@ -297,7 +294,7 @@ export default function Inventory({ session, userRole, allowedModules = {}, lang
   const handleUpdateProduct = async (e) => {
     e.preventDefault()
     if (!canEditStockInfo || !editingProduct) {
-      showToast(t('accessDenied'))
+      showToast('Access denied.')
       return
     }
 
@@ -313,11 +310,11 @@ export default function Inventory({ session, userRole, allowedModules = {}, lang
       .eq('id', editingProduct.id)
 
     if (error) {
-      showToast(t('updateFailed') + error.message)
+      showToast('Failed to update data: ' + error.message)
     } else {
       setIsEditProductModalOpen(false)
       setEditingProduct(null)
-      showToast(t('productUpdated'))
+      showToast('Product updated successfully!')
       fetchProducts()
     }
     setLoadingSave(false)
@@ -354,16 +351,16 @@ export default function Inventory({ session, userRole, allowedModules = {}, lang
                     {selectedProduct.product_name}
                   </h1>
               <span className="badge badge-md badge-outline font-bold font-mono text-secondary px-2.5 py-3 whitespace-nowrap self-start sm:self-auto shadow-sm">
-                {t('shelfLife')}: {selectedProduct.expiry_month || 12}M
+                Shelf Life (Months): {selectedProduct.expiry_month || 12}M
               </span>
               <span className="badge badge-md badge-primary font-bold text-white px-2.5 py-3 shadow-sm">
-                {t('wageRateLabel')} {parseFloat(selectedProduct.wage_rate || 0).toFixed(2)}
+                Wage: RM {parseFloat(selectedProduct.wage_rate || 0).toFixed(2)}
               </span>
                 </div>
               <div className="w-fit bg-warning/20 border border-warning/40 px-3 py-1 rounded-xl flex items-center gap-1.5 text-xs font-black text-warning-content shadow-sm">
                 <span className="w-2 h-2 rounded-full bg-warning animate-pulse"></span>
                 <span>
-                  {t('activeStockText')}: {activeBatchCount} {t('activeStockBadge')}
+                  Active Stock: {activeBatchCount} Active Stock Batch
                 </span>
               </div>
               </div>
@@ -377,7 +374,7 @@ export default function Inventory({ session, userRole, allowedModules = {}, lang
                 setProdName('');
                 setIsStockModalOpen(true);
               }} className="btn btn-sm btn-accent text-white font-bold whitespace-nowrap shrink-0 hidden sm:inline-flex">
-                + {t('addStock')}
+                + Record Production Stock
               </button>
             )}
           </div>
@@ -391,7 +388,7 @@ export default function Inventory({ session, userRole, allowedModules = {}, lang
                 setProdName('');
                 setIsStockModalOpen(true);
               }} className="btn btn-sm btn-block btn-accent text-white font-bold text-sm">
-                + {t('addStock')}
+                + Record Production Stock
               </button>
             </div>
           )}
@@ -406,7 +403,7 @@ export default function Inventory({ session, userRole, allowedModules = {}, lang
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-12 h-12">
               <path strokeLinecap="round" strokeLinejoin="round" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
             </svg>
-            <p className="font-bold text-sm">{t('noProductionRecordsText')}</p>
+            <p className="font-bold text-sm">No production records yet.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -418,31 +415,31 @@ export default function Inventory({ session, userRole, allowedModules = {}, lang
                   <div className="space-y-3">
                     <div className="flex justify-between items-center border-b border-base-200/60 pb-2.5 gap-2">
                       <div className="flex flex-col">
-                        <span className="text-[10px] uppercase font-bold opacity-50 tracking-wider">{t('batchNo')}</span>
+                        <span className="text-[10px] uppercase font-bold opacity-50 tracking-wider">Batch No.</span>
                         <span className={`font-mono font-bold text-xl tracking-wide ${p.is_finished ? 'text-error' : 'text-success'}`}>{p.batch_no}</span>
                       </div>
                       <div className="text-right">
-                        <span className="text-[10px] uppercase font-bold opacity-50 tracking-wider block">{t('date')}</span>
+                        <span className="text-[10px] uppercase font-bold opacity-50 tracking-wider block">Date</span>
                         <span className="font-bold text-base-content/80 tracking-wide">{p.production_date}</span>
                       </div>
                     </div>
                       <div className="grid grid-cols-2 gap-2 text-sm py-0.5">
                       <div>
-                        <span className="text-[11px] block opacity-50 font-bold tracking-tight">{t('staffInChargeText')}</span>
+                        <span className="text-[11px] block opacity-50 font-bold tracking-tight">Staff In-Charge</span>
                         <span className="font-bold text-base-content/90 text-sm break-all">{p.production_name || '-'}</span>
                       </div>
                       <div className="text-right">
-                        <span className="text-[11px] block opacity-50 font-bold tracking-tight">{t('quantity')}</span>
+                        <span className="text-[11px] block opacity-50 font-bold tracking-tight">Quantity</span>
                         <span className={`font-bold text-xl ${p.is_finished ? 'text-error' : 'text-success'}`}>{p.quantity}</span>
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-sm border-t border-base-200/60 pt-2.5 items-center">
                       <div>
-                        <span className="text-[11px] block opacity-50 font-bold tracking-tight">{t('expiryDate')}</span>
+                        <span className="text-[11px] block opacity-50 font-bold tracking-tight">Expiry Date</span>
                         <span className="font-bold text-sm text-base-content/70">{p.expiry_date || '-'}</span>
                       </div>
                       <div className="text-right">
-                        <span className="text-[11px] block opacity-50 font-bold tracking-tight">{t('batchWageText')}</span>
+                        <span className="text-[11px] block opacity-50 font-bold tracking-tight">Batch Wage</span>
                         <span className="font-mono text-sm font-bold text-base-content/80">
                           RM {p.paid_amount !== null && p.paid_amount !== undefined 
                             ? parseFloat(p.paid_amount).toFixed(2) 
@@ -454,9 +451,9 @@ export default function Inventory({ session, userRole, allowedModules = {}, lang
 
                   <div className="pt-3 border-t border-base-200/40 mt-1 space-y-2">
                     <div className="flex justify-between items-center text-xs font-bold px-1">
-                      <span className="opacity-60">{t('paymentStatusText')}:</span>
+                      <span className="opacity-60">Payment Status:</span>
                       <span className={`px-2 py-0.5 rounded-lg text-[11px] font-bold ${p.paid_date ? 'bg-success/10 text-success' : 'bg-error/10 text-error'}`}>
-                        {p.paid_date ? `${t('paidText')} (${p.paid_date})` : t('unpaidText')}
+                        {p.paid_date ? `Paid (${p.paid_date})` : 'Unpaid'}
                       </span>
                     </div>
                     <div className="flex gap-2">
@@ -470,7 +467,7 @@ export default function Inventory({ session, userRole, allowedModules = {}, lang
                             p.is_finished ? 'btn-outline btn-success' : 'btn-outline btn-error'
                           }`}
                         >
-                          {p.is_finished ? `🔄 ${t('reopenText')}` : `✅ ${t('finishedText')}`}
+                          {p.is_finished ? '🔄 Reopen' : '✅ Finished'}
                         </button>
                       )}
                       
@@ -481,7 +478,7 @@ export default function Inventory({ session, userRole, allowedModules = {}, lang
                           onClick={() => handleOpenEditStockModal(p)}
                           className="btn btn-sm btn-ghost font-bold"
                         >
-                          📝 {t('editInfo')}
+                          📝 Edit Info
                         </button>
                       )}
                     </div>
@@ -499,7 +496,7 @@ export default function Inventory({ session, userRole, allowedModules = {}, lang
               className="btn btn-outline btn-primary font-bold"
               onClick={() => setVisibleCount(prev => Math.min(prev + prodPageSize, productions.length))}
             >
-              {t('loadMore') || 'Load More'}
+              Load More
             </button>
           </div>
         )}
@@ -509,36 +506,36 @@ export default function Inventory({ session, userRole, allowedModules = {}, lang
           <div className="modal modal-open">
             <div className="modal-backdrop" onClick={() => setIsStockModalOpen(false)}></div>
             <div className="modal-box--md" onClick={(e) => e.stopPropagation()}>
-              <h3 className="font-bold text-xl text-accent mb-4">🏭 {t('addStock')}</h3>
+              <h3 className="font-bold text-xl text-accent mb-4">🏭 Record Production Stock</h3>
               <form onSubmit={handleAddStock} className="space-y-4">
                 <div className="form-control">
-                  <label className="label-text font-semibold mb-1">{t('prodDate')} *</label>
+                  <label className="label-text font-semibold mb-1">Production Date *</label>
                   <input type="date" required className="input input-bordered w-full text-base rounded-xl" value={prodDate} onChange={(e) => setProdDate(e.target.value)} />
                 </div>
                 <div className="form-control">
-                  <label className="label-text font-semibold mb-1">{t('batchNo')} (Auto)</label>
+                  <label className="label-text font-semibold mb-1">Batch No. (Auto)</label>
                   <input type="text" readOnly className="input input-bordered w-full text-base rounded-xl font-mono bg-base-200 cursor-not-allowed font-black text-primary text-lg" value={prodBatch} />
                 </div>
               <div className="form-control">
-                <label className="label-text font-semibold mb-1">{t('selectStaffLabel')}</label>
+                <label className="label-text font-semibold mb-1">Select Staff In-Charge *</label>
                 {staffList.length > 0 ? (
                   <select required className="select select-bordered w-full text-base rounded-xl font-bold" value={prodName} onChange={(e) => setProdName(e.target.value)}>
-                    <option value="">{t('selectStaff')}</option>
+                    <option value="">-- Select Staff Name --</option>
                     {staffList.map((staff, sIdx) => (
                       <option key={sIdx} value={staff.full_name}>{staff.full_name}</option>
                     ))}
                   </select>
                 ) : (
-                  <input type="text" className="input input-bordered w-full text-base rounded-xl" placeholder={t('typeStaffPlaceholder')} value={prodName} onChange={(e) => setProdName(e.target.value)} />
+                  <input type="text" className="input input-bordered w-full text-base rounded-xl" placeholder="Type staff name" value={prodName} onChange={(e) => setProdName(e.target.value)} />
                 )}
               </div>
                 <div className="form-control">
-                  <label className="label-text font-semibold mb-1">{t('quantity')} *</label>
+                  <label className="label-text font-semibold mb-1">Quantity *</label>
                   <input type="number" required min="1" placeholder="0" className="input input-bordered w-full text-base rounded-xl font-bold" value={prodQty} onChange={(e) => setProdQty(e.target.value)} />
                 </div>
                 <div className="modal-action gap-2 pt-2 border-t border-base-200">
-                  <button type="button" className="btn btn-sm btn-ghost" onClick={() => setIsStockModalOpen(false)}>{t('cancel')}</button>
-                  <button type="submit" disabled={loadingSave} className="btn btn-sm btn-accent text-white font-bold px-4">{loadingSave ? t('saving') : t('saveRecord')}</button>
+                  <button type="button" className="btn btn-sm btn-ghost" onClick={() => setIsStockModalOpen(false)}>Cancel</button>
+                  <button type="submit" disabled={loadingSave} className="btn btn-sm btn-accent text-white font-bold px-4">{loadingSave ? 'Saving...' : 'Save Record'}</button>
                 </div>
               </form>
             </div>
@@ -550,21 +547,21 @@ export default function Inventory({ session, userRole, allowedModules = {}, lang
           <div className="modal modal-open">
             <div className="modal-backdrop" onClick={() => { setIsEditStockModalOpen(false); setEditingStock(null); }}></div>
             <div className="modal-box--md" onClick={(e) => e.stopPropagation()}>
-              <h3 className="font-bold text-xl text-secondary mb-4">📝 {t('editStockInfoTitle')}</h3>
+              <h3 className="font-bold text-xl text-secondary mb-4">📝 Edit Stock Information</h3>
               <form onSubmit={handleUpdateStock} className="space-y-4">
                 <div className="form-control">
-                  <label className="label-text font-semibold mb-1">{t('productionDateLabel')}</label>
+                  <label className="label-text font-semibold mb-1">Production Date *</label>
                   <input type="date" required className="input input-bordered w-full text-base rounded-xl" value={prodDate} onChange={(e) => setProdDate(e.target.value)} />
                 </div>
                 <div className="form-control">
-                  <label className="label-text font-semibold mb-1">{t('batchNoLabel')}</label>
+                  <label className="label-text font-semibold mb-1">Batch No *</label>
                   <input type="text" required className="input input-bordered w-full text-base rounded-xl font-mono font-bold" value={prodBatch} onChange={(e) => setProdBatch(e.target.value)} />
                 </div>
                 <div className="form-control">
-                  <label className="label-text font-semibold mb-1">{t('staffInChargeLabel')}</label>
+                  <label className="label-text font-semibold mb-1">Staff In-Charge *</label>
                   {staffList.length > 0 ? (
                     <select required className="select select-bordered w-full text-base rounded-xl font-bold" value={prodName} onChange={(e) => setProdName(e.target.value)}>
-                      <option value="">{t('selectStaff')}</option>
+                      <option value="">-- Select Staff Name --</option>
                       {staffList.map((staff, sIdx) => (
                         <option key={sIdx} value={staff.full_name}>{staff.full_name}</option>
                       ))}
@@ -574,13 +571,13 @@ export default function Inventory({ session, userRole, allowedModules = {}, lang
                   )}
                 </div>
                 <div className="form-control">
-                  <label className="label-text font-semibold mb-1">{t('quantityLabel')}</label>
+                  <label className="label-text font-semibold mb-1">Quantity *</label>
                   <input type="number" required min="1" className="input input-bordered w-full text-base rounded-xl font-bold" value={prodQty} onChange={(e) => setProdQty(e.target.value)} />
                 </div>
                 <div className="modal-action gap-2 pt-2 border-t border-base-200">
-                  <button type="button" className="btn btn-sm btn-ghost" onClick={() => { setIsEditStockModalOpen(false); setEditingStock(null); }}>{t('cancel')}</button>
+                  <button type="button" className="btn btn-sm btn-ghost" onClick={() => { setIsEditStockModalOpen(false); setEditingStock(null); }}>Cancel</button>
                   <button type="submit" disabled={loadingSave} className="btn btn-sm btn-secondary text-white font-bold px-4">
-                    {loadingSave ? t('updatingText') : t('saveChangesText')}
+                    {loadingSave ? 'Updating...' : 'Save Changes'}
                   </button>
                 </div>
               </form>
@@ -604,8 +601,8 @@ export default function Inventory({ session, userRole, allowedModules = {}, lang
 
       <div className="page-header sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex flex-col gap-1">
-          <h1 className="page-title">{t('inventory')}</h1>
-          <p className="page-subtitle">{t('inventoryDesc')}</p>
+          <h1 className="page-title">Inventory Manager</h1>
+          <p className="page-subtitle">Monitor product batches and current physical stock levels.</p>
         </div>
 
         {/* Butang Tambah Produk Utama - Hanya dipaparkan untuk Super Admin */}
@@ -614,7 +611,7 @@ export default function Inventory({ session, userRole, allowedModules = {}, lang
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
             </svg>
-            {t('addProduct')}
+            Add New Product
           </button>
         )}
       </div>
@@ -630,33 +627,33 @@ export default function Inventory({ session, userRole, allowedModules = {}, lang
                 </button>
                 <div className="flex gap-1.5 items-center flex-wrap">
                   <div className={activeCount > 0 ? 'status-badge-active' : 'status-badge-inactive'}>
-                    {activeCount > 0 ? `${activeCount} ${t('activeStockBadge')}` : t('noActiveStockBadge')}
+                    {activeCount > 0 ? `${activeCount} Active Stock Batch` : 'No Active Stock'}
                   </div>
                   <div className="w-fit text-[10px] font-bold px-2 py-0.5 rounded-lg bg-base-200/50 text-base-content/70">
-                    {t('wageRateLabel')} {parseFloat(prod.wage_rate || 0).toFixed(2)}
+                    Wage: RM {parseFloat(prod.wage_rate || 0).toFixed(2)}
                   </div>
                 </div>
               </div>
               <div className="fifo-info-box mt-3">
-                <span className="text-[10px] uppercase font-bold opacity-50 tracking-wider block">{t('oldestActiveStockText')}</span>
+                <span className="text-[10px] uppercase font-bold opacity-50 tracking-wider block">Oldest Active Stock (FIFO)</span>
                 {prod.fifo_stock ? (
                   <div className="flex justify-between items-center gap-2">
                     <div className="flex flex-col">
-                      <span className="text-[9px] uppercase font-bold opacity-40">{t('batchNo')}</span>
+                      <span className="text-[9px] uppercase font-bold opacity-40">Batch No.</span>
                       <span className="font-mono font-bold text-sm tracking-wide">{prod.fifo_stock.batch_no}</span>
                     </div>
                     <div className="text-right">
-                      <span className="text-[9px] uppercase font-bold opacity-40 block">{t('expiryDate')}</span>
+                      <span className="text-[9px] uppercase font-bold opacity-40 block">Expiry Date</span>
                       <span className="font-bold text-xs tracking-wide">{prod.fifo_stock.expiry_date}</span>
                     </div>
                   </div>
                 ) : (
-                  <span className="text-xs opacity-40 font-sans block py-1">{t('noActiveStockAvailableText')}</span>
+                  <span className="text-xs opacity-40 font-sans block py-1">No Active Stock Available</span>
                 )}
               </div>
               <div className="pt-3 flex gap-2">
                 <button onClick={() => setSelectedProduct(prod)} className="btn btn-sm flex-1 btn-outline font-bold">
-                  {t('stockRecordView')}
+                  Stock & Cooking Record ↗
                 </button>
                 {/* Butang Edit Produk - Hanya untuk Super Admin */}
                 {canEditStockInfo && (
@@ -665,7 +662,7 @@ export default function Inventory({ session, userRole, allowedModules = {}, lang
                     onClick={() => handleOpenEditProductModal(prod)}
                     className="btn btn-sm btn-ghost font-bold"
                   >
-                    📝 {t('editInfo')}
+                    📝 Edit Info
                   </button>
                 )}
               </div>
@@ -679,23 +676,23 @@ export default function Inventory({ session, userRole, allowedModules = {}, lang
         <div className="modal modal-open">
           <div className="modal-backdrop" onClick={() => { setIsModalOpen(false); setProductName(''); setExpiryMonth('12'); setWageRate('0.00'); }}></div>
           <div className="modal-box--md" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-bold text-xl text-primary flex items-center gap-2 mb-4">📦 {t('addProduct')}</h3>
+            <h3 className="font-bold text-xl text-primary flex items-center gap-2 mb-4">📦 Add New Product</h3>
             <form onSubmit={handleAddProduct} className="space-y-4">
               <div className="form-control">
-                <label className="label-text font-semibold mb-1">{t('productName')} *</label>
-                <input type="text" required placeholder={t('productNamePlaceholder')} className="input input-bordered w-full text-base rounded-xl" value={productName} onChange={(e) => setProductName(e.target.value)} />
+                <label className="label-text font-semibold mb-1">Product Name *</label>
+                <input type="text" required placeholder="e.g., Pes Kari Sambal" className="input input-bordered w-full text-base rounded-xl" value={productName} onChange={(e) => setProductName(e.target.value)} />
               </div>
               <div className="form-control">
-                <label className="label-text font-semibold mb-1">{t('shelfLife')}</label>
+                <label className="label-text font-semibold mb-1">Shelf Life (Months)</label>
                 <input type="number" required min="1" placeholder="12" className="input input-bordered w-full text-base rounded-xl" value={expiryMonth} onChange={(e) => setExpiryMonth(e.target.value)} />
               </div>
               <div className="form-control">
-                <label className="label-text font-semibold mb-1">{t('cookingWageRate')} *</label>
+                <label className="label-text font-semibold mb-1">Cooking Wage Rate per Unit (RM) *</label>
                 <input type="number" step="0.01" required min="0" placeholder="0.50" className="input input-bordered w-full text-base rounded-xl font-bold" value={wageRate} onChange={(e) => setWageRate(e.target.value)} />
               </div>
               <div className="modal-action gap-2 pt-2">
-                <button type="button" className="btn btn-sm btn-ghost" onClick={() => { setIsModalOpen(false); setProductName(''); setExpiryMonth('12'); setWageRate('0.00'); }}>{t('cancel')}</button>
-                <button type="submit" disabled={loadingSave} className="btn btn-sm btn-primary text-white font-bold px-4">{loadingSave ? t('saving') : t('saveProduct')}</button>
+                <button type="button" className="btn btn-sm btn-ghost" onClick={() => { setIsModalOpen(false); setProductName(''); setExpiryMonth('12'); setWageRate('0.00'); }}>Cancel</button>
+                <button type="submit" disabled={loadingSave} className="btn btn-sm btn-primary text-white font-bold px-4">{loadingSave ? 'Saving...' : 'Save Product'}</button>
               </div>
             </form>
           </div>
@@ -707,24 +704,24 @@ export default function Inventory({ session, userRole, allowedModules = {}, lang
         <div className="modal modal-open">
           <div className="modal-backdrop" onClick={() => { setIsEditProductModalOpen(false); setEditingProduct(null); }}></div>
           <div className="modal-box--md" onClick={(e) => e.stopPropagation()}>
-              <h3 className="font-bold text-xl text-warning mb-4">📝 {t('editProductTitle')}</h3>
+              <h3 className="font-bold text-xl text-warning mb-4">📝 Edit Product</h3>
               <form onSubmit={handleUpdateProduct} className="space-y-4">
                 <div className="form-control">
-                  <label className="label-text font-semibold mb-1">{t('productInfo')}</label>
+                  <label className="label-text font-semibold mb-1">Product Information</label>
                   <input type="text" readOnly className="input input-bordered w-full text-base rounded-xl font-bold bg-base-200 cursor-not-allowed" value={editingProduct.product_name} />
                 </div>
                 <div className="form-control">
-                  <label className="label-text font-semibold mb-1">{t('shelfLife')} *</label>
+                  <label className="label-text font-semibold mb-1">Shelf Life (Months) *</label>
                   <input type="number" required min="1" className="input input-bordered w-full text-base rounded-xl font-bold" value={editExpiryMonth} onChange={(e) => setEditExpiryMonth(e.target.value)} />
                 </div>
                 <div className="form-control">
-                  <label className="label-text font-semibold mb-1">{t('cookingWageRate')} *</label>
+                  <label className="label-text font-semibold mb-1">Cooking Wage Rate per Unit (RM) *</label>
                   <input type="number" step="0.01" required min="0" className="input input-bordered w-full text-base rounded-xl font-bold" value={editWageRate} onChange={(e) => setEditWageRate(e.target.value)} />
                 </div>
                 <div className="modal-action gap-2 pt-2 border-t border-base-200">
-                  <button type="button" className="btn btn-sm btn-ghost" onClick={() => { setIsEditProductModalOpen(false); setEditingProduct(null); }}>{t('cancel')}</button>
+                  <button type="button" className="btn btn-sm btn-ghost" onClick={() => { setIsEditProductModalOpen(false); setEditingProduct(null); }}>Cancel</button>
                   <button type="submit" disabled={loadingSave} className="btn btn-sm btn-warning text-white font-bold px-4">
-                    {loadingSave ? t('saving') : t('saveChanges')}
+                    {loadingSave ? 'Saving...' : 'Save Changes'}
                   </button>
                 </div>
             </form>

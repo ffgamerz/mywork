@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
-import { getTranslation } from './utils/translation'
 
-export default function Privileges({ session, lang = 'en' }) {
+export default function Privileges({ session }) {
   const [users, setUsers] = useState([])
   const [modules, setModules] = useState([])
   const [permissions, setPermissions] = useState({})
@@ -21,8 +20,6 @@ export default function Privileges({ session, lang = 'en' }) {
   const [actionLoading, setActionLoading] = useState(false)
 
   const [userToDelete, setUserToDelete] = useState(null)
-
-  const t = (key) => getTranslation(lang, key)
 
   const showToast = (msg) => {
     setToast(msg)
@@ -48,8 +45,8 @@ export default function Privileges({ session, lang = 'en' }) {
         setPermissions(permMap)
       }
     } catch (err) {
-      console.error('Ralat memuatkan data:', err.message)
-      showToast(t('errLoad') + err.message)
+      console.error('Error loading data:', err.message)
+      showToast('Error loading data: ' + err.message)
     } finally {
       setLoadingData(false)
     }
@@ -69,7 +66,7 @@ export default function Privileges({ session, lang = 'en' }) {
   const handlePreSubmitCheck = (e) => {
     e.preventDefault()
     if (!generatedPassword) {
-      showToast(t('alertGeneratePass'))
+      showToast('Please generate a temporary password first!')
       return
     }
     setShowConfirmStep(true)
@@ -82,7 +79,7 @@ export default function Privileges({ session, lang = 'en' }) {
     })
 
     if (error) {
-      showToast(t('errCreate') + error.message)
+      showToast('Creation failed: ' + error.message)
     } else {
       if (newFullName.trim()) {
         await supabase
@@ -91,10 +88,7 @@ export default function Privileges({ session, lang = 'en' }) {
           .eq('email', newEmail.trim())
       }
 
-      const successMsg = t('toastCreatedSuccess')
-        .replace('{name}', newFullName.trim() || newEmail)
-        .replace('{email}', newEmail)
-        .replace('{password}', generatedPassword)
+      const successMsg = `ACCOUNT CREATED SUCCESSFULLY! 🎉\nName: ${newFullName.trim() || newEmail}\nEmail: ${newEmail}\nTemporary Pass: ${generatedPassword}`
 
       showToast(successMsg)
       setNewFullName('')
@@ -115,7 +109,7 @@ export default function Privileges({ session, lang = 'en' }) {
     if (error) {
       showToast(error.message)
     } else {
-      showToast(t('toastDeletedSuccess'))
+      showToast('User deleted permanently!')
       setUserToDelete(null)
       loadData()
     }
@@ -129,10 +123,10 @@ export default function Privileges({ session, lang = 'en' }) {
         body: { userId, newRole }
       })
       if (error) throw error
-      showToast(t('toastRoleSuccess').replace('{role}', newRole))
+      showToast(`Privilege level updated successfully to ${newRole}!`)
       loadData()
     } catch (err) {
-      console.error('Gagal menukar peranan:', err.message)
+      console.error('Error changing role:', err.message)
       showToast(err.message)
     } finally {
       setActionLoading(false)
@@ -152,7 +146,7 @@ export default function Privileges({ session, lang = 'en' }) {
       showToast(error.message)
     } else {
       setPermissions(prev => ({ ...prev, [`${userId}-${moduleId}`]: newStatus }))
-      showToast(t('toastPermSuccess'))
+      showToast('Preference updated!')
     }
   }
 
@@ -171,12 +165,12 @@ export default function Privileges({ session, lang = 'en' }) {
         .eq('id', selectedUser.id)
       if (dbError) throw dbError
 
-      showToast(t('toastResetSuccess').replace('{email}', selectedUser.email))
+      showToast(`Password updated and forced reset active for ${selectedUser.email}`)
       setAdminNewPassword('')
       setSelectedUser(null)
       loadData()
     } catch (err) {
-      showToast(t('errReset') + err.message)
+      showToast('Reset Password Failed: ' + err.message)
     } finally {
       setActionLoading(false)
     }
@@ -202,8 +196,8 @@ export default function Privileges({ session, lang = 'en' }) {
 
       <div className="page-header sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex flex-col gap-1">
-          <h1 className="page-title">{t('privTitle')}</h1>
-          <p className="page-subtitle">{t('privSubtitle')}</p>
+          <h1 className="page-title">Privilege & User Manager</h1>
+          <p className="page-subtitle">Create organization accounts and delegate dynamic structural rights.</p>
         </div>
         <button
           onClick={() => setIsCreateModalOpen(true)}
@@ -212,12 +206,12 @@ export default function Privileges({ session, lang = 'en' }) {
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
           </svg>
-          {t('addStaffBtn')}
+          Add New Staff Account
         </button>
       </div>
 
       <div className="content-card p-4">
-        <h3 className="text-base font-bold mb-3 text-secondary">{t('matrixTitle')}</h3>
+        <h3 className="text-base font-bold mb-3 text-secondary">Interactive Access Control Matrix</h3>
 
         {loadingData ? (
           <div className="flex justify-center py-12">
@@ -228,21 +222,19 @@ export default function Privileges({ session, lang = 'en' }) {
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-12 h-12">
               <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94-3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" />
             </svg>
-            <p className="font-bold text-sm">
-              {lang === 'ms' ? 'Tiada pengguna didaftarkan lagi.' : lang === 'zh' ? '暂无注册用户。' : 'No users registered yet.'}
-            </p>
+            <p className="font-bold text-sm">No users registered yet.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="table table-zebra w-full">
               <thead>
                 <tr>
-                  <th>{t('thEmail')}</th>
-                  <th>{t('thLevel')}</th>
+                  <th>User Details</th>
+                  <th>Privilege Level</th>
                   {modules.map(m => (
                     <th key={m.id} className="text-center">{m.name}</th>
                   ))}
-                  <th className="text-right">{t('thActions')}</th>
+                  <th className="text-right">Account Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -255,7 +247,7 @@ export default function Privileges({ session, lang = 'en' }) {
                         <span className="text-[10px] font-mono opacity-30">{u.id}</span>
                         {u.requires_password_change && (
                           <span className="badge badge-warning badge-xs font-sans mt-1 text-black font-semibold">
-                            {t('badgeForceReset')}
+                            Force Pass Reset Active
                           </span>
                         )}
                       </div>
@@ -284,13 +276,13 @@ export default function Privileges({ session, lang = 'en' }) {
                           onClick={() => setSelectedUser(u)}
                           className="btn btn-xs btn-outline btn-error"
                         >
-                          {t('btnResetPass')}
+                          Reset Pass
                         </button>
                         <button
                           onClick={() => setUserToDelete(u)}
                           className="btn btn-xs btn-outline btn-ghost text-error"
                         >
-                          {lang === 'ms' ? 'Padam' : lang === 'zh' ? '删除' : 'Delete'}
+                          Delete
                         </button>
                         <div className="divider divider-horizontal mx-0.5"></div>
                         <button
@@ -298,14 +290,14 @@ export default function Privileges({ session, lang = 'en' }) {
                           disabled={actionLoading || u.role === 'super_admin' || u.role === 'default' || !u.role}
                           className={`btn btn-xs ${u.role === 'default' || !u.role ? 'btn-active opacity-40' : 'btn-outline'}`}
                         >
-                          {t('lblDefault')}
+                          Default
                         </button>
                         <button
                           onClick={() => handleRoleChange(u.id, 'admin')}
                           disabled={actionLoading || u.role === 'super_admin' || u.role === 'admin'}
                           className={`btn btn-xs btn-primary ${u.role === 'admin' ? 'btn-active opacity-40' : 'btn-outline'}`}
                         >
-                          {t('lblAdmin')}
+                          Admin
                         </button>
                       </div>
                     </td>
@@ -322,11 +314,11 @@ export default function Privileges({ session, lang = 'en' }) {
         <div className="modal modal-open z-[100]">
           <div className="modal-backdrop" onClick={closeCreateModal}></div>
           <div className="modal-box--md" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-bold text-xl text-primary flex items-center gap-2 mb-2">{t('modalCreateTitle')}</h3>
-            <p className="text-xs opacity-60 mb-4">{t('modalCreateSubtitle')}</p>
+            <h3 className="font-bold text-xl text-primary flex items-center gap-2 mb-2">Provision Staff Account</h3>
+            <p className="text-xs opacity-60 mb-4">Register new access coordinates within the cloud framework.</p>
             <form onSubmit={handlePreSubmitCheck} className="space-y-4">
               <div className="form-control">
-                <label className="label-text font-semibold mb-1">{t('lblFullName')} *</label>
+                <label className="label-text font-semibold mb-1">Staff Full Name *</label>
                 <input
                   type="text"
                   required
@@ -337,7 +329,7 @@ export default function Privileges({ session, lang = 'en' }) {
                 />
               </div>
               <div className="form-control">
-                <label className="label-text font-semibold mb-1">{t('lblEmail')} *</label>
+                <label className="label-text font-semibold mb-1">Staff Email Address *</label>
                 <input
                   type="email"
                   required
@@ -348,27 +340,27 @@ export default function Privileges({ session, lang = 'en' }) {
                 />
               </div>
               <div className="form-control">
-                <label className="label-text font-semibold mb-1">{t('lblTempPass')} *</label>
+                <label className="label-text font-semibold mb-1">Temporary Security Password *</label>
                 <div className="flex gap-2">
                   <input
                     type="text"
                     readOnly
-                    placeholder={t('placeholderGenerate')}
+                    placeholder="Click Generate to build"
                     className="input input-bordered flex-1 text-base font-mono bg-base-200 rounded-xl px-3"
                     value={generatedPassword}
                     required
                   />
                   <button type="button" onClick={generateRandomPassword} className="btn btn-secondary text-white font-bold px-4">
-                    {t('btnGenerate')}
+                    Generate
                   </button>
                 </div>
               </div>
               <div className="modal-action gap-2 pt-2">
                 <button type="button" className="btn btn-sm btn-ghost" onClick={closeCreateModal}>
-                  {t('cancel')}
+                  Cancel
                 </button>
                 <button type="submit" className="btn btn-sm btn-primary text-white font-bold px-4">
-                  {t('btnCreateUser')}
+                  Create User
                 </button>
               </div>
             </form>
@@ -381,18 +373,18 @@ export default function Privileges({ session, lang = 'en' }) {
         <div className="modal modal-open z-[200]">
           <div className="modal-backdrop" onClick={() => setShowConfirmStep(false)}></div>
           <div className="modal-box--sm" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-bold text-xl text-warning mb-2">{t('modalConfirmTitle')}</h3>
-            <p className="py-2 text-sm font-semibold opacity-90">{t('modalConfirmSubtitle')}</p>
+            <h3 className="font-bold text-xl text-warning mb-2">Confirm Action</h3>
+            <p className="py-2 text-sm font-semibold opacity-90">This action cannot be undone, please be careful.</p>
             <div className="flex justify-center gap-3 mt-4">
               <button className="btn btn-sm btn-ghost flex-1" onClick={() => setShowConfirmStep(false)}>
-                {t('btnGoBack')}
+                Go Back
               </button>
               <button
                 disabled={createLoading}
                 onClick={handleExecuteCreateUser}
                 className="btn btn-sm btn-warning text-black font-bold flex-1"
               >
-                {createLoading ? t('btnProvisioning') : t('btnConfirmYes')}
+                {createLoading ? 'Provisioning...' : 'Yes, Confirm'}
               </button>
             </div>
           </div>
@@ -404,15 +396,15 @@ export default function Privileges({ session, lang = 'en' }) {
         <div className="modal modal-open z-[100]">
           <div className="modal-backdrop" onClick={() => { setSelectedUser(null); setAdminNewPassword('') }}></div>
           <div className="modal-box--sm" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-bold text-lg text-error">{t('modalResetTitle')}</h3>
+            <h3 className="font-bold text-lg text-error">Force Password Reset</h3>
             <p className="py-2 text-xs opacity-70">
-              {t('modalResetTarget')}<strong>{selectedUser.email}</strong>
+              Target: <strong>{selectedUser.email}</strong>
             </p>
             <form onSubmit={handleForceChangePassword} className="space-y-4 mt-2">
               <input
                 type="text"
                 required
-                placeholder={t('placeholderNewPass')}
+                placeholder="Enter new password"
                 className="input input-bordered w-full text-base font-mono rounded-xl"
                 value={adminNewPassword}
                 onChange={(e) => setAdminNewPassword(e.target.value)}
@@ -423,10 +415,10 @@ export default function Privileges({ session, lang = 'en' }) {
                   className="btn btn-sm btn-ghost"
                   onClick={() => { setSelectedUser(null); setAdminNewPassword('') }}
                 >
-                  {t('cancel')}
+                  Cancel
                 </button>
                 <button type="submit" disabled={actionLoading} className="btn btn-sm btn-error text-white font-bold px-4">
-                  {actionLoading ? <span className="loading loading-spinner loading-xs"></span> : t('btnConfirm')}
+                  {actionLoading ? <span className="loading loading-spinner loading-xs"></span> : 'Confirm'}
                 </button>
               </div>
             </form>
@@ -439,13 +431,13 @@ export default function Privileges({ session, lang = 'en' }) {
         <div className="modal modal-open z-[100]">
           <div className="modal-backdrop" onClick={() => setUserToDelete(null)}></div>
           <div className="modal-box--sm" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-bold text-lg text-error">{t('modalDeleteTitle')}</h3>
+            <h3 className="font-bold text-lg text-error">Delete User Permanently?</h3>
             <p className="py-2 text-xs opacity-70">
-              {t('modalDeleteDesc').replace('{email}', userToDelete.email)}
+              System will erase the account for {userToDelete.email}.
             </p>
             <div className="modal-action">
               <button className="btn btn-sm btn-ghost" onClick={() => setUserToDelete(null)}>
-                {t('cancel')}
+                Cancel
               </button>
               <button
                 className="btn btn-sm btn-error text-white font-bold px-4"
@@ -454,7 +446,7 @@ export default function Privileges({ session, lang = 'en' }) {
               >
                 {actionLoading
                   ? <span className="loading loading-spinner loading-xs"></span>
-                  : t('btnConfirmDelete')}
+                  : 'Confirm Delete'}
               </button>
             </div>
           </div>

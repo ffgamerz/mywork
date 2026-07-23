@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
-import { getTranslation } from './utils/translation'
 import ToastBar from './components/ToastBar'
 import { useToast } from './utils/useToast'
 
-export default function MyWage({ session, lang = 'en' }) {
+export default function MyWage({ session }) {
   const { toast, showToast, hideToast } = useToast()
   const [staffName, setStaffName] = useState('')
   const [loading, setLoading] = useState(false)
@@ -22,9 +21,6 @@ export default function MyWage({ session, lang = 'en' }) {
   const [dateTo, setDateTo] = useState('')
   const [visibleCount, setVisibleCount] = useState(8)
   const pageSize = 8
-
-  const activeLang = lang || 'en'
-  const t = (key) => getTranslation(activeLang, key)
 
   // Get staff name from session
   useEffect(() => {
@@ -183,8 +179,8 @@ export default function MyWage({ session, lang = 'en' }) {
 
       {/* Page Header */}
       <div className="page-header">
-        <h1 className="page-title">💰 {t('myWageTitle') || 'My Wage'}</h1>
-        <p className="page-subtitle">{t('myWageDesc') || 'View your wage records and payment history.'}</p>
+        <h1 className="page-title">💰 My Wage</h1>
+        <p className="page-subtitle">View your wage records and payment history.</p>
       </div>
 
       {/* Tab Navigation */}
@@ -193,13 +189,13 @@ export default function MyWage({ session, lang = 'en' }) {
           className={`tab ${activeTab === 'unpaid' ? 'tab-active' : ''}`}
           onClick={() => setActiveTab('unpaid')}
         >
-          {t('unpaidWageTab') || 'Unpaid Wage'}
+          Unpaid Wage
         </button>
         <button 
           className={`tab ${activeTab === 'history' ? 'tab-active' : ''}`}
           onClick={() => setActiveTab('history')}
         >
-          {t('wageHistoryTab') || 'Wage History'}
+          Wage History
         </button>
       </div>
 
@@ -208,7 +204,7 @@ export default function MyWage({ session, lang = 'en' }) {
         <div className="content-card p-4 mb-4">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="form-control">
-              <label className="label-text text-xs font-bold">{t('dateFrom')}</label>
+              <label className="label-text text-xs font-bold">From Date</label>
               <input 
                 type="date" 
                 className="input input-bordered w-full text-sm" 
@@ -217,7 +213,7 @@ export default function MyWage({ session, lang = 'en' }) {
               />
             </div>
             <div className="form-control">
-              <label className="label-text text-xs font-bold">{t('dateTo')}</label>
+              <label className="label-text text-xs font-bold">To Date</label>
               <input 
                 type="date" 
                 className="input input-bordered w-full text-sm" 
@@ -226,11 +222,11 @@ export default function MyWage({ session, lang = 'en' }) {
               />
             </div>
             <div className="form-control">
-              <label className="label-text text-xs font-bold">{t('searchRecords')}</label>
+              <label className="label-text text-xs font-bold">Search records</label>
               <input 
                 type="text" 
                 className="input input-bordered w-full text-sm" 
-                placeholder={t('searchRecords')} 
+                placeholder="Search records" 
                 value={searchTerm} 
                 onChange={(e) => setSearchTerm(e.target.value)} 
               />
@@ -244,10 +240,10 @@ export default function MyWage({ session, lang = 'en' }) {
         <div className="content-card p-6 overflow-x-auto">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
             <h3 className="text-lg font-black text-secondary">
-              📦 {t('unpaidBatches') || 'Unpaid Batches'} ({filteredUnpaid.length})
+              📦 Unpaid Batches ({filteredUnpaid.length})
             </h3>
             <div className="badge badge-warning gap-2">
-              <span className="opacity-70">{t('totalWages') || 'Total Wages'}:</span>
+              <span className="opacity-70">Total Wages Due:</span>
               <span className="font-semibold">RM {totalUnpaidWages.toFixed(2)}</span>
             </div>
           </div>
@@ -258,17 +254,17 @@ export default function MyWage({ session, lang = 'en' }) {
             </div>
           ) : filteredUnpaid.length === 0 ? (
             <div className="text-center opacity-50 py-8">
-              {t('noUnpaidRecords') || 'No unpaid batch records found.'}
+              No unpaid batch records found.
             </div>
           ) : (
             <>
               <table className="table w-full">
                 <thead>
                   <tr>
-                    <th>{t('date')}</th>
-                    <th>{t('batchNo')}</th>
-                    <th>{t('productName')} ({t('quantity')})</th>
-                    <th className="text-right">{t('wageBatchHeader')}</th>
+                    <th>Date</th>
+                    <th>Batch No.</th>
+                    <th>Product Name (Quantity)</th>
+                    <th className="text-right">Batch Wage</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -295,7 +291,7 @@ export default function MyWage({ session, lang = 'en' }) {
                     className="btn btn-outline btn-primary font-bold"
                     onClick={() => setVisibleCount(prev => Math.min(prev + pageSize, filteredUnpaid.length))}
                   >
-                    {t('loadMore') || 'Load More'}
+                    Load More
                   </button>
                 </div>
               )}
@@ -309,7 +305,7 @@ export default function MyWage({ session, lang = 'en' }) {
         <div className="content-card p-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
             <h3 className="text-lg font-black text-secondary">
-              📊 {t('wageHistoryTitle') || 'Payment History'} ({filteredHistory.length})
+              📊 Payment History ({filteredHistory.length})
             </h3>
           </div>
 
@@ -319,7 +315,7 @@ export default function MyWage({ session, lang = 'en' }) {
             </div>
           ) : filteredHistory.length === 0 ? (
             <div className="text-center opacity-50 py-8">
-              {t('noPaymentHistory') || 'No payment history found.'}
+              No payment history found.
             </div>
           ) : (
             <>
@@ -333,16 +329,16 @@ export default function MyWage({ session, lang = 'en' }) {
                     <div className="card-body p-4">
                       <div className="flex justify-between items-center">
                         <div>
-                          <span className="text-xs opacity-60">{t('date') || 'Date'}</span>
+                          <span className="text-xs opacity-60">Date</span>
                           <p className="font-bold text-sm">{formatDate(payment.date_paid)}</p>
                         </div>
                         <div className="text-right">
-                          <span className="text-xs opacity-60">{t('totalPayment') || 'Total Payment'}</span>
+                          <span className="text-xs opacity-60">Total Payment</span>
                           <p className="font-black text-lg text-success">RM {payment.total_paid.toFixed(2)}</p>
                         </div>
                       </div>
                       <div className="mt-2">
-                        <span className="text-xs opacity-60">{t('batches') || 'Batches'}: </span>
+                        <span className="text-xs opacity-60">Batches: </span>
                         <span className="text-xs font-medium">
                           {payment.records.map(r => r.batch_no).join(', ')}
                         </span>
@@ -359,7 +355,7 @@ export default function MyWage({ session, lang = 'en' }) {
                     className="btn btn-outline btn-primary font-bold"
                     onClick={() => setVisibleCount(prev => Math.min(prev + pageSize, filteredHistory.length))}
                   >
-                    {t('loadMore') || 'Load More'}
+                    Load More
                   </button>
                 </div>
               )}
@@ -374,30 +370,30 @@ export default function MyWage({ session, lang = 'en' }) {
           <div className="modal-backdrop" onClick={() => setIsDetailModalOpen(false)}></div>
           <div className="modal-box--md" onClick={(e) => e.stopPropagation()}>
             <h3 className="font-bold text-xl text-primary mb-3">
-              📋 {t('paymentDetailTitle') || 'Payment Details'}
+              📋 Payment Details
             </h3>
             
             <div className="mb-4">
               <div className="flex justify-between items-center mb-2">
-                <span className="text-xs opacity-60">{t('date') || 'Date'}</span>
+                <span className="text-xs opacity-60">Date</span>
                 <span className="font-bold">{formatDate(selectedPayment.date_paid)}</span>
               </div>
               <div className="flex justify-between items-center mb-4">
-                <span className="text-xs opacity-60">{t('totalPayment') || 'Total Payment'}</span>
+                <span className="text-xs opacity-60">Total Payment</span>
                 <span className="font-black text-lg text-success">RM {selectedPayment.total_paid.toFixed(2)}</span>
               </div>
             </div>
 
-            <div className="divider my-2">{t('batchRecordsTitle') || 'Batch Records'}</div>
+            <div className="divider my-2">Batch Records</div>
 
             <div className="max-h-64 overflow-y-auto">
               <table className="table table-sm w-full">
                 <thead>
                   <tr>
-                    <th>{t('date')}</th>
-                    <th>{t('batchNo')}</th>
-                    <th>{t('productName')}</th>
-                    <th className="text-right">{t('wageBatchHeader')}</th>
+                    <th>Date</th>
+                    <th>Batch No.</th>
+                    <th>Product Name</th>
+                    <th className="text-right">Batch Wage</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -422,7 +418,7 @@ export default function MyWage({ session, lang = 'en' }) {
                 className="btn btn-sm btn-ghost" 
                 onClick={() => setIsDetailModalOpen(false)}
               >
-                {t('close') || 'Close'}
+                Close
               </button>
             </div>
           </div>
