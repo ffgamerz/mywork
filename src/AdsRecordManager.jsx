@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
-import { getTranslation } from './utils/translation'
 
 const ADS_PLATFORMS = [
   { value: 'tiktok', label: 'TikTok' },
   { value: 'shopee', label: 'Shopee' }
 ]
 
-export default function AdsRecordManager({ session, lang = 'en' }) {
+export default function AdsRecordManager({ session }) {
   const [records, setRecords] = useState([])
   const [amount, setAmount] = useState('')
   const [adsPlatform, setAdsPlatform] = useState('tiktok')
@@ -24,9 +23,6 @@ export default function AdsRecordManager({ session, lang = 'en' }) {
   const [editAmount, setEditAmount] = useState('')
   const [editAdsPlatform, setEditAdsPlatform] = useState('tiktok')
   const [editDate, setEditDate] = useState('')
-
-  const activeLang = lang || 'en'
-  const t = (key) => getTranslation(activeLang, key)
 
   const showToast = (msg) => {
     setToastMessage(msg)
@@ -63,11 +59,11 @@ export default function AdsRecordManager({ session, lang = 'en' }) {
     }])
 
     if (error) {
-      showToast(t('saveFailed') + error.message)
+      showToast('Failed to save data: ' + error.message)
     } else {
       setAmount('')
       setAdsPlatform('tiktok')
-      showToast(t('saveRecord') + '!')
+      showToast('Save Record!')
       fetchRecords()
     }
     setLoadingSave(false)
@@ -95,10 +91,10 @@ export default function AdsRecordManager({ session, lang = 'en' }) {
       .eq('id', editingRecord.id)
 
     if (error) {
-      showToast(t('updateFailed') + error.message)
+      showToast('Failed to update data: ' + error.message)
     } else {
       setEditingRecord(null)
-      showToast(t('updateSuccess'))
+      showToast('Record updated successfully!')
       fetchRecords()
     }
     setLoadingSave(false)
@@ -117,7 +113,7 @@ export default function AdsRecordManager({ session, lang = 'en' }) {
   const handleDeleteChecked = async () => {
     if (checkedIds.length === 0) return
 
-    const confirmMsg = t('confirmDeleteRecords').replace('{count}', checkedIds.length)
+    const confirmMsg = `Are you sure you want to delete ${checkedIds.length} selected record(s)?`
     if (!window.confirm(confirmMsg)) return
 
     setLoadingDelete(true)
@@ -127,7 +123,7 @@ export default function AdsRecordManager({ session, lang = 'en' }) {
       .in('id', checkedIds)
 
     if (error) {
-      showToast(t('deleteFailed') + error.message)
+      showToast('Failed to delete records: ' + error.message)
     } else {
       setCheckedIds([])
       setGeneratedText('')
@@ -153,7 +149,7 @@ export default function AdsRecordManager({ session, lang = 'en' }) {
 
   const handleCopyToClipboard = () => {
     navigator.clipboard.writeText(generatedText)
-    showToast(t('copyNotesSuccess'))
+    showToast('Transaction notes copied successfully!')
   }
 
   const totalSelectedAmount = records
@@ -163,7 +159,7 @@ export default function AdsRecordManager({ session, lang = 'en' }) {
   const handleCopyTotalNumberOnly = () => {
     const numberOnly = totalSelectedAmount.toFixed(2)
     navigator.clipboard.writeText(numberOnly)
-    showToast(t('copyAmountSuccess').replace('{amount}', numberOnly))
+    showToast(`Amount ${numberOnly} copied successfully!`)
   }
 
   return (
@@ -177,17 +173,17 @@ export default function AdsRecordManager({ session, lang = 'en' }) {
       )}
 
       <div className="page-header">
-        <h1 className="page-title">{t('recordManager')}</h1>
-        <p className="page-subtitle">{t('recordManagerDesc')}</p>
+        <h1 className="page-title">Ads Record Manager</h1>
+        <p className="page-subtitle">Track payments, amounts, and manage financial outputs.</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
         {/* Form Tambah Rekod */}
         <div className="content-card p-5 h-fit">
-          <h3 className="text-lg font-bold mb-3 text-primary">{t('addRecord')}</h3>
+          <h3 className="text-lg font-bold mb-3 text-primary">Add New Record</h3>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="form-control">
-              <label className="label-text font-semibold mb-1">{t('date')}</label>
+              <label className="label-text font-semibold mb-1">Date</label>
               <input
                 type="date"
                 required
@@ -197,7 +193,7 @@ export default function AdsRecordManager({ session, lang = 'en' }) {
               />
             </div>
             <div className="form-control">
-              <label className="label-text font-semibold mb-1">{t('amount')}</label>
+              <label className="label-text font-semibold mb-1">Amount (RM)</label>
               <input
                 type="number"
                 step="0.01"
@@ -210,7 +206,7 @@ export default function AdsRecordManager({ session, lang = 'en' }) {
               />
             </div>
             <div className="form-control">
-              <label className="label-text font-semibold mb-1">{t('adsPlatform')}</label>
+              <label className="label-text font-semibold mb-1">Ads Platform</label>
               <select
                 required
                 className="select select-bordered w-full text-base"
@@ -225,7 +221,7 @@ export default function AdsRecordManager({ session, lang = 'en' }) {
               </select>
             </div>
             <button type="submit" disabled={loadingSave} className="btn btn-primary font-bold w-full mt-2">
-              {loadingSave ? <span className="loading loading-spinner"></span> : t('saveRecord')}
+              {loadingSave ? <span className="loading loading-spinner"></span> : 'Save Record'}
             </button>
           </form>
         </div>
@@ -233,11 +229,11 @@ export default function AdsRecordManager({ session, lang = 'en' }) {
         {/* Senarai Rekod */}
         <div className="lg:col-span-2 content-card p-5">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-            <h3 className="text-base font-bold text-base-content/80">{t('savedRecordsList')}</h3>
+            <h3 className="text-base font-bold text-base-content/80">Saved Records List</h3>
             <div className="flex flex-wrap items-center gap-3">
               {checkedIds.length > 0 && (
                 <div className="selected-total-box">
-                  <span className="text-xs">{t('selectedTotal')}</span>
+                  <span className="text-xs">Selected Total:</span>
                   <span className="font-bold text-base-content/90 text-sm">RM {totalSelectedAmount.toFixed(2)}</span>
                   <button
                     type="button"
@@ -255,14 +251,14 @@ export default function AdsRecordManager({ session, lang = 'en' }) {
                   disabled={checkedIds.length === 0 || loadingSave}
                   className="btn btn-sm btn-outline font-bold"
                 >
-                  {t('generate')} ({checkedIds.length})
+                  Generate ({checkedIds.length})
                 </button>
                 <button
                   onClick={handleDeleteChecked}
                   disabled={checkedIds.length === 0 || loadingDelete}
                   className="btn btn-sm btn-outline font-bold"
                 >
-                  {loadingDelete ? <span className="loading loading-spinner loading-xs"></span> : t('delete')}
+                  {loadingDelete ? <span className="loading loading-spinner loading-xs"></span> : 'Delete'}
                 </button>
               </div>
             </div>
@@ -277,7 +273,7 @@ export default function AdsRecordManager({ session, lang = 'en' }) {
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-12 h-12">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
               </svg>
-              <p className="font-bold text-sm">{t('noRecords')}</p>
+              <p className="font-bold text-sm">No records saved yet.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -292,10 +288,10 @@ export default function AdsRecordManager({ session, lang = 'en' }) {
                         checked={records.length > 0 && checkedIds.length === records.length}
                       />
                     </th>
-                    <th className="w-16 text-center">{t('no')}</th>
-                    <th>{t('date')}</th>
-                    <th>{t('adsPlatform')}</th>
-                    <th className="text-right">{t('amount')}</th>
+                    <th className="w-16 text-center">No.</th>
+                    <th>Date</th>
+                    <th>Ads Platform</th>
+                    <th className="text-right">Amount (RM)</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -340,9 +336,9 @@ export default function AdsRecordManager({ session, lang = 'en' }) {
       {generatedText && (
         <div className="content-card p-6 w-full">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-bold text-accent">{t('generatedResult')}</h3>
+            <h3 className="text-lg font-bold text-accent">Generated Note Result</h3>
             <button onClick={handleCopyToClipboard} className="btn btn-sm btn-outline btn-accent font-bold">
-              {t('copyText')}
+              Copy Text
             </button>
           </div>
           <div className="bg-base-300 p-4 rounded-xl font-mono text-sm leading-relaxed whitespace-pre-wrap border border-base-200 select-all">
@@ -356,10 +352,10 @@ export default function AdsRecordManager({ session, lang = 'en' }) {
         <div className="modal modal-open z-50">
           <div className="modal-backdrop" onClick={() => setEditingRecord(null)}></div>
           <div className="modal-box--sm" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-bold text-lg text-info flex items-center gap-2 mb-4">✏️ {t('editRecord')}</h3>
+            <h3 className="font-bold text-lg text-info flex items-center gap-2 mb-4">✏️ Edit Record</h3>
             <form onSubmit={handleUpdateRecord} className="space-y-4">
               <div className="form-control">
-                <label className="label-text font-semibold mb-1">{t('date')}</label>
+                <label className="label-text font-semibold mb-1">Date</label>
                 <input
                   type="date"
                   required
@@ -369,7 +365,7 @@ export default function AdsRecordManager({ session, lang = 'en' }) {
                 />
               </div>
               <div className="form-control">
-                <label className="label-text font-semibold mb-1">{t('amount')}</label>
+                <label className="label-text font-semibold mb-1">Amount (RM)</label>
                 <input
                   type="number"
                   step="0.01"
@@ -381,7 +377,7 @@ export default function AdsRecordManager({ session, lang = 'en' }) {
                 />
               </div>
               <div className="form-control">
-                <label className="label-text font-semibold mb-1">{t('adsPlatform')}</label>
+                <label className="label-text font-semibold mb-1">Ads Platform</label>
                 <select
                   required
                   className="select select-bordered w-full text-base"
@@ -397,10 +393,10 @@ export default function AdsRecordManager({ session, lang = 'en' }) {
               </div>
               <div className="modal-action gap-2 pt-2">
                 <button type="button" className="btn btn-sm btn-ghost" onClick={() => setEditingRecord(null)}>
-                  {t('cancel')}
+                  Cancel
                 </button>
                 <button type="submit" disabled={loadingSave} className="btn btn-sm btn-primary text-white font-bold px-4">
-                  {loadingSave ? <span className="loading loading-spinner loading-xs"></span> : t('saveChanges')}
+                  {loadingSave ? <span className="loading loading-spinner loading-xs"></span> : 'Save Changes'}
                 </button>
               </div>
             </form>

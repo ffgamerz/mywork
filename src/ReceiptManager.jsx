@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { supabase } from './supabaseClient'
-import { getTranslation } from './utils/translation'
 import ToastBar from './components/ToastBar'
 import { useToast } from './utils/useToast'
 
-export default function ReceiptManager({ session, userRole, allowedModules = {}, lang = 'en' }) {
+export default function ReceiptManager({ session, userRole, allowedModules = {} }) {
   const { toast, showToast, hideToast } = useToast()
   const [records, setRecords] = useState([])
   const [receiptDate, setReceiptDate] = useState(new Date().toISOString().split('T')[0])
@@ -14,9 +13,6 @@ export default function ReceiptManager({ session, userRole, allowedModules = {},
   const [selectedIds, setSelectedIds] = useState([])
   const [generatedText, setGeneratedText] = useState('')
   const [loading, setLoading] = useState(false)
-
-  const activeLang = lang || 'en'
-  const t = (key) => getTranslation(activeLang, key)
 
   // Security checking
   const cleanedRole = String(userRole || '').trim().toLowerCase()
@@ -32,7 +28,7 @@ export default function ReceiptManager({ session, userRole, allowedModules = {},
     return (
       <div className="alert-unauthorized">
         <div>
-          <span>🔒 {t('rmAccessDenied')}</span>
+          <span>🔒 Access Denied: You do not have permission to view this page.</span>
         </div>
       </div>
     )
@@ -78,7 +74,7 @@ export default function ReceiptManager({ session, userRole, allowedModules = {},
   }
 
   const handleDelete = async (id) => {
-    if (!confirm(t('rmConfirmDelete'))) return
+    if (!confirm('Are you sure you want to delete this record?')) return
     const { error } = await supabase.from('receipt_records').delete().eq('id', id)
     if (!error) {
       setSelectedIds(selectedIds.filter(sid => sid !== id))
@@ -88,7 +84,7 @@ export default function ReceiptManager({ session, userRole, allowedModules = {},
 
   const handleDeleteSelected = async () => {
     if (selectedIds.length === 0) return
-    const confirmMsg = t('rmConfirmDeleteSel').replace('{count}', selectedIds.length)
+    const confirmMsg = `Are you sure you want to delete ${selectedIds.length} selected records?`
     if (!confirm(confirmMsg)) return
     
     const { error } = await supabase.from('receipt_records').delete().in('id', selectedIds)
@@ -117,7 +113,7 @@ export default function ReceiptManager({ session, userRole, allowedModules = {},
   const generateFormatText = () => {
     const selectedRecords = records.filter(r => selectedIds.includes(r.id))
     if (selectedRecords.length === 0) {
-      setGeneratedText(t('rmSelectFirst'))
+      setGeneratedText('Please select a receipt first to generate text.')
       return
     }
 
@@ -137,14 +133,14 @@ export default function ReceiptManager({ session, userRole, allowedModules = {},
   const copyToClipboard = () => {
     if (!generatedText) return
     navigator.clipboard.writeText(generatedText)
-    showToast(t('rmCopiedAlert'))
+    showToast('Text copied successfully!')
   }
 
   const copyTotalAmount = () => {
     if (selectedIds.length === 0) return
     const total = (totalSelectedAmount + parseFloat(upahAmount || 0)).toFixed(2).replace(/,/g, '')
     navigator.clipboard.writeText(total)
-    showToast(t('rmCopiedAlert'))
+    showToast('Text copied successfully!')
   }
 
   const totalSelectedAmount = useMemo(() => {
@@ -157,23 +153,23 @@ export default function ReceiptManager({ session, userRole, allowedModules = {},
     <div className="page-shell">
       <ToastBar toast={toast} onClose={hideToast} />
       <div className="content-card p-5">
-        <h2 className="text-lg font-bold mb-3">📝 {editingId ? t('rmUpdateReceipt') : t('rmNewReceipt')}</h2>
+        <h2 className="text-lg font-bold mb-3">📝 {editingId ? 'Update Receipt' : 'Register New Receipt'}</h2>
         <form onSubmit={handleSubmit} className="flex flex-wrap gap-3 items-end">
           <div className="form-control w-full sm:w-auto">
-            <label className="label text-xs font-bold">{t('rmReceiptDate')}</label>
+            <label className="label text-xs font-bold">Receipt Date</label>
             <input type="date" className="input input-bordered w-full" value={receiptDate} onChange={(e) => setReceiptDate(e.target.value)} required />
           </div>
           <div className="form-control w-full sm:w-auto flex-1">
-            <label className="label text-xs font-bold">{t('rmAmount')}</label>
+            <label className="label text-xs font-bold">Amount Total (RM)</label>
             <input type="number" step="0.01" placeholder="407.90" className="input input-bordered w-full" value={amount} onChange={(e) => setAmount(e.target.value)} required />
           </div>
           <div className="w-full sm:w-auto flex gap-2">
             <button type="submit" disabled={loading} className="btn btn-primary text-white font-bold">
-              {editingId ? t('rmSave') : t('rmAdd')}
+              {editingId ? 'Save' : 'Add'}
             </button>
             {editingId && (
               <button type="button" className="btn btn-ghost" onClick={() => { setEditingId(null); setAmount(''); }}>
-                {t('rmCancel')}
+                Cancel
               </button>
             )}
           </div>
@@ -183,17 +179,17 @@ export default function ReceiptManager({ session, userRole, allowedModules = {},
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 content-card p-6 overflow-x-auto">
           <div className="flex justify-between items-center mb-4 gap-2 flex-wrap">
-            <h2 className="text-lg font-black">📋 {t('rmListTitle')}</h2>
+            <h2 className="text-lg font-black">📋 Receipt Records List</h2>
             {selectedIds.length > 0 && (
               <div className="flex items-center gap-2">
                 <span className="font-bold text-primary">
-                  {t('rmTotalSelected')}: RM {(totalSelectedAmount + parseFloat(upahAmount || 0)).toFixed(2)}
+                  Total Selected: RM {(totalSelectedAmount + parseFloat(upahAmount || 0)).toFixed(2)}
                 </span>
                 <button onClick={copyTotalAmount} className="btn btn-sm btn-outline font-bold">
-                  📋 {t('rmCopyBtn')}
+                  📋 Copy Text
                 </button>
                 <button onClick={handleDeleteSelected} className="btn btn-error btn-sm text-white font-bold">
-                  {t('rmDeleteSelected')} ({selectedIds.length})
+                  Delete Selected ({selectedIds.length})
                 </button>
               </div>
             )}
@@ -205,15 +201,15 @@ export default function ReceiptManager({ session, userRole, allowedModules = {},
                 <th className="w-10">
                   <input type="checkbox" className="checkbox checkbox-sm" checked={records.length > 0 && selectedIds.length === records.length} onChange={handleSelectAll} />
                 </th>
-                <th>{t('rmReceiptDate')}</th>
-                <th>{t('rmAmount')}</th>
-                <th className="w-24 text-center">{t('rmAction')}</th>
+                <th>Receipt Date</th>
+                <th>Amount Total (RM)</th>
+                <th className="w-24 text-center">Actions</th>
               </tr>
             </thead>
             <tbody>
               {records.length === 0 ? (
                 <tr>
-                  <td colSpan="4" className="text-center opacity-50 py-8">{t('rmNoRecords')}</td>
+                  <td colSpan="4" className="text-center opacity-50 py-8">No receipt records found.</td>
                 </tr>
               ) : (
                 records.map((rec) => (
@@ -224,8 +220,8 @@ export default function ReceiptManager({ session, userRole, allowedModules = {},
                     <td className="font-medium">{rec.receipt_date}</td>
                     <td className="font-bold text-success">RM {rec.amount.toFixed(2)}</td>
                     <td className="flex gap-2 justify-center">
-                      <button onClick={() => handleEdit(rec)} className="btn btn-xs btn-ghost text-info">{t('rmEdit')}</button>
-                      <button onClick={() => handleDelete(rec.id)} className="btn btn-xs btn-ghost text-error">{t('rmDelete')}</button>
+                      <button onClick={() => handleEdit(rec)} className="btn btn-xs btn-ghost text-info">Edit</button>
+                      <button onClick={() => handleDelete(rec.id)} className="btn btn-xs btn-ghost text-error">Delete</button>
                     </td>
                   </tr>
                 ))
@@ -235,15 +231,15 @@ export default function ReceiptManager({ session, userRole, allowedModules = {},
         </div>
 
         <div className="content-card p-6 space-y-4">
-          <h2 className="text-lg font-black">⚙️ {t('rmConfigTitle')}</h2>
+          <h2 className="text-lg font-black">⚙️ Configuration & Output Text</h2>
           
           <div className="form-control">
-            <label className="label text-xs font-bold">{t('rmWageRate')}</label>
+            <label className="label text-xs font-bold">Wage Rate (RM)</label>
             <input type="number" step="0.01" className="input input-bordered w-full font-bold" value={upahAmount} onChange={(e) => setUpahAmount(e.target.value)} />
           </div>
 
           <button onClick={generateFormatText} className="btn btn-accent w-full text-white font-bold">
-            {t('rmGenerateBtn')}
+            Generate Selected Text
           </button>
 
           {generatedText && (
@@ -252,7 +248,7 @@ export default function ReceiptManager({ session, userRole, allowedModules = {},
                 {generatedText}
               </pre>
               <button onClick={copyToClipboard} className="btn btn-sm btn-outline btn-block font-bold">
-                {t('rmCopyBtn')}
+                Copy Text
               </button>
             </div>
           )}
