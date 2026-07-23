@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { supabase } from './supabaseClient'
 import { jsPDF } from 'jspdf'
 import 'jspdf-autotable'
@@ -126,10 +126,6 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
   const [selectedPurchase, setSelectedPurchase] = useState(null)
   const [purchaseNotes, setPurchaseNotes] = useState('')
 
-  useEffect(() => {
-    if (hasAccess) { fetchMaterials(); fetchProductsList(); fetchPurchaseRecords() }
-  }, [hasAccess])
-
   const fetchMaterials = async () => {
     const { data, error } = await supabase.from('raw_materials').select('*').order('name')
     if (!error && data) setMaterials(data)
@@ -151,6 +147,14 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
     if (!error && data) setPurchaseRecords(data)
   }
 
+  useEffect(() => {
+    if (!hasAccess) return
+    const loadData = async () => {
+      await Promise.all([fetchMaterials(), fetchProductsList(), fetchPurchaseRecords()])
+    }
+    loadData()
+  }, [hasAccess])
+
   const openMatModal = (mat = null) => {
     if (mat) {
       setEditingMat(mat); setMatName(mat.name); setMatUnit(mat.unit); setMatPrice(String(mat.price))
@@ -166,15 +170,20 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
     if (!matName.trim() || !matPrice) return
     setLoading(true)
     const payload = {
-      user_id: session.user.id, name: matName.trim(), unit: matUnit, price: parseFloat(matPrice) || 0,
+      user_id: session.user.id,
+      name: matName.trim(),
+      unit: matUnit,
+      price: parseFloat(matPrice) || 0,
       calculation_mode: matMode,
       fraction_grams: matMode === 'fraction' ? (parseFloat(matFractionG) || null) : null,
       fraction_unit: matMode === 'fraction' ? matFractionUnit : null,
     }
-    let err = null
-    if (editingMat) { const { error } = await supabase.from('raw_materials').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', editingMat.id); err = error }
-    else { const { error } = await supabase.from('raw_materials').insert([payload]); err = error }
-    if (err) showMsg('Error: ' + err.message)
+
+    const response = editingMat
+      ? await supabase.from('raw_materials').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', editingMat.id)
+      : await supabase.from('raw_materials').insert([payload])
+
+    if (response.error) showMsg('Error: ' + response.error.message)
     else { showMsg(editingMat ? 'Material updated!' : 'Material added!'); setMatModal(false); fetchMaterials() }
     setLoading(false)
   }
@@ -280,22 +289,82 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
     setLoading(false)
   }
 
-  const handleDownloadPDF = () => {
-    if (!purchaseSummary) return
-    const doc = new jsPDF()
-    const pageWidth = doc.internal.pageSize.getWidth()
-    doc.setFontSize(18); doc.text('Production Shopping List', pageWidth / 2, 20, { align: 'center' })
-    doc.setFontSize(10); doc.text(`Date: ${new Date().toLocaleDateString('en-MY')}`, pageWidth / 2, 28, { align: 'center' })
-    let y = 36; doc.setFontSize(11); doc.text('Products / Batches:', 14, y)
-    y += 6
-    purchaseSummary.batchDetails.forEach(b => { const prod = products.find(p => p.id === b.inventory_id); doc.setFontSize(10); doc.text(`  • ${prod?.product_name || 'Unknown'} — ${b.batch_count} batch(es)`, 14, y); y += 5 })
-    y += 4
-    const tableData = purchaseSummary.items.map(i => {
-      const display = formatDisplayQty(i.qty, i.unit, i.rawMaterial)
-      return [i.material_name, display.isRoundedUp ? `${display.qty}${display.unit}` : `${display.qty} ${display.unit}`, display.isRoundedUp ? `${display.unit}` : display.unit, `RM ${i.cost.toFixed(2)}`]
+  const buildPdfRows = (items) => {
+    return items.map((item) => {
+      const display = formatDisplayQty(item.qty, item.unit, item.rawMaterial)
+      const qtyText = `${display.qty} ${display.unit}`
+      const noteText = display.isRoundedUp && item.rawMaterial
+        ? `Rounded up from ${parseFloat(item.qty).toFixed(2)} ${item.rawMaterial.fraction_unit || item.unit}`
+        : ''
+      return {
+        material: item.material_name,
+        quantity: qtyText,
+        unit: display.unit,
+        cost: `RM ${item.cost.toFixed(2)}`,
+        note: noteText,
+      }
     })
-    doc.autoTable({ startY: y, head: [['Material', 'Qty Needed', 'Unit', 'Est. Cost']], body: tableData, foot: [['', '', 'TOTAL', `RM ${purchaseSummary.totalCost.toFixed(2)}`]], theme: 'grid', headStyles: { fillColor: [59, 130, 246], textColor: 255 }, footStyles: { fillColor: [30, 30, 30], textColor: 255, fontStyle: 'bold' } })
-    doc.save(`Shopping_List_${Date.now()}.pdf`)
+  }
+
+  const handleDownloadPDF = (record = null) => {
+    const summary = record ? {
+      batchDetails: record.purchase_plan_batches || [],
+      items: record.purchase_plan_items || [],
+      totalCost: parseFloat(record.total_estimated_cost || 0),
+      notes: record.notes || '',
+      planDate: record.plan_date || new Date().toISOString().slice(0, 10),
+    } : purchaseSummary
+
+    if (!summary || !summary.items || summary.items.length === 0) return showMsg('No purchase summary available to export.')
+    const doc = new jsPDF({ unit: 'pt' })
+    const pageWidth = doc.internal.pageSize.getWidth()
+    const pageMargin = 40
+    doc.setFontSize(18)
+    doc.text('Production Shopping List', pageWidth / 2, 50, { align: 'center' })
+    doc.setFontSize(10)
+    doc.text(`Date: ${summary.planDate}`, pageWidth / 2, 66, { align: 'center' })
+    if (summary.notes) {
+      doc.text(`Notes: ${summary.notes}`, pageMargin, 88)
+    }
+
+    let y = summary.notes ? 108 : 96
+    doc.setFontSize(11)
+    doc.text('Products / Batches:', pageMargin, y)
+    y += 16
+    summary.batchDetails.forEach((b) => {
+      const prod = products.find((p) => p.id === b.inventory_id)
+      const productLabel = prod?.product_name || b.inventory?.product_name || 'Unknown'
+      doc.setFontSize(10)
+      doc.text(`• ${productLabel} — ${b.batch_count} batch(es)`, pageMargin + 8, y)
+      y += 14
+    })
+
+    const tableRows = buildPdfRows(summary.items)
+    const body = tableRows.map((row) => [row.material, row.quantity, row.cost])
+    const foot = [['', 'TOTAL', `RM ${summary.totalCost.toFixed(2)}`]]
+
+    doc.autoTable({
+      startY: y + 10,
+      head: [['Material', 'Qty Needed', 'Est. Cost']],
+      body,
+      foot,
+      theme: 'grid',
+      headStyles: { fillColor: [59, 130, 246], textColor: 255 },
+      footStyles: { fillColor: [30, 30, 30], textColor: 255, fontStyle: 'bold' },
+      styles: { fontSize: 10 },
+      didDrawCell: (data) => {
+        if (data.row.section === 'body' && tableRows[data.row.index].note && data.column.index === 0) {
+          doc.setFontSize(8)
+          doc.setTextColor(100)
+          doc.text(`(${tableRows[data.row.index].note})`, data.cell.x + 2, data.cell.y + data.cell.height - 4)
+          doc.setTextColor(0)
+          doc.setFontSize(10)
+        }
+      },
+    })
+
+    const fileName = record ? `Purchase_Record_${record.id || Date.now()}.pdf` : `Shopping_List_${Date.now()}.pdf`
+    doc.save(fileName)
   }
 
   const viewPurchaseDetail = (record) => setSelectedPurchase(record)
@@ -502,10 +571,13 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
         <div>
           {selectedPurchase ? (
             <div>
-              <button onClick={() => setSelectedPurchase(null)} className="btn btn-sm btn-ghost mb-4">← Back to Records</button>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                <button onClick={() => setSelectedPurchase(null)} className="btn btn-sm btn-ghost">← Back to Records</button>
+                <button onClick={() => handleDownloadPDF(selectedPurchase)} className="btn btn-sm btn-primary text-white">📥 Download PDF</button>
+              </div>
               <div className="content-card p-4 space-y-3">
                 <div className="flex justify-between items-start"><div><h2 className="font-bold text-lg">Purchase Record</h2><p className="text-sm opacity-60">{selectedPurchase.plan_date} {selectedPurchase.notes && `— ${selectedPurchase.notes}`}</p></div><span className="font-mono font-black text-xl text-primary">RM {parseFloat(selectedPurchase.total_estimated_cost || 0).toFixed(2)}</span></div>
-                <div className="border-t border-base-200 pt-3"><h3 className="font-bold text-sm mb-2">Batches:</h3>{(selectedPurchase.purchase_plan_batches || []).map((b, i) => { const prod = products.find(p => p.id === b.inventory_id); return <div key={i} className="text-sm font-bold">• {prod?.product_name || 'Unknown'} — {b.batch_count} batch(es)</div> })}</div>
+                <div className="border-t border-base-200 pt-3"><h3 className="font-bold text-sm mb-2">Batches:</h3>{(selectedPurchase.purchase_plan_batches || []).map((b, i) => { const prod = products.find(p => p.id === b.inventory_id); return <div key={i} className="text-sm font-bold">• {prod?.product_name || b.inventory?.product_name || 'Unknown'} — {b.batch_count} batch(es)</div> })}</div>
                 <div className="border-t border-base-200 pt-3"><h3 className="font-bold text-sm mb-2">Materials:</h3><div className="divide-y divide-base-200">{(selectedPurchase.purchase_plan_items || []).map((item, i) => (<div key={i} className="flex justify-between py-2 text-sm"><span className="font-bold">{item.raw_material?.name || 'Unknown'}</span><div className="text-right"><span className="opacity-60">{item.total_quantity_needed} {item.unit}</span><span className="ml-2 font-mono font-bold text-accent">RM {parseFloat(item.estimated_cost).toFixed(2)}</span></div></div>))}</div></div>
               </div>
             </div>
