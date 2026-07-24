@@ -37,7 +37,7 @@ export default function WageCalculator({ session, userRole, allowedModules = {} 
   useEffect(() => { setVisibleCount(8) }, [selectedStaff, paymentStatus, dateFrom, dateTo, searchTerm, monthFilter, activeTab])
 
   if (!hasPageAccess) {
-    return <div className="alert-unauthorized"><span>🔒 Access Denied: Unauthorized.</span></div>
+    return <div className="alert-unauthorized"><span className="material-symbols-outlined me-1" style={{fontSize:'14px',verticalAlign:'middle'}}>lock</span> Access Denied: Unauthorized.</div>
   }
 
   const fetchStaffList = async () => {
@@ -167,7 +167,7 @@ export default function WageCalculator({ session, userRole, allowedModules = {} 
     <div>
       <ToastBar toast={toast} onClose={hideToast} />
       <div className="page-header-custom">
-        <h1 className="page-title-custom">🧮 Staff Wage Calculator</h1>
+        <h1 className="page-title-custom"><span className="material-symbols-outlined me-2" style={{fontSize:'24px',verticalAlign:'middle'}}>payments</span> Staff Wage Calculator</h1>
         <p className="page-subtitle-custom">Calculate staff wages based on unpaid cooking production batches.</p>
       </div>
 
@@ -200,7 +200,7 @@ export default function WageCalculator({ session, userRole, allowedModules = {} 
           <div className="col-lg-8">
             <div className="card p-3 overflow-x-auto">
               <div className="d-flex flex-wrap align-items-center justify-content-between mb-3 gap-2">
-                <h6 className="fw-bold mb-0">📦 Batch Records ({displayRecords.length})</h6>
+                <h6 className="fw-bold mb-0"><span className="material-symbols-outlined me-1" style={{fontSize:'16px',verticalAlign:'middle'}}>inventory_2</span> Batch Records ({displayRecords.length})</h6>
                 <div className="d-flex flex-wrap gap-2">
                   <span className="chip-custom">Filtered: {displayRecords.length}</span>
                   <span className="chip-custom">Selected: {selectedIds.length}</span>
@@ -217,10 +217,10 @@ export default function WageCalculator({ session, userRole, allowedModules = {} 
                       <tr key={rec.id} className={`${selectedIds.includes(rec.id) ? 'row-selected' : ''} ${isPaid ? 'row-paid' : 'row-unpaid'}`}>
                         <td><input type="checkbox" className="form-check-input" checked={selectedIds.includes(rec.id)} onChange={() => handleSelectRow(rec.id)} /></td>
                         <td>{rec.production_date}</td>
-                        <td className="font-mono fw-bold text-primary">{rec.batch_no}</td>
-                        <td className="fw-bold">{rec.inventory?.product_name || '-'} <span className="text-muted fw-normal">({rec.quantity} unit)</span></td>
+                        <td className="font-mono text-primary">{rec.batch_no}</td>
+                        <td>{rec.inventory?.product_name || '-'} <span className="text-muted">({rec.quantity} unit)</span></td>
                         <td><span className={`badge ${isPaid ? 'badge-success' : 'badge-warning'}`}>{isPaid ? 'Paid' : 'Unpaid'}</span></td>
-                        <td className="text-end fw-bold">RM {flatWage.toFixed(2)}</td>
+                        <td className="text-end">RM {flatWage.toFixed(2)}</td>
                       </tr>
                     )
                   })}
@@ -235,14 +235,14 @@ export default function WageCalculator({ session, userRole, allowedModules = {} 
           </div>
           <div className="col-lg-4">
             <div className="card p-3 d-flex flex-column gap-3">
-              <h6 className="fw-bold mb-0">💰 Selected Summary ({selectedIds.length})</h6>
+              <h6 className="fw-bold mb-0"><span className="material-symbols-outlined me-1" style={{fontSize:'16px',verticalAlign:'middle'}}>payments</span> Selected Summary ({selectedIds.length})</h6>
               <div className="summary-box text-center">
                 <div className="text-uppercase small fw-bold text-muted">Selected Wages Total</div>
                 <h3 className="fw-bold">RM {totalWagesDue.toFixed(2)}</h3>
               </div>
-              <button onClick={generateFormatText} disabled={selectedIds.length === 0} className="btn fw-bold w-100">⚡ Generate Text Format</button>
+              <button onClick={generateFormatText} disabled={selectedIds.length === 0} className="btn fw-bold w-100"><span className="material-symbols-outlined me-1" style={{fontSize:'16px',verticalAlign:'middle'}}>bolt</span> Generate Text Format</button>
               {paymentStatus === 'unpaid' && selectedIds.length > 0 && (
-                <button onClick={() => setIsPaidModalOpen(true)} className="btn fw-bold w-100">✅ Mark as Paid ({selectedIds.length})</button>
+                <button onClick={() => setIsPaidModalOpen(true)} className="btn fw-bold w-100"><span className="material-symbols-outlined me-1" style={{fontSize:'16px',verticalAlign:'middle'}}>check_circle</span> Mark as Paid ({selectedIds.length})</button>
               )}
             </div>
           </div>
@@ -251,7 +251,7 @@ export default function WageCalculator({ session, userRole, allowedModules = {} 
 
       {activeTab === 'history' && (
         <div className="card p-3">
-          <h6 className="fw-bold mb-3">📊 Payment History ({filteredHistory.length})</h6>
+          <h6 className="fw-bold mb-3"><span className="material-symbols-outlined me-1" style={{fontSize:'16px',verticalAlign:'middle'}}>bar_chart</span> Payment History ({filteredHistory.length})</h6>
           {loading ? <div className="text-center py-4"><span className="spinner-border"></span></div> : filteredHistory.length === 0 ? <div className="text-center text-muted py-4">No payment history found.</div> : (
             <>
               <div className="d-flex flex-column gap-2">
@@ -282,7 +282,7 @@ export default function WageCalculator({ session, userRole, allowedModules = {} 
           <div className="modal d-block" tabIndex="-1">
             <div className="modal-dialog modal-dialog-centered">
               <div className="modal-content p-3">
-                <h5 className="fw-bold text-primary mb-3">📋 Wage Text Copy</h5>
+                <h5 className="fw-bold text-primary mb-3"><span className="material-symbols-outlined me-1" style={{fontSize:'18px',verticalAlign:'middle'}}>description</span> Wage Text Copy</h5>
                 <pre className="p-3 font-mono user-select-all">{generatedText}</pre>
                 <div className="d-flex gap-2 justify-content-end mt-3 pt-3">
                   <button className="btn btn-sm btn-link" onClick={() => setIsTextModalOpen(false)}>Cancel</button>
@@ -300,7 +300,7 @@ export default function WageCalculator({ session, userRole, allowedModules = {} 
           <div className="modal d-block" tabIndex="-1">
             <div className="modal-dialog modal-dialog-centered">
               <div className="modal-content p-3">
-                <h5 className="fw-bold mb-2">💸 Confirm Payment</h5>
+                <h5 className="fw-bold mb-2"><span className="material-symbols-outlined me-1" style={{fontSize:'18px',verticalAlign:'middle'}}>payments</span> Confirm Payment</h5>
                 <p className="text-muted mb-3">Please review the payment date before saving.</p>
                 <form onSubmit={handleMarkAsPaidSubmit}>
                   <div className="mb-3">
@@ -328,7 +328,7 @@ export default function WageCalculator({ session, userRole, allowedModules = {} 
           <div className="modal d-block" tabIndex="-1">
             <div className="modal-dialog modal-dialog-centered">
               <div className="modal-content p-3">
-                <h5 className="fw-bold text-primary mb-3">📋 Payment Details</h5>
+                <h5 className="fw-bold text-primary mb-3"><span className="material-symbols-outlined me-1" style={{fontSize:'18px',verticalAlign:'middle'}}>description</span> Payment Details</h5>
                 <div className="d-flex justify-content-between mb-2"><span className="text-muted">Payment Date</span><span className="fw-bold">{formatDate(selectedPayment.date_paid)}</span></div>
                 <div className="d-flex justify-content-between mb-2"><span className="text-muted">Staff</span><span className="fw-bold">{selectedPayment.records[0]?.production_name || '-'}</span></div>
                 <div className="d-flex justify-content-between mb-3"><span className="text-muted">Total Payment</span><h5 className="fw-bold mb-0">RM {selectedPayment.total_paid.toFixed(2)}</h5></div>
@@ -339,7 +339,7 @@ export default function WageCalculator({ session, userRole, allowedModules = {} 
                     <tbody>
                       {selectedPayment.records.map((rec) => {
                         const wage = parseFloat(rec.paid_amount || rec.inventory?.wage_rate || 0)
-                        return <tr key={rec.id}><td>{rec.production_date}</td><td className="font-mono">{rec.batch_no}</td><td>{rec.inventory?.product_name || '-'}</td><td className="text-end fw-bold">RM {wage.toFixed(2)}</td></tr>
+                        return <tr key={rec.id}><td>{rec.production_date}</td><td className="font-mono">{rec.batch_no}</td><td>{rec.inventory?.product_name || '-'}</td><td className="text-end">RM {wage.toFixed(2)}</td></tr>
                       })}
                     </tbody>
                   </table>

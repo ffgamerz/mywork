@@ -75,7 +75,7 @@ export default function Inventory({ session, userRole, allowedModules = {} }) {
     }
   }, [isStockModalOpen, productions])
 
-  if (!hasPageAccess) return <div className="alert-unauthorized">🔒 Access Denied: Unauthorized.</div>
+  if (!hasPageAccess) return <div className="alert-unauthorized"><span className="material-symbols-outlined me-1" style={{fontSize:'14px',verticalAlign:'middle'}}>lock</span> Access Denied: Unauthorized.</div>
 
   const handleToggleStockFinished = async (productionId, currentStatus) => {
     if (!canToggleStockStatus) { showToast('Access denied.', 'error'); return }
@@ -192,17 +192,17 @@ export default function Inventory({ session, userRole, allowedModules = {} }) {
                         <div className="text-end"><div className="text-muted fw-bold text-10">Expiry</div><div className="text-muted text-14">{p.expiry_date || '-'}</div></div>
                       </div>
                       <div className="d-flex justify-content-between pt-2 mt-auto border-top border-default">
-                        <div><div className="text-muted fw-bold text-10">Wage</div><div className="font-mono fw-bold text-white">RM {flatWage.toFixed(2)}</div></div>
-                        {p.paid_date && <div className="text-end"><div className="text-muted fw-bold text-10">Paid Date</div><div className="font-mono fw-bold text-white text-14">{p.paid_date}</div></div>}
+                        <div><div className="text-muted fw-bold text-10">Wage</div><div className="font-mono text-white">RM {flatWage.toFixed(2)}</div></div>
+                        {p.paid_date && <div className="text-end"><div className="text-muted fw-bold text-10">Paid Date</div><div className="font-mono text-white text-14">{p.paid_date}</div></div>}
                       </div>
                       <div className="d-flex gap-2 mt-2 pt-2 border-top border-default">
                         {canToggleStockStatus && (
                           <button className={`btn btn-sm flex-grow-1 fw-semibold ${p.is_finished ? 'btn-danger' : 'btn-success'}`} onClick={() => handleToggleStockFinished(p.id, p.is_finished)} disabled={loadingSave}>
-                            {p.is_finished ? '🔄 Reopen' : '✅ Finish'}
+                            {p.is_finished ? <><span className="material-symbols-outlined me-1" style={{fontSize:'14px',verticalAlign:'middle'}}>sync</span> Reopen</> : <><span className="material-symbols-outlined me-1" style={{fontSize:'14px',verticalAlign:'middle'}}>check_circle</span> Finish</>}
                           </button>
                         )}
                         {canEditStockInfo && (
-                          <button className="btn btn-sm btn-link text-secondary-custom" onClick={() => handleOpenEditStockModal(p)}>📝 Edit</button>
+                          <button className="btn btn-sm btn-link text-secondary-custom" onClick={() => handleOpenEditStockModal(p)}><span className="material-symbols-outlined me-1" style={{fontSize:'14px',verticalAlign:'middle'}}>edit</span> Edit</button>
                         )}
                       </div>
                     </div>
@@ -223,7 +223,7 @@ export default function Inventory({ session, userRole, allowedModules = {} }) {
             <div className="modal d-block" tabIndex="-1">
               <div className="modal-dialog modal-dialog-centered max-w-448">
                 <div className="modal-content p-3">
-                  <h5 className="fw-bold mb-3 text-success">🏭 Record Production Stock</h5>
+                  <h5 className="fw-bold mb-3 text-success"><span className="material-symbols-outlined me-1" style={{fontSize:'18px',verticalAlign:'middle'}}>factory</span> Record Production Stock</h5>
                   <form onSubmit={handleAddStock}>
                     <div className="mb-3"><label className="form-label">Production Date</label><input type="date" className="form-control" required value={prodDate} onChange={(e) => setProdDate(e.target.value)} /></div>
                     <div className="mb-3"><label className="form-label">Batch No.</label><input type="text" className="form-control font-mono fw-bold text-accent text-18" value={prodBatch} readOnly /></div>
@@ -252,7 +252,7 @@ export default function Inventory({ session, userRole, allowedModules = {} }) {
             <div className="modal d-block" tabIndex="-1">
               <div className="modal-dialog modal-dialog-centered max-w-448">
                 <div className="modal-content p-3">
-                  <h5 className="fw-bold mb-3 text-secondary-custom">📝 Edit Stock Information</h5>
+                  <h5 className="fw-bold mb-3 text-secondary-custom"><span className="material-symbols-outlined me-1" style={{fontSize:'18px',verticalAlign:'middle'}}>edit</span> Edit Stock Information</h5>
                   <form onSubmit={handleUpdateStock}>
                     <div className="mb-3"><label className="form-label">Production Date</label><input type="date" className="form-control" required value={prodDate} onChange={(e) => setProdDate(e.target.value)} /></div>
                     <div className="mb-3"><label className="form-label">Batch No.</label><input type="text" className="form-control font-mono fw-bold" required value={prodBatch} onChange={(e) => setProdBatch(e.target.value)} /></div>
@@ -285,7 +285,7 @@ export default function Inventory({ session, userRole, allowedModules = {} }) {
 
       <div className="page-header-custom d-flex flex-wrap justify-content-between align-items-start gap-2">
         <div>
-          <h1 className="page-title-custom">Inventory Manager</h1>
+          <h1 className="page-title-custom"><span className="material-symbols-outlined me-2" style={{fontSize:'24px',verticalAlign:'middle'}}>inventory_2</span> Inventory Manager</h1>
           <p className="page-subtitle-custom">Monitor product batches and current physical stock levels.</p>
         </div>
         {canEditStockInfo && (
@@ -306,21 +306,21 @@ export default function Inventory({ session, userRole, allowedModules = {} }) {
                 <div className="card p-3 h-100 d-flex flex-column">
                   <div className="d-flex align-items-center gap-2 mb-2">
                     <span className={`status-dot ${activeCount > 0 ? 'status-dot-success' : 'status-dot-error'}`}></span>
-                    <h6 className="fw-bold text-white mb-0 cursor-pointer text-15 text-16 lh-12" onClick={() => setSelectedProduct(prod)}>
+                    <h6 className="fw-bold text-white mb-0 cursor-pointer text-16 lh-12" onClick={() => setSelectedProduct(prod)}>
                       {prod.product_name}
                     </h6>
                   </div>
                   <div className="d-flex flex-column gap-1 mb-2 flex-grow-1">
-                    <div className="d-flex justify-content-between"><span className="text-muted text-11">Active Stock</span><span className="fw-bold text-11">{activeCount > 0 ? `${activeCount} Batch` : 'None'}</span></div>
-                    <div className="d-flex justify-content-between"><span className="text-muted text-11">Wage Rate</span><span className="fw-bold font-mono text-white text-11">RM {parseFloat(prod.wage_rate || 0).toFixed(2)}</span></div>
-                    <div className="d-flex justify-content-between"><span className="text-muted text-11">Shelf Life</span><span className="fw-bold text-white text-11">{prod.expiry_month || 12} months</span></div>
+                    <div className="d-flex justify-content-between"><span className="text-muted text-13">Active Stock</span><span className="text-13">{activeCount > 0 ? `${activeCount} Batch` : 'None'}</span></div>
+                    <div className="d-flex justify-content-between"><span className="text-muted text-13">Wage Rate</span><span className="font-mono text-white text-13">RM {parseFloat(prod.wage_rate || 0).toFixed(2)}</span></div>
+                    <div className="d-flex justify-content-between"><span className="text-muted text-13">Shelf Life</span><span className="text-white text-13">{prod.expiry_month || 12} months</span></div>
                   </div>
                   <div className="fifo-box mb-2">
-                    <div className="text-muted fw-bold text-uppercase text-9 tracking-wider">Oldest Stock</div>
+                    <div className="text-muted fw-bold text-uppercase tracking-wider text-10">Oldest Stock</div>
                     {prod.fifo_stock ? (
                       <div className="d-flex justify-content-between align-items-center">
-                        <span className="font-mono fw-bold text-white text-11">{prod.fifo_stock.batch_no}</span>
-                        <span className="fw-semibold text-muted text-10">{prod.fifo_stock.expiry_date}</span>
+                        <span className="font-mono text-white text-13">{prod.fifo_stock.batch_no}</span>
+                        <span className="fw-semibold text-muted text-13">{prod.fifo_stock.expiry_date}</span>
                       </div>
                     ) : <span className="text-muted text-10">—</span>}
                   </div>
@@ -328,7 +328,7 @@ export default function Inventory({ session, userRole, allowedModules = {} }) {
                     <button className="btn btn-sm flex-grow-1 fw-semibold btn-primary" onClick={() => setSelectedProduct(prod)}>View Stock</button>
                     {canEditStockInfo && (
                       <button className="btn btn-sm btn-link d-flex align-items-center justify-content-center text-secondary-custom border-default w-32 h-32" onClick={() => handleOpenEditProductModal(prod)}>
-                        <svg className="icon-svg-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        <span className="material-symbols-outlined" style={{fontSize:'16px'}}>edit</span>
                       </button>
                     )}
                   </div>
@@ -345,7 +345,7 @@ export default function Inventory({ session, userRole, allowedModules = {} }) {
           <div className="modal d-block" tabIndex="-1">
             <div className="modal-dialog modal-dialog-centered max-w-448">
               <div className="modal-content p-3">
-                <h5 className="fw-bold text-accent mb-3">📦 Add New Product</h5>
+                <h5 className="fw-bold text-accent mb-3"><span className="material-symbols-outlined me-1" style={{fontSize:'18px',verticalAlign:'middle'}}>inventory_2</span> Add New Product</h5>
                 <form onSubmit={handleAddProduct}>
                   <div className="mb-3"><label className="form-label">Product Name</label><input type="text" className="form-control" required placeholder="e.g., Pes Kari Sambal" value={productName} onChange={(e) => setProductName(e.target.value)} /></div>
                   <div className="mb-3"><label className="form-label">Shelf Life (Months)</label><input type="number" className="form-control" required value={expiryMonth} onChange={(e) => setExpiryMonth(e.target.value)} /></div>

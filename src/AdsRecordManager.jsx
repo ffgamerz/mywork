@@ -85,7 +85,7 @@ export default function AdsRecordManager({ session }) {
       )}
 
       <div className="page-header-custom">
-        <h1 className="page-title-custom">Ads Record Manager</h1>
+        <h1 className="page-title-custom"><span className="material-symbols-outlined me-2" style={{fontSize:'24px',verticalAlign:'middle'}}>bar_chart</span> Ads Record Manager</h1>
         <p className="page-subtitle-custom">Track payments, amounts, and manage financial outputs.</p>
       </div>
 
@@ -133,7 +133,7 @@ export default function AdsRecordManager({ session }) {
                       <td className="font-mono text-13 text-secondary-custom">{index + 1}</td>
                       <td className="text-13 text-nowrap text-white">{rec.date}</td>
                       <td><span className="chip-custom">{rec.ads_platform === 'tiktok' ? 'TikTok' : 'Shopee'}</span></td>
-                      <td className="text-end fw-semibold text-13 text-white">{parseFloat(rec.amount).toFixed(2)}
+                      <td className="text-end text-13 text-white">{parseFloat(rec.amount).toFixed(2)}
                         <button className="btn btn-sm btn-link p-0 d-inline-flex align-items-center justify-content-center w-20 h-20 text-tertiary ms-1" onClick={() => handleStartEdit(rec)}>
                           <svg className="icon-svg-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                         </button>
@@ -163,7 +163,7 @@ export default function AdsRecordManager({ session }) {
           <div className="modal d-block" tabIndex="-1">
             <div className="modal-dialog modal-dialog-centered">
               <div className="modal-content p-3">
-                <h5 className="fw-bold text-accent mb-3">✏️ Edit Record</h5>
+                <h5 className="fw-bold text-accent mb-3"><span className="material-symbols-outlined me-1" style={{fontSize:'18px',verticalAlign:'middle'}}>edit</span> Edit Record</h5>
                 <form onSubmit={handleUpdateRecord}>
                   <div className="mb-3"><label className="form-label">Date</label><input type="date" className="form-control" required value={editDate} onChange={(e) => setEditDate(e.target.value)} /></div>
                   <div className="mb-3"><label className="form-label">Amount (RM)</label><input type="number" step="0.01" className="form-control" required value={editAmount} onChange={(e) => setEditAmount(e.target.value)} /></div>

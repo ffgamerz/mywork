@@ -83,7 +83,7 @@ export default function MyWage({ session }) {
     <div>
       <ToastBar toast={toast} onClose={hideToast} />
       <div className="page-header-custom">
-        <h1 className="page-title-custom">💰 My Wage</h1>
+        <h1 className="page-title-custom"><span className="material-symbols-outlined me-2" style={{fontSize:'24px',verticalAlign:'middle'}}>attach_money</span> My Wage</h1>
         <p className="page-subtitle-custom">View your wage records and payment history.</p>
       </div>
 
@@ -105,7 +105,7 @@ export default function MyWage({ session }) {
       {activeTab === 'unpaid' && (
         <div className="card p-3 overflow-x-auto">
           <div className="d-flex flex-wrap align-items-center justify-content-between mb-3 gap-2">
-            <h6 className="fw-bold mb-0">📦 Unpaid Batches ({filteredUnpaid.length})</h6>
+            <h6 className="fw-bold mb-0"><span className="material-symbols-outlined me-1" style={{fontSize:'16px',verticalAlign:'middle'}}>inventory_2</span> Unpaid Batches ({filteredUnpaid.length})</h6>
             <span className="chip-custom badge-warning">Total Wages Due: RM {totalUnpaidWages.toFixed(2)}</span>
           </div>
           {loading ? <div className="text-center py-4"><span className="spinner-border"></span></div> : filteredUnpaid.length === 0 ? <div className="text-center text-muted py-4">No unpaid batch records found.</div> : (
@@ -114,7 +114,7 @@ export default function MyWage({ session }) {
                 <thead><tr><th>Date</th><th>Batch No.</th><th>Product Name (Quantity)</th><th className="text-end">Batch Wage</th></tr></thead>
                 <tbody>{visibleUnpaid.map((rec) => {
                   const wage = parseFloat(rec.inventory?.wage_rate || 0)
-                  return <tr key={rec.id} className="row-unpaid"><td>{rec.production_date}</td><td className="font-mono fw-bold text-primary">{rec.batch_no}</td><td className="fw-bold">{rec.inventory?.product_name || '-'} <span className="text-muted fw-normal">({rec.quantity} unit)</span></td><td className="text-end fw-bold">RM {wage.toFixed(2)}</td></tr>
+                  return <tr key={rec.id} className="row-unpaid"><td>{rec.production_date}</td><td className="font-mono text-primary">{rec.batch_no}</td><td>{rec.inventory?.product_name || '-'} <span className="text-muted">({rec.quantity} unit)</span></td><td className="text-end">RM {wage.toFixed(2)}</td></tr>
                 })}</tbody>
               </table>
               {filteredUnpaid.length > 0 && visibleCount < filteredUnpaid.length && (
@@ -127,7 +127,7 @@ export default function MyWage({ session }) {
 
       {activeTab === 'history' && (
         <div className="card p-3">
-          <h6 className="fw-bold mb-3">📊 Payment History ({filteredHistory.length})</h6>
+          <h6 className="fw-bold mb-3"><span className="material-symbols-outlined me-1" style={{fontSize:'16px',verticalAlign:'middle'}}>bar_chart</span> Payment History ({filteredHistory.length})</h6>
           {loading ? <div className="text-center py-4"><span className="spinner-border"></span></div> : filteredHistory.length === 0 ? <div className="text-center text-muted py-4">No payment history found.</div> : (
             <>
               <div className="d-flex flex-column gap-2">
@@ -155,7 +155,7 @@ export default function MyWage({ session }) {
           <div className="modal d-block" tabIndex="-1">
             <div className="modal-dialog modal-dialog-centered">
               <div className="modal-content p-3">
-                <h5 className="fw-bold text-primary mb-3">📋 Payment Details</h5>
+                <h5 className="fw-bold text-primary mb-3"><span className="material-symbols-outlined me-1" style={{fontSize:'18px',verticalAlign:'middle'}}>description</span> Payment Details</h5>
                 <div className="d-flex justify-content-between mb-2"><span className="text-muted">Date</span><span className="fw-bold">{formatDate(selectedPayment.date_paid)}</span></div>
                 <div className="d-flex justify-content-between mb-3"><span className="text-muted">Total Payment</span><h5 className="fw-bold mb-0">RM {selectedPayment.total_paid.toFixed(2)}</h5></div>
                 <div className="divider-gradient my-2"></div>
@@ -164,7 +164,7 @@ export default function MyWage({ session }) {
                     <thead><tr><th>Date</th><th>Batch No.</th><th>Product Name</th><th className="text-end">Batch Wage</th></tr></thead>
                     <tbody>{selectedPayment.records.map((rec) => {
                       const wage = parseFloat(rec.paid_amount || 0)
-                      return <tr key={rec.id}><td>{rec.production_date}</td><td className="font-mono">{rec.batch_no}</td><td>{rec.inventory?.product_name || '-'}</td><td className="text-end fw-bold">RM {wage.toFixed(2)}</td></tr>
+                      return <tr key={rec.id}><td>{rec.production_date}</td><td className="font-mono">{rec.batch_no}</td><td>{rec.inventory?.product_name || '-'}</td><td className="text-end">RM {wage.toFixed(2)}</td></tr>
                     })}</tbody>
                   </table>
                 </div>

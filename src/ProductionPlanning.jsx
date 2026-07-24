@@ -81,7 +81,7 @@ function SearchableSelect({ items, value, onChange, placeholder, disabled }) {
 export default function ProductionPlanning({ session, userRole, allowedModules = {} }) {
   const [toastMsg, setToastMsg] = useState('')
   const showMsg = (msg) => { setToastMsg(msg); setTimeout(() => setToastMsg(''), 3000) }
-  const [activeTab, setActiveTab] = useState('materials')
+  const [activeTab, setActiveTab] = useState('purchase')
   const [loading, setLoading] = useState(false)
 
   const cleanedRole = String(userRole || '').trim().toLowerCase()
@@ -299,29 +299,48 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
   }
 
   const viewPurchaseDetail = (record) => setSelectedPurchase(record)
-  if (!hasAccess) return <div className="alert-unauthorized"><span>🔒 Access Denied: Unauthorized.</span></div>
+  if (!hasAccess) return <div className="alert-unauthorized"><span className="material-symbols-outlined me-1" style={{fontSize:'14px',verticalAlign:'middle'}}>lock</span> Access Denied: Unauthorized.</div>
 
-  const tabs = [{ id: 'materials', label: '🧂 Materials' }, { id: 'recipes', label: '📖 Recipes' }, { id: 'purchase', label: '🛒 Purchase' }, { id: 'records', label: '📋 Records' }]
+  const tabs = [{ id: 'purchase', label: 'Purchase' }, { id: 'records', label: 'Records' }]
+  const showSideSection = (section) => setActiveTab(section)
+  const isSideSection = activeTab === 'materials' || activeTab === 'recipes'
+  const showMainTabs = activeTab === 'purchase' || activeTab === 'records'
 
   return (
     <div className="position-relative">
       {toastMsg && <div className="toast-container-custom"><div className="alert-toast d-flex align-items-center gap-2 px-3 py-2 rounded-pill shadow-lg"><span>{toastMsg}</span></div></div>}
       <div className="page-header-custom d-flex flex-wrap justify-content-between align-items-center gap-3">
         <div>
-          <h1 className="page-title-custom">Production Planning</h1>
+          <h1 className="page-title-custom"><span className="material-symbols-outlined me-2" style={{fontSize:'24px',verticalAlign:'middle'}}>calendar_month</span> Production Planning</h1>
           <p className="page-subtitle-custom">Manage materials, recipes, and purchase planning.</p>
         </div>
+        {showMainTabs && (
+          <div className="d-flex gap-2 flex-wrap">
+            <button onClick={() => showSideSection('materials')} className="btn btn-sm fw-bold d-flex align-items-center gap-1">
+              <span className="material-symbols-outlined" style={{fontSize:'16px'}}>kitchen</span> Materials
+            </button>
+            <button onClick={() => showSideSection('recipes')} className="btn btn-sm fw-bold d-flex align-items-center gap-1">
+              <span className="material-symbols-outlined" style={{fontSize:'16px'}}>menu_book</span> Recipes
+            </button>
+          </div>
+        )}
+        {isSideSection && (
+          <button onClick={() => setActiveTab('purchase')} className="btn btn-sm fw-bold d-flex align-items-center gap-1">
+            ← Back
+          </button>
+        )}
       </div>
-      <ul className="nav nav-tabs mb-4 gap-1 overflow-auto flex-nowrap">
-        {tabs.map(t => <li className="nav-item" key={t.id}><button className={`nav-link fw-bold text-nowrap ${activeTab === t.id ? 'active' : ''}`} onClick={() => setActiveTab(t.id)}>{t.label}</button></li>)}
-      </ul>
+      {showMainTabs && (
+        <ul className="nav nav-tabs mb-4 gap-1 overflow-auto flex-nowrap">
+          {tabs.map(t => <li className="nav-item" key={t.id}><button className={`nav-link fw-bold text-nowrap ${activeTab === t.id ? 'active' : ''}`} onClick={() => setActiveTab(t.id)}>{t.label}</button></li>)}
+        </ul>
+      )}
 
-      {/* TAB 1: MATERIALS */}
-      {activeTab === 'materials' && (
+      {/* SIDE SECTION: MATERIALS */}
+      {isSideSection && activeTab === 'materials' && (
         <div>
           <div className="d-flex justify-content-end mb-3">
             <button onClick={() => openMatModal(null)} className="btn btn-primary btn-sm fw-bold d-flex align-items-center gap-2">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
               Add Material
             </button>
           </div>
@@ -332,8 +351,8 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
                   <div className="d-flex justify-content-between align-items-start gap-2">
                     <h6 className="fw-bold mb-0 flex-grow-1 text-break">{m.name}</h6>
                     <div className="d-flex gap-1 flex-shrink-0">
-                      <button onClick={() => openMatModal(m)} className="btn btn-sm btn-link p-1">✏️</button>
-                      <button onClick={() => handleDeleteMat(m.id)} className="btn btn-sm btn-link p-1">🗑️</button>
+                      <button onClick={() => openMatModal(m)} className="btn btn-sm btn-link p-1"><span className="material-symbols-outlined" style={{fontSize:'16px'}}>edit</span></button>
+                      <button onClick={() => handleDeleteMat(m.id)} className="btn btn-sm btn-link p-1"><span className="material-symbols-outlined" style={{fontSize:'16px'}}>delete</span></button>
                     </div>
                   </div>
                   <div className="d-flex flex-column gap-1 small">
@@ -358,7 +377,7 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
               <div className="modal d-block" tabIndex="-1">
                 <div className="modal-dialog modal-dialog-centered">
                   <div className="modal-content p-3">
-                    <h5 className="fw-bold text-primary mb-3">{editingMat ? '✏️ Edit Material' : '🧂 Add New Material'}</h5>
+                    <h5 className="fw-bold text-primary mb-3"><span className="material-symbols-outlined me-1" style={{fontSize:'18px',verticalAlign:'middle'}}>{editingMat ? 'edit' : 'kitchen'}</span> {editingMat ? 'Edit Material' : 'Add New Material'}</h5>
                     <form onSubmit={handleSaveMat}>
                       <div className="mb-3"><label className="form-label">Material Name *</label><input type="text" required placeholder="e.g., Minyak Masak" className="form-control" value={matName} onChange={(e) => setMatName(e.target.value)} /></div>
                       <div className="mb-3"><label className="form-label">Unit *</label><select className="form-select fw-bold" value={matUnit} onChange={(e) => setMatUnit(e.target.value)}><option value="packet">packet</option><option value="kg">kg</option><option value="g">g</option><option value="liter">liter</option><option value="ml">ml</option><option value="botol">botol</option><option value="guni">guni</option><option value="tray">tray</option><option value="biji">biji</option><option value="kotak">kotak</option><option value="tin">tin</option><option value="peket">peket</option><option value="other">other</option></select></div>
@@ -388,8 +407,8 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
         </div>
       )}
 
-      {/* TAB 2: RECIPES */}
-      {activeTab === 'recipes' && (
+      {/* SIDE SECTION: RECIPES */}
+      {isSideSection && activeTab === 'recipes' && (
         <div className="row g-4">
           <div className="col-lg-4">
             <div className="card p-3 d-flex flex-column gap-3">
@@ -398,7 +417,7 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
                 <option value="">-- Select Product --</option>
                 {products.map(p => <option key={p.id} value={p.id}>{p.product_name}</option>)}
               </select>
-              {selectedProduct && <div className="chip-custom w-100 justify-content-center p-2">{currentRecipeId ? '✅ Recipe ready' : '🔄 Select a product to start'}</div>}
+              {selectedProduct && <div className="chip-custom w-100 justify-content-center p-2"><span className="material-symbols-outlined me-1" style={{fontSize:'14px',verticalAlign:'middle'}}>{currentRecipeId ? 'check_circle' : 'sync'}</span> {currentRecipeId ? 'Recipe ready' : 'Select a product to start'}</div>}
             </div>
           </div>
           <div className="col-lg-8">
@@ -421,11 +440,18 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
                     <span className="chip-custom fw-bold p-2">RM {totalCostPerBatch.toFixed(2)} / batch</span>
                   </div>
                   {recipeIngredients.length === 0 ? <div className="text-center py-4 text-muted fw-bold">No ingredients added yet.</div> : (
-                    <div className="d-flex flex-column gap-2">
+                    <div className="d-flex flex-column">
                       {recipeIngredients.map((ing, idx) => (
-                        <div key={ing.id || idx} className="d-flex align-items-center justify-content-between p-3 rounded-3">
-                          <div><span className="fw-bold">{ing.raw_material?.name || 'Unknown'}</span><span className="ms-2 small text-muted">{ing.quantity_used} {ing.unit_used}</span></div>
-                          <div className="d-flex align-items-center gap-3"><span className="font-mono small fw-bold">RM {calcIngredientCost(ing.raw_material, ing.quantity_used).toFixed(2)}</span><button onClick={() => handleRemoveIngredient(ing.id)} className="btn btn-sm btn-link p-1">✕</button></div>
+                        <div key={ing.id || idx} className={`d-flex align-items-center gap-2 p-3 ${idx < recipeIngredients.length - 1 ? 'border-bottom' : ''}`}>
+                          <div className="flex-shrink-0 d-flex align-items-center justify-content-center rounded-circle" style={{width: '32px', height: '32px', background: 'var(--bg-input)', fontSize: '13px'}}>{idx + 1}</div>
+                          <div className="flex-grow-1 min-w-0">
+                            <div className="fw-bold small text-break">{ing.raw_material?.name || 'Unknown'}</div>
+                            <div className="small text-muted">{parseFloat(ing.quantity_used).toFixed(2)} {ing.unit_used}</div>
+                          </div>
+                          <div className="d-flex align-items-center gap-2 flex-shrink-0">
+                            <span className="font-mono small fw-bold text-nowrap">RM {calcIngredientCost(ing.raw_material, ing.quantity_used).toFixed(2)}</span>
+                            <button onClick={() => handleRemoveIngredient(ing.id)} className="btn btn-sm btn-link text-danger p-1" style={{fontSize: '14px', lineHeight: 1}} title="Remove"><span className="material-symbols-outlined" style={{fontSize:'14px'}}>close</span></button>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -437,8 +463,8 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
         </div>
       )}
 
-      {/* TAB 3: PURCHASE */}
-      {activeTab === 'purchase' && (
+      {/* MAIN TAB: PURCHASE */}
+      {showMainTabs && activeTab === 'purchase' && (
         <div className="row g-4">
           <div className="col-lg-6">
             <div className="card p-3 d-flex flex-column gap-3">
@@ -447,16 +473,16 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
                 {products.map(p => {
                   const checked = purchaseProducts.find(x => x.inventory_id === p.id)
                   return (
-                    <div key={p.id} className="d-flex align-items-center gap-3 p-2 rounded-3">
-                      <input type="checkbox" className="form-check-input" checked={!!checked} onChange={() => handleTogglePurchaseProduct(p.id)} />
-                      <span className="fw-bold flex-grow-1 small">{p.product_name}</span>
-                      {checked && <div className="d-flex align-items-center gap-2"><span className="text-muted">Batch:</span><input type="number" min="1" className="form-control form-control-sm" value={checked.batch_count} onChange={(e) => handleBatchChange(p.id, e.target.value)} /></div>}
+                    <div key={p.id} className="flex-wrap d-flex align-items-center gap-2 p-2 rounded-3">
+                      <input type="checkbox" className="form-check-input flex-shrink-0" checked={!!checked} onChange={() => handleTogglePurchaseProduct(p.id)} />
+                      <span className="fw-bold small text-break flex-fill">{p.product_name}</span>
+                      {checked && <div className="d-flex align-items-center gap-2 w-100 ps-4 mt-1"><span className="text-muted small">Batch:</span><input type="number" min="1" className="form-control form-control-sm" style={{maxWidth: '100px'}} value={checked.batch_count} onChange={(e) => handleBatchChange(p.id, e.target.value)} /></div>}
                     </div>
                   )
                 })}
                 {products.length === 0 && <div className="text-center py-4 text-muted">No products. Create in Inventory first.</div>}
               </div>
-              <button onClick={handleGenerateSummary} disabled={purchaseProducts.length === 0 || loading} className="btn btn-primary w-100 fw-bold">{loading ? 'Calculating...' : '🔄 Generate Shopping List'}</button>
+              <button onClick={handleGenerateSummary} disabled={purchaseProducts.length === 0 || loading} className="btn btn-primary w-100 fw-bold">{loading ? 'Calculating...' : <><span className="material-symbols-outlined me-1" style={{fontSize:'16px',verticalAlign:'middle'}}>sync</span> Generate Shopping List</>}</button>
               {purchaseProducts.length > 0 && <button onClick={() => setPurchaseProducts([])} className="btn btn-sm btn-link w-100">Clear Selection</button>}
             </div>
           </div>
@@ -468,24 +494,56 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
                   <div className="p-3 rounded-3 small">
                     {purchaseSummary.batchDetails.map((b, i) => { const prod = products.find(p => p.id === b.inventory_id); return <div key={i} className="fw-bold">• {prod?.product_name} — {b.batch_count} batch(es)</div> })}
                   </div>
-                  <div className="table-responsive">
-                    <table className="table table-sm">
-                      <thead><tr><th>Material</th><th className="text-center">Original</th><th className="text-center">Buy</th><th className="text-center">Unit</th><th className="text-end">Cost (RM)</th></tr></thead>
-                      <tbody>{purchaseSummary.items.map((item, i) => {
-                        const display = formatPurchaseQty(item); const currentQty = getDisplayQty(item); const isManualQty = manualQty[item.material_id] !== undefined && manualQty[item.material_id] !== ''
-                        const originalQtyText = item.rawQty != null && item.rawUnit ? `${parseFloat(item.rawQty).toFixed(2)} ${item.rawUnit}` : `${item.qty.toFixed(2)} ${item.unit}`
-                        return <tr key={i}><td className="fw-bold">{item.material_name}</td><td className="text-center small text-muted">{originalQtyText}</td>
-                        <td className="text-center"><input type="number" min="0" step="0.01" className={`form-control form-control-sm d-inline-block ${isManualQty ? 'border-warning' : ''}`} value={isManualQty ? manualQty[item.material_id] : ''} onChange={(e) => updateManualQty(item.material_id, e.target.value)} placeholder={item.qty.toFixed(2)} /></td>
-                        <td className="text-center text-muted">{display.unit}</td><td className="text-end font-mono fw-bold">RM {getItemCost(item).toFixed(2)}</td></tr>
-                      })}</tbody>
-                    </table>
+                  {/* Desktop table view */}
+                  <div className="d-none d-md-block">
+                    <div className="table-responsive">
+                      <table className="table table-sm">
+                        <thead><tr><th>Material</th><th className="text-center">Original</th><th className="text-center">Buy</th><th className="text-center">Unit</th><th className="text-end">Cost (RM)</th></tr></thead>
+                        <tbody>{purchaseSummary.items.map((item, i) => {
+                          const display = formatPurchaseQty(item); const currentQty = getDisplayQty(item); const isManualQty = manualQty[item.material_id] !== undefined && manualQty[item.material_id] !== ''
+                          const originalQtyText = item.rawQty != null && item.rawUnit ? `${parseFloat(item.rawQty).toFixed(2)} ${item.rawUnit}` : `${item.qty.toFixed(2)} ${item.unit}`
+                          return <tr key={i}><td className="small">{item.material_name}</td><td className="text-center small text-muted">{originalQtyText}</td>
+                          <td className="text-center"><input type="number" min="0" step="0.01" className={`form-control form-control-sm d-inline-block ${isManualQty ? 'border-warning' : ''}`} value={isManualQty ? manualQty[item.material_id] : ''} onChange={(e) => updateManualQty(item.material_id, e.target.value)} placeholder={item.qty.toFixed(2)} /></td>
+                          <td className="text-center text-muted">{display.unit}</td><td className="text-end font-mono">RM {getItemCost(item).toFixed(2)}</td></tr>
+                        })}</tbody>
+                      </table>
+                    </div>
+                  </div>
+                  {/* Mobile card view */}
+                  <div className="d-md-none d-flex flex-column gap-2">
+                    {purchaseSummary.items.map((item, i) => {
+                      const display = formatPurchaseQty(item)
+                      const isManualQty = manualQty[item.material_id] !== undefined && manualQty[item.material_id] !== ''
+                      const originalQtyText = item.rawQty != null && item.rawUnit ? `${parseFloat(item.rawQty).toFixed(2)} ${item.rawUnit}` : `${item.qty.toFixed(2)} ${item.unit}`
+                      return (
+                        <div key={i} className="p-3 rounded-3 border border-default">
+                          <div className="fw-bold small mb-2 text-break">{item.material_name}</div>
+                          <div className="d-flex justify-content-between small mb-1">
+                            <span className="text-muted">Original:</span>
+                            <span className="text-muted">{originalQtyText}</span>
+                          </div>
+                          <div className="d-flex justify-content-between small mb-1 align-items-center gap-2">
+                            <span className="text-muted flex-shrink-0">Buy:</span>
+                            <input type="number" min="0" step="0.01" className={`form-control form-control-sm ${isManualQty ? 'border-warning' : ''}`} value={isManualQty ? manualQty[item.material_id] : ''} onChange={(e) => updateManualQty(item.material_id, e.target.value)} placeholder={item.qty.toFixed(2)} />
+                          </div>
+                          <div className="d-flex justify-content-between small mb-1">
+                            <span className="text-muted">Unit:</span>
+                            <span>{display.unit}</span>
+                          </div>
+                          <div className="d-flex justify-content-between small fw-bold">
+                            <span>Cost:</span>
+                            <span className="font-mono">RM {getItemCost(item).toFixed(2)}</span>
+                          </div>
+                        </div>
+                      )
+                    })}
                   </div>
                   <div className="d-flex justify-content-between align-items-center pt-3">
                     <span className="fw-bold">TOTAL</span>
                     <span className="font-mono fw-bold">RM {purchaseSummary.items.reduce((sum, item) => sum + getItemCost(item), 0).toFixed(2)}</span>
                   </div>
                   <div><label className="form-label">Notes (optional)</label><input type="text" className="form-control small" placeholder="e.g., Purchase for weekend event" value={purchaseNotes} onChange={(e) => setPurchaseNotes(e.target.value)} /></div>
-                  <button onClick={handleSavePurchase} disabled={loading} className="btn w-100 fw-bold text-white">💾 Save Record</button>
+                  <button onClick={handleSavePurchase} disabled={loading} className="btn w-100 fw-bold text-white"><span className="material-symbols-outlined me-1" style={{fontSize:'16px',verticalAlign:'middle'}}>save</span> Save Record</button>
                 </div>
               ) : <div className="text-center py-5 text-muted fw-bold">Select products and batches on the left, then click Generate.</div>}
             </div>
@@ -493,16 +551,16 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
         </div>
       )}
 
-      {/* TAB 4: RECORDS */}
-      {activeTab === 'records' && (
+      {/* MAIN TAB: RECORDS */}
+      {showMainTabs && activeTab === 'records' && (
         <div>
           {selectedPurchase ? (
             <div>
               <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
                 <button onClick={() => setSelectedPurchase(null)} className="btn btn-sm btn-link">← Back to Records</button>
                 <div className="d-flex gap-2">
-                  <button onClick={() => handleDeletePurchase(selectedPurchase.id)} className="btn btn-sm">🗑️ Delete</button>
-                  <button onClick={() => handleDownloadPDF(selectedPurchase)} className="btn btn-sm btn-primary text-white">📥 Download PDF</button>
+                  <button onClick={() => handleDeletePurchase(selectedPurchase.id)} className="btn btn-sm"><span className="material-symbols-outlined me-1" style={{fontSize:'14px',verticalAlign:'middle'}}>delete</span> Delete</button>
+                  <button onClick={() => handleDownloadPDF(selectedPurchase)} className="btn btn-sm btn-primary text-white"><span className="material-symbols-outlined me-1" style={{fontSize:'14px',verticalAlign:'middle'}}>download</span> Download PDF</button>
                 </div>
               </div>
               <div className="card p-3 d-flex flex-column gap-3">
@@ -516,14 +574,40 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
                 </div>
                 <div className="pt-3">
                   <h6 className="fw-bold small mb-3">Materials:</h6>
-                  <div className="table-responsive">
-                    <table className="table table-sm">
-                      <thead><tr><th>Material</th><th className="text-center">Qty</th><th className="text-center">Unit</th><th className="text-end">Cost (RM)</th></tr></thead>
-                      <tbody>{(selectedPurchase.purchase_plan_items || []).map((item, i) => {
-                        const display = formatPurchaseQty({ qty: item.total_quantity_needed, unit: item.unit, rawQty: item.raw_quantity_needed || null, rawUnit: item.raw_unit || item.raw_material?.fraction_unit || null })
-                        return <tr key={i}><td className="fw-bold">{item.raw_material?.name || 'Unknown'}</td><td className="text-center small text-muted">{display.qty}</td><td className="text-center small text-muted">{display.unit}</td><td className="text-end font-mono fw-bold">RM {parseFloat(item.estimated_cost).toFixed(2)}</td></tr>
-                      })}</tbody>
-                    </table>
+                  {/* Desktop table view */}
+                  <div className="d-none d-md-block">
+                    <div className="table-responsive">
+                      <table className="table table-sm">
+                        <thead><tr><th>Material</th><th className="text-center">Qty</th><th className="text-center">Unit</th><th className="text-end">Cost (RM)</th></tr></thead>
+                        <tbody>{(selectedPurchase.purchase_plan_items || []).map((item, i) => {
+                          const display = formatPurchaseQty({ qty: item.total_quantity_needed, unit: item.unit, rawQty: item.raw_quantity_needed || null, rawUnit: item.raw_unit || item.raw_material?.fraction_unit || null })
+                          return <tr key={i}><td className="small">{item.raw_material?.name || 'Unknown'}</td><td className="text-center small text-muted">{display.qty}</td><td className="text-center small text-muted">{display.unit}</td><td className="text-end font-mono">RM {parseFloat(item.estimated_cost).toFixed(2)}</td></tr>
+                        })}</tbody>
+                      </table>
+                    </div>
+                  </div>
+                  {/* Mobile card view */}
+                  <div className="d-md-none d-flex flex-column gap-2">
+                    {(selectedPurchase.purchase_plan_items || []).map((item, i) => {
+                      const display = formatPurchaseQty({ qty: item.total_quantity_needed, unit: item.unit, rawQty: item.raw_quantity_needed || null, rawUnit: item.raw_unit || item.raw_material?.fraction_unit || null })
+                      return (
+                        <div key={i} className="p-3 rounded-3 border border-default">
+                          <div className="fw-bold small mb-2 text-break">{item.raw_material?.name || 'Unknown'}</div>
+                          <div className="d-flex justify-content-between small mb-1">
+                            <span className="text-muted">Qty:</span>
+                            <span>{display.qty}</span>
+                          </div>
+                          <div className="d-flex justify-content-between small mb-1">
+                            <span className="text-muted">Unit:</span>
+                            <span>{display.unit}</span>
+                          </div>
+                          <div className="d-flex justify-content-between small fw-bold">
+                            <span>Cost:</span>
+                            <span className="font-mono">RM {parseFloat(item.estimated_cost).toFixed(2)}</span>
+                          </div>
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
               </div>
@@ -536,7 +620,7 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
                     <div><span className="fw-bold small">{rec.plan_date}</span>{rec.notes && <span className="ms-2 small text-muted">— {rec.notes}</span>}</div>
                     <div className="d-flex align-items-center gap-2">
                       <span className="font-mono fw-bold">RM {parseFloat(rec.total_estimated_cost || 0).toFixed(2)}</span>
-                      <button onClick={(e) => { e.stopPropagation(); handleDeletePurchase(rec.id) }} className="btn btn-sm">✕</button>
+                      <button onClick={(e) => { e.stopPropagation(); handleDeletePurchase(rec.id) }} className="btn btn-sm"><span className="material-symbols-outlined" style={{fontSize:'14px'}}>close</span></button>
                     </div>
                   </div>
                   <div className="text-muted mt-1">{(rec.purchase_plan_batches || []).length} product(s) · {(rec.purchase_plan_items || []).length} material(s)</div>

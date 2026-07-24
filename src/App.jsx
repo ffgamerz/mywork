@@ -14,25 +14,25 @@ import { useToast } from './utils/useToast'
 const SIDEBAR_WIDTH = 240
 
 const navItems = [
-  { id: 'home', label: 'Home', icon: '🏠' },
-  { id: 'records', label: 'Ads Records', icon: '📊' },
-  { id: 'inventory', label: 'Inventory', icon: '📦' },
-  { id: 'inventoryNew', label: 'Inventory (New)', icon: '📦' },
-  { id: 'receiptManager', label: 'Receipts', icon: '🧾' },
-  { id: 'wageCalculator', label: 'Wages', icon: '💰' },
-  { id: 'myWage', label: 'My Wage', icon: '💵' },
-  { id: 'productionPlanning', label: 'Planning', icon: '📋' },
-  { id: 'privileges', label: 'Privileges', icon: '🔐' },
-  { id: 'settings', label: 'Settings', icon: '⚙️' },
+  { id: 'home', label: 'Home', icon: 'home' },
+  { id: 'records', label: 'Ads Records', icon: 'bar_chart' },
+  { id: 'inventory', label: 'Inventory', icon: 'inventory_2' },
+  { id: 'inventoryNew', label: 'Inventory (New)', icon: 'inventory_2' },
+  { id: 'receiptManager', label: 'Receipts', icon: 'receipt' },
+  { id: 'wageCalculator', label: 'Wages', icon: 'payments' },
+  { id: 'myWage', label: 'My Wage', icon: 'attach_money' },
+  { id: 'productionPlanning', label: 'Planning', icon: 'calendar_month' },
+  { id: 'privileges', label: 'Privileges', icon: 'lock' },
+  { id: 'settings', label: 'Settings', icon: 'settings' },
 ]
 
 const cardColors = {
-  records: { bg: 'bg-accent-records', color: 'text-accent-records', icon: '📊' },
-  inventory: { bg: 'bg-accent-inventory', color: 'text-accent-inventory', icon: '📦' },
-  receiptManager: { bg: 'bg-accent-receipt', color: 'text-accent-receipt', icon: '🧾' },
-  wageCalculator: { bg: 'bg-accent-wage', color: 'text-accent-wage', icon: '💰' },
-  myWage: { bg: 'bg-accent-mywage', color: 'text-accent-mywage', icon: '💵' },
-  productionPlanning: { bg: 'bg-accent-planning', color: 'text-accent-planning', icon: '📋' },
+  records: { bg: 'bg-accent-records', color: 'text-accent-records', icon: 'bar_chart' },
+  inventory: { bg: 'bg-accent-inventory', color: 'text-accent-inventory', icon: 'inventory_2' },
+  receiptManager: { bg: 'bg-accent-receipt', color: 'text-accent-receipt', icon: 'receipt' },
+  wageCalculator: { bg: 'bg-accent-wage', color: 'text-accent-wage', icon: 'payments' },
+  myWage: { bg: 'bg-accent-mywage', color: 'text-accent-mywage', icon: 'attach_money' },
+  productionPlanning: { bg: 'bg-accent-planning', color: 'text-accent-planning', icon: 'calendar_month' },
 }
 
 function App() {
@@ -130,7 +130,7 @@ function App() {
         <div className="card p-4 max-w-448 w-100">
           <form onSubmit={handleForcePasswordSubmit}>
             <div className="d-flex flex-column gap-3">
-              <h6 className="text-center text-error fw-bold">🔒 Update Password Required</h6>
+              <h6 className="text-center text-error fw-bold"><span className="material-symbols-outlined me-1" style={{fontSize:'16px'}}>lock</span> Update Password Required</h6>
               <div className="mb-3">
                 <label className="form-label">New Password</label>
                 <input type="password" className="form-control" required value={forceNewPassword} onChange={(e) => setForceNewPassword(e.target.value)} />
@@ -181,13 +181,13 @@ function App() {
         {visibleNavItems.map((item) => (
           <button key={item.id} onClick={() => handleNavigate(item.id)}
             className={`nav-link w-100 text-start border-0 bg-transparent ${activePage === item.id ? 'active' : ''}`}>
-            <span className="nav-icon">{item.icon}</span><span>{item.label}</span>
+            <span className="nav-icon material-symbols-outlined">{item.icon}</span><span>{item.label}</span>
           </button>
         ))}
       </div>
       <div className="mt-auto p-3 border-top border-default">
         <button onClick={handleLogout} className="nav-link w-100 text-start border-0 bg-transparent">
-          <span className="nav-icon">🚪</span><span>Logout</span>
+          <span className="nav-icon material-symbols-outlined">logout</span><span>Logout</span>
         </button>
       </div>
     </div>
@@ -204,7 +204,7 @@ function App() {
           <div className="modal-backdrop show pos-fixed z-1040" onClick={() => setMobileDrawerOpen(false)}></div>
           <div className="sidebar d-md-none z-1050 d-flex" onClick={(e) => e.stopPropagation()}>
             {sidebarContent}
-            <button className="btn btn-sm btn-link pos-absolute text-white text-20 top-8 right-neg-40" onClick={() => setMobileDrawerOpen(false)}>✕</button>
+            <button className="btn btn-sm btn-link pos-absolute text-white top-8 right-neg-40" onClick={() => setMobileDrawerOpen(false)}><span className="material-symbols-outlined">close</span></button>
           </div>
         </>
       )}
@@ -215,9 +215,12 @@ function App() {
             <div className="d-flex align-items-center gap-2">
               <button className="btn btn-sm btn-link d-flex align-items-center justify-content-center w-32 h-32 p-0"
                 onClick={() => { if (window.innerWidth < 768) setMobileDrawerOpen(prev => !prev); else setSidebarOpen(prev => !prev) }}>
-                <svg className="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                <span className="material-symbols-outlined">menu</span>
               </button>
-              <div className="fw-medium text-white text-14 d-md-none d-inline text-16 d-none d-md-inline">
+              <div className="fw-medium text-white d-md-none d-inline text-14">
+                {navItems.find(n => n.id === activePage)?.label || 'Home'}
+              </div>
+              <div className="fw-medium text-white d-none d-md-inline text-16">
                 {navItems.find(n => n.id === activePage)?.label || 'Home'}
               </div>
             </div>
@@ -236,15 +239,15 @@ function App() {
                     </div>
                     {visibleNavItems.map((item) => (
                       <button key={item.id} className={`dropdown-item d-flex align-items-center gap-2 ${activePage === item.id ? 'active' : ''}`} onClick={() => handleNavigate(item.id)}>
-                        <span className="w-20 text-center">{item.icon}</span>{item.label}
+                        <span className="w-20 text-center material-symbols-outlined">{item.icon}</span>{item.label}
                       </button>
                     ))}
                     <div className="dropdown-divider"></div>
                     <button className="dropdown-item d-flex align-items-center gap-2" onClick={() => { handleNavigate('settings'); setAvatarMenuOpen(false) }}>
-                      <span className="w-20 text-center">⚙️</span>Settings
+                      <span className="w-20 text-center material-symbols-outlined">settings</span>Settings
                     </button>
                     <button className="dropdown-item d-flex align-items-center gap-2 text-error" onClick={handleLogout}>
-                      <span className="w-20 text-center">🚪</span>Logout
+                      <span className="w-20 text-center material-symbols-outlined">logout</span>Logout
                     </button>
                   </div>
                 )}
@@ -257,7 +260,7 @@ function App() {
           {activePage === 'home' && (
             <div className="max-w-1024 mx-auto">
               <div className="mb-4">
-                <h1 className="fw-400 tracking-tight text-white mb-1 text-24 text-32 d-none d-md-block">
+                <h1 className="fw-400 tracking-tight text-white mb-1 text-24 d-none d-md-block text-32">
                   Hello, {session?.user?.email?.split('@')[0] || 'ffgamerz'}
                 </h1>
                 <h1 className="fw-400 tracking-tight text-white mb-1 d-md-none text-24">
@@ -266,19 +269,14 @@ function App() {
                 <p className="text-muted text-14">What would you like to build or explore today?</p>
               </div>
 
-              {/* <div className="d-inline-flex mb-4 p-1 rounded-pill border border-default">
-                <button className="btn btn-sm rounded-pill px-3 bg-pill text-white">Modules</button>
-                <button className="btn btn-sm rounded-pill px-3 btn-link text-muted">Shortcuts</button>
-              </div> */}
-
               <div className="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3 mb-5">
                 {visibleCards.map((card) => {
                   const colors = cardColors[card.id]
                   return (
                     <div className="col" key={card.id}>
                       <div className="card card-hover p-3 cursor-pointer h-100" onClick={() => setActivePage(card.id)}>
-                        <div className={`d-flex align-items-center justify-content-center mb-3 w-36 h-36 rounded-10 text-16 fw-700 ${colors.bg} ${colors.color}`}>
-                          {colors.icon}
+                        <div className={`d-flex align-items-center justify-content-center mb-3 w-36 h-36 rounded-10 ${colors.bg} ${colors.color}`}>
+                          <span className="material-symbols-outlined card-icon">{colors.icon}</span>
                         </div>
                         <div className="fw-medium text-white text-14 mb-1">{card.label}</div>
                         <div className="text-muted text-12 lh-15">{card.desc}</div>
@@ -287,8 +285,6 @@ function App() {
                   )
                 })}
               </div>
-
-              
             </div>
           )}
           
@@ -306,8 +302,8 @@ function App() {
       {toast.visible && (
         <div className="toast-container-custom">
           <div className={`d-flex align-items-center gap-2 px-3 py-2 rounded-pill shadow-lg ${toast.type === 'success' ? 'bg-success text-white' : toast.type === 'error' ? 'bg-error text-white' : 'bg-blue text-white'}`}>
-            <span>{toast.message}</span>
-            <button onClick={hideToast} className="btn btn-sm p-0 border-0 d-flex align-items-center justify-content-center bg-transparent text-white w-24 h-24 rounded-circle">✕</button>
+              <span>{toast.message}</span>
+              <button onClick={hideToast} className="btn btn-sm p-0 border-0 d-flex align-items-center justify-content-center bg-transparent text-white w-24 h-24 rounded-circle"><span className="material-symbols-outlined" style={{fontSize:'16px'}}>close</span></button>
           </div>
         </div>
       )}
