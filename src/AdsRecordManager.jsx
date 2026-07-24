@@ -14,394 +14,169 @@ export default function AdsRecordManager({ session }) {
   const [loadingFetch, setLoadingFetch] = useState(false)
   const [loadingSave, setLoadingSave] = useState(false)
   const [loadingDelete, setLoadingDelete] = useState(false)
-
   const [checkedIds, setCheckedIds] = useState([])
   const [generatedText, setGeneratedText] = useState('')
-  const [toastMessage, setToastMessage] = useState('')
-
+  const [toast, setToast] = useState({ open: false, message: '', severity: 'success' })
   const [editingRecord, setEditingRecord] = useState(null)
   const [editAmount, setEditAmount] = useState('')
   const [editAdsPlatform, setEditAdsPlatform] = useState('tiktok')
   const [editDate, setEditDate] = useState('')
 
-  const showToast = (msg) => {
-    setToastMessage(msg)
-    setTimeout(() => setToastMessage(''), 3000)
-  }
+  const showToast = (message, severity = 'success') => { setToast({ open: true, message, severity }); setTimeout(() => setToast({ ...toast, open: false }), 3000) }
 
   const fetchRecords = async () => {
     setLoadingFetch(true)
-    const { data, error } = await supabase
-      .from('records')
-      .select('*')
-      .eq('user_id', session.user.id)
-      .order('date', { ascending: true })
-
-    if (error) console.error('Error fetching data:', error.message)
-    else setRecords(data || [])
+    const { data, error } = await supabase.from('records').select('*').eq('user_id', session.user.id).order('date', { ascending: true })
+    if (error) console.error('Error fetching data:', error.message); else setRecords(data || [])
     setLoadingFetch(false)
   }
 
-  useEffect(() => {
-    if (session?.user?.id) fetchRecords()
-  }, [session?.user?.id])
+  useEffect(() => { if (session?.user?.id) fetchRecords() }, [session?.user?.id])
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    setLoadingSave(true)
-
-    const { error } = await supabase.from('records').insert([{
-      user_id: session.user.id,
-      title: `RM ${parseFloat(amount).toFixed(2)}`,
-      amount: parseFloat(amount) || 0,
-      ads_platform: adsPlatform,
-      date,
-    }])
-
-    if (error) {
-      showToast('Failed to save data: ' + error.message)
-    } else {
-      setAmount('')
-      setAdsPlatform('tiktok')
-      showToast('Save Record!')
-      fetchRecords()
-    }
+    e.preventDefault(); setLoadingSave(true)
+    const { error } = await supabase.from('records').insert([{ user_id: session.user.id, title: `RM ${parseFloat(amount).toFixed(2)}`, amount: parseFloat(amount) || 0, ads_platform: adsPlatform, date }])
+    if (error) showToast('Failed to save data: ' + error.message, 'error'); else { setAmount(''); setAdsPlatform('tiktok'); showToast('Record saved successfully!'); fetchRecords() }
     setLoadingSave(false)
   }
 
-  const handleStartEdit = (rec) => {
-    setEditingRecord(rec)
-    setEditAmount(rec.amount)
-    setEditAdsPlatform(rec.ads_platform || 'tiktok')
-    setEditDate(rec.date || new Date().toISOString().split('T')[0])
-  }
+  const handleStartEdit = (rec) => { setEditingRecord(rec); setEditAmount(rec.amount); setEditAdsPlatform(rec.ads_platform || 'tiktok'); setEditDate(rec.date || new Date().toISOString().split('T')[0]) }
 
   const handleUpdateRecord = async (e) => {
-    e.preventDefault()
-    setLoadingSave(true)
-
-    const { error } = await supabase
-      .from('records')
-      .update({
-        title: `RM ${parseFloat(editAmount).toFixed(2)}`,
-        amount: parseFloat(editAmount) || 0,
-        ads_platform: editAdsPlatform,
-        date: editDate,
-      })
-      .eq('id', editingRecord.id)
-
-    if (error) {
-      showToast('Failed to update data: ' + error.message)
-    } else {
-      setEditingRecord(null)
-      showToast('Record updated successfully!')
-      fetchRecords()
-    }
+    e.preventDefault(); setLoadingSave(true)
+    const { error } = await supabase.from('records').update({ title: `RM ${parseFloat(editAmount).toFixed(2)}`, amount: parseFloat(editAmount) || 0, ads_platform: editAdsPlatform, date: editDate }).eq('id', editingRecord.id)
+    if (error) showToast('Failed to update data: ' + error.message, 'error'); else { setEditingRecord(null); showToast('Record updated successfully!'); fetchRecords() }
     setLoadingSave(false)
   }
 
-  const handleCheckRow = (id) => {
-    setCheckedIds(prev =>
-      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
-    )
-  }
-
-  const handleCheckAll = (e) => {
-    setCheckedIds(e.target.checked ? records.map(rec => rec.id) : [])
-  }
+  const handleCheckRow = (id) => { setCheckedIds(prev => prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]) }
+  const handleCheckAll = (e) => { setCheckedIds(e.target.checked ? records.map(rec => rec.id) : []) }
 
   const handleDeleteChecked = async () => {
     if (checkedIds.length === 0) return
-
-    const confirmMsg = `Are you sure you want to delete ${checkedIds.length} selected record(s)?`
-    if (!window.confirm(confirmMsg)) return
-
+    if (!window.confirm(`Are you sure you want to delete ${checkedIds.length} selected record(s)?`)) return
     setLoadingDelete(true)
-    const { error } = await supabase
-      .from('records')
-      .delete()
-      .in('id', checkedIds)
-
-    if (error) {
-      showToast('Failed to delete records: ' + error.message)
-    } else {
-      setCheckedIds([])
-      setGeneratedText('')
-      fetchRecords()
-    }
+    const { error } = await supabase.from('records').delete().in('id', checkedIds)
+    if (error) showToast('Failed to delete records: ' + error.message, 'error'); else { setCheckedIds([]); setGeneratedText(''); showToast('Records deleted successfully!'); fetchRecords() }
     setLoadingDelete(false)
   }
 
   const handleGenerate = () => {
     if (checkedIds.length === 0) return
-
     const selectedRecords = records.filter(rec => checkedIds.includes(rec.id))
-    const lines = selectedRecords.map(rec =>
-      `Date : ${rec.date} - RM ${parseFloat(rec.amount).toFixed(2)} (${rec.ads_platform === 'tiktok' ? 'TikTok' : 'Shopee'})`
-    )
-
-    setGeneratedText([
-      'For Credit Card Payment',
-      'Advertising',
-      ...lines
-    ].join('\n'))
+    const lines = selectedRecords.map(rec => `Date : ${rec.date} - RM ${parseFloat(rec.amount).toFixed(2)} (${rec.ads_platform === 'tiktok' ? 'TikTok' : 'Shopee'})`)
+    setGeneratedText(['For Credit Card Payment', 'Advertising', ...lines].join('\n'))
   }
 
-  const handleCopyToClipboard = () => {
-    navigator.clipboard.writeText(generatedText)
-    showToast('Transaction notes copied successfully!')
-  }
+  const handleCopyToClipboard = () => { navigator.clipboard.writeText(generatedText); showToast('Transaction notes copied successfully!') }
 
-  const totalSelectedAmount = records
-    .filter(rec => checkedIds.includes(rec.id))
-    .reduce((sum, rec) => sum + (parseFloat(rec.amount) || 0), 0)
+  const totalSelectedAmount = records.filter(rec => checkedIds.includes(rec.id)).reduce((sum, rec) => sum + (parseFloat(rec.amount) || 0), 0)
 
-  const handleCopyTotalNumberOnly = () => {
-    const numberOnly = totalSelectedAmount.toFixed(2)
-    navigator.clipboard.writeText(numberOnly)
-    showToast(`Amount ${numberOnly} copied successfully!`)
-  }
+  const handleCopyTotalNumberOnly = () => { navigator.clipboard.writeText(totalSelectedAmount.toFixed(2)); showToast(`Amount ${totalSelectedAmount.toFixed(2)} copied successfully!`) }
 
   return (
-    <div className="page-shell relative">
-      {toastMessage && (
-        <div className="toast-success">
-          <div className="alert-toast">
-            <span>{toastMessage}</span>
+    <div className="max-w-1200 mx-auto">
+      {toast.open && (
+        <div className="toast-container-custom">
+          <div className={`d-flex align-items-center gap-2 px-3 py-2 rounded-pill shadow-lg fw-600 text-14 text-white ${toast.severity === 'error' ? 'bg-error' : 'bg-success'}`}>
+            <span>{toast.message}</span>
           </div>
         </div>
       )}
 
-      <div className="page-header">
-        <h1 className="page-title">Ads Record Manager</h1>
-        <p className="page-subtitle">Track payments, amounts, and manage financial outputs.</p>
+      <div className="page-header-custom">
+        <h1 className="page-title-custom">Ads Record Manager</h1>
+        <p className="page-subtitle-custom">Track payments, amounts, and manage financial outputs.</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
-        {/* Add Record Form */}
-        <div className="content-card p-5 h-fit">
-          <h3 className="text-lg font-bold mb-3 text-primary">Add New Record</h3>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="form-control">
-              <label className="label-text font-semibold mb-1">Date</label>
-              <input
-                type="date"
-                required
-                className="input input-bordered w-full text-base"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-              />
-            </div>
-            <div className="form-control">
-              <label className="label-text font-semibold mb-1">Amount (RM)</label>
-              <input
-                type="number"
-                step="0.01"
-                min="0.01"
-                required
-                placeholder="0.00"
-                className="input input-bordered w-full text-base"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-              />
-            </div>
-            <div className="form-control">
-              <label className="label-text font-semibold mb-1">Ads Platform</label>
-              <select
-                required
-                className="select select-bordered w-full text-base"
-                value={adsPlatform}
-                onChange={(e) => setAdsPlatform(e.target.value)}
-              >
-                {ADS_PLATFORMS.map(platform => (
-                  <option key={platform.value} value={platform.value}>
-                    {platform.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <button type="submit" disabled={loadingSave} className="btn btn-primary font-bold w-full mt-2">
-              {loadingSave ? <span className="loading loading-spinner"></span> : 'Save Record'}
-            </button>
-          </form>
-        </div>
-
-        {/* Records List */}
-        <div className="lg:col-span-2 content-card p-5">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-            <h3 className="text-base font-bold text-base-content/80">Saved Records List</h3>
-            <div className="flex flex-wrap items-center gap-3">
-              {checkedIds.length > 0 && (
-                <div className="selected-total-box">
-                  <span className="text-xs">Selected Total:</span>
-                  <span className="font-bold text-base-content/90 text-sm">RM {totalSelectedAmount.toFixed(2)}</span>
-                  <button
-                    type="button"
-                    onClick={handleCopyTotalNumberOnly}
-                    className="btn btn-ghost btn-xs btn-circle"
-                    title="Copy amount"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376A8.965 8.965 0 0 0 12 12.75c-.497 0-.982.04-1.455.12l-.179.03m1.608-3.033a13.96 13.96 0 0 1 2.5.553m-.553-1.376a13.518 13.518 0 0 1 4.722 3.208 13.518 13.518 0 0 1 3.208 4.722m-3.208-4.722a13.48 13.48 0 0 0-4.722-3.208M4.5 10.5h11.25c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125H4.5A1.125 1.125 0 0 1 3.375 21.375v-9.75c0-.621.504-1.125 1.125-1.125Z" /></svg>
-                  </button>
-                </div>
-              )}
-              <div className="flex gap-2">
-                <button
-                  onClick={handleGenerate}
-                  disabled={checkedIds.length === 0 || loadingSave}
-                  className="btn btn-sm btn-outline font-bold"
-                >
-                  Generate ({checkedIds.length})
-                </button>
-                <button
-                  onClick={handleDeleteChecked}
-                  disabled={checkedIds.length === 0 || loadingDelete}
-                  className="btn btn-sm btn-outline font-bold"
-                >
-                  {loadingDelete ? <span className="loading loading-spinner loading-xs"></span> : 'Delete'}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {loadingFetch ? (
-            <div className="flex justify-center py-12">
-              <span className="loading loading-spinner loading-lg text-primary"></span>
-            </div>
-          ) : records.length === 0 ? (
-            <div className="empty-state py-12 gap-3 opacity-70">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-12 h-12">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
-              </svg>
-              <p className="font-bold text-sm">No records saved yet.</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="table table-zebra w-full">
-                <thead>
-                  <tr>
-                    <th className="w-12">
-                      <input
-                        type="checkbox"
-                        className="checkbox checkbox-primary checkbox-sm"
-                        onChange={handleCheckAll}
-                        checked={records.length > 0 && checkedIds.length === records.length}
-                      />
-                    </th>
-                    <th className="w-16 text-center">No.</th>
-                    <th>Date</th>
-                    <th>Ads Platform</th>
-                    <th className="text-right">Amount (RM)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {records.map((rec, index) => (
-                    <tr key={rec.id} className={checkedIds.includes(rec.id) ? 'record-row--selected' : ''}>
-                      <td>
-                        <input
-                          type="checkbox"
-                          className="checkbox checkbox-primary checkbox-sm"
-                          checked={checkedIds.includes(rec.id)}
-                          onChange={() => handleCheckRow(rec.id)}
-                        />
-                      </td>
-                      <td className="text-center opacity-70 font-mono">{index + 1}</td>
-                      <td className="whitespace-nowrap">{rec.date}</td>
-                      <td className="whitespace-nowrap capitalize">{rec.ads_platform === 'tiktok' ? 'TikTok' : rec.ads_platform === 'shopee' ? 'Shopee' : rec.ads_platform}</td>
-                      <td className="text-right font-bold text-base-content/80">
-                        <div className="flex items-center justify-end gap-2">
-                          <span>{parseFloat(rec.amount).toFixed(2)}</span>
-                          <button
-                            type="button"
-                            onClick={() => handleStartEdit(rec)}
-                            className="btn btn-ghost btn-xs btn-circle"
-                            title="Edit"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" />
-                            </svg>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Generated Output */}
-      {generatedText && (
-        <div className="content-card p-6 w-full">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-bold text-accent">Generated Note Result</h3>
-            <button onClick={handleCopyToClipboard} className="btn btn-sm btn-outline btn-accent font-bold">
-              Copy Text
-            </button>
-          </div>
-          <div className="bg-base-300 p-4 rounded-xl font-mono text-sm leading-relaxed whitespace-pre-wrap border border-base-200 select-all">
-            {generatedText}
-          </div>
-        </div>
-      )}
-
-      {/* Edit Record Modal */}
-      {editingRecord && (
-        <div className="modal modal-open z-50">
-          <div className="modal-backdrop" onClick={() => setEditingRecord(null)}></div>
-          <div className="modal-box--sm" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-bold text-lg text-info flex items-center gap-2 mb-4">✏️ Edit Record</h3>
-            <form onSubmit={handleUpdateRecord} className="space-y-4">
-              <div className="form-control">
-                <label className="label-text font-semibold mb-1">Date</label>
-                <input
-                  type="date"
-                  required
-                  className="input input-bordered w-full text-base"
-                  value={editDate}
-                  onChange={(e) => setEditDate(e.target.value)}
-                />
-              </div>
-              <div className="form-control">
-                <label className="label-text font-semibold mb-1">Amount (RM)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  required
-                  className="input input-bordered w-full text-base"
-                  value={editAmount}
-                  onChange={(e) => setEditAmount(e.target.value)}
-                />
-              </div>
-              <div className="form-control">
-                <label className="label-text font-semibold mb-1">Ads Platform</label>
-                <select
-                  required
-                  className="select select-bordered w-full text-base"
-                  value={editAdsPlatform}
-                  onChange={(e) => setEditAdsPlatform(e.target.value)}
-                >
-                  {ADS_PLATFORMS.map(platform => (
-                    <option key={platform.value} value={platform.value}>
-                      {platform.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="modal-action gap-2 pt-2">
-                <button type="button" className="btn btn-sm btn-ghost" onClick={() => setEditingRecord(null)}>
-                  Cancel
-                </button>
-                <button type="submit" disabled={loadingSave} className="btn btn-sm btn-primary text-white font-bold px-4">
-                  {loadingSave ? <span className="loading loading-spinner loading-xs"></span> : 'Save Changes'}
-                </button>
-              </div>
+      <div className="row g-3">
+        <div className="col-lg-4">
+          <div className="card p-3 h-100">
+            <h6 className="fw-bold mb-3 text-accent">Add New Record</h6>
+            <form onSubmit={handleSubmit}>
+              <div className="mb-3"><label className="form-label">Date</label><input type="date" className="form-control" required value={date} onChange={(e) => setDate(e.target.value)} /></div>
+              <div className="mb-3"><label className="form-label">Amount (RM)</label><input type="number" step="0.01" className="form-control" required placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)} /></div>
+              <div className="mb-3"><label className="form-label">Ads Platform</label><select className="form-select" value={adsPlatform} onChange={(e) => setAdsPlatform(e.target.value)} required>{ADS_PLATFORMS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}</select></div>
+              <button type="submit" className="btn btn-primary w-100 fw-bold" disabled={loadingSave}>{loadingSave ? <span className="spinner-border spinner-border-sm"></span> : 'Save Record'}</button>
             </form>
           </div>
         </div>
+
+        <div className="col-lg-8">
+          <div className="card p-3">
+            <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+              <span className="text-muted text-13">Saved Records List</span>
+              <div className="d-flex gap-2 align-items-center flex-wrap">
+                {checkedIds.length > 0 && (
+                  <div className="selected-total-box d-flex align-items-center gap-1">
+                    <span className="text-muted text-12">Selected Total:</span>
+                    <span className="fw-bold text-white text-13">RM {totalSelectedAmount.toFixed(2)}</span>
+                    <button className="btn btn-sm btn-link p-0 d-flex align-items-center justify-content-center w-20 h-20 text-secondary-custom" onClick={handleCopyTotalNumberOnly}>
+                      <svg className="icon-svg-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                    </button>
+                  </div>
+                )}
+                <button className="btn btn-sm btn-outline-light fw-semibold" onClick={handleGenerate} disabled={checkedIds.length === 0 || loadingSave}>Generate ({checkedIds.length})</button>
+                <button className="btn btn-sm fw-semibold btn-outline-danger" onClick={handleDeleteChecked} disabled={checkedIds.length === 0 || loadingDelete}>
+                  {loadingDelete ? <span className="spinner-border spinner-border-sm"></span> : 'Delete'}
+                </button>
+              </div>
+            </div>
+
+            {loadingFetch ? <div className="text-center py-5"><span className="spinner-border"></span></div> : records.length === 0 ? <div className="text-center py-5 text-muted fw-semibold">No records saved yet.</div> : (
+              <div className="overflow-x-auto">
+                <table className="table table-hover">
+                  <thead><tr><th className="w-40"><input type="checkbox" className="form-check-input" checked={records.length > 0 && checkedIds.length === records.length} onChange={handleCheckAll} /></th><th>No.</th><th>Date</th><th>Ads Platform</th><th className="text-end">Amount (RM)</th></tr></thead>
+                  <tbody>{records.map((rec, index) => (
+                    <tr key={rec.id} className={checkedIds.includes(rec.id) ? 'row-selected' : ''}>
+                      <td><input type="checkbox" className="form-check-input" checked={checkedIds.includes(rec.id)} onChange={() => handleCheckRow(rec.id)} /></td>
+                      <td className="font-mono text-13 text-secondary-custom">{index + 1}</td>
+                      <td className="text-13 text-nowrap text-white">{rec.date}</td>
+                      <td><span className="chip-custom">{rec.ads_platform === 'tiktok' ? 'TikTok' : 'Shopee'}</span></td>
+                      <td className="text-end fw-semibold text-13 text-white">{parseFloat(rec.amount).toFixed(2)}
+                        <button className="btn btn-sm btn-link p-0 d-inline-flex align-items-center justify-content-center w-20 h-20 text-tertiary ms-1" onClick={() => handleStartEdit(rec)}>
+                          <svg className="icon-svg-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}</tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {generatedText && (
+        <div className="card p-3 mt-3">
+          <div className="d-flex justify-content-between align-items-center mb-2">
+            <h6 className="fw-bold text-accent mb-0">Generated Note Result</h6>
+            <button className="btn btn-sm btn-outline-light fw-semibold" onClick={handleCopyToClipboard}>Copy Text</button>
+          </div>
+          <pre className="p-3 rounded-12 font-mono user-select-all text-13 text-pre-wrap bg-dark-card text-secondary-custom border-default">{generatedText}</pre>
+        </div>
+      )}
+
+      {editingRecord && (
+        <>
+          <div className="modal-backdrop show" onClick={() => setEditingRecord(null)}></div>
+          <div className="modal d-block" tabIndex="-1">
+            <div className="modal-dialog modal-dialog-centered">
+              <div className="modal-content p-3">
+                <h5 className="fw-bold text-accent mb-3">✏️ Edit Record</h5>
+                <form onSubmit={handleUpdateRecord}>
+                  <div className="mb-3"><label className="form-label">Date</label><input type="date" className="form-control" required value={editDate} onChange={(e) => setEditDate(e.target.value)} /></div>
+                  <div className="mb-3"><label className="form-label">Amount (RM)</label><input type="number" step="0.01" className="form-control" required value={editAmount} onChange={(e) => setEditAmount(e.target.value)} /></div>
+                  <div className="mb-3"><label className="form-label">Ads Platform</label><select className="form-select" value={editAdsPlatform} onChange={(e) => setEditAdsPlatform(e.target.value)} required>{ADS_PLATFORMS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}</select></div>
+                  <div className="d-flex gap-2 justify-content-end">
+                    <button type="button" className="btn btn-sm btn-link" onClick={() => setEditingRecord(null)}>Cancel</button>
+                    <button type="submit" className="btn btn-sm btn-primary fw-bold" disabled={loadingSave}>{loadingSave ? <span className="spinner-border spinner-border-sm"></span> : 'Save Changes'}</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </>
       )}
     </div>
   )

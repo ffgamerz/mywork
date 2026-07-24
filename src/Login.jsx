@@ -12,99 +12,81 @@ export default function Login() {
     e.preventDefault()
     setLoading(true)
     setMessage(null)
-
     if (isSignUp) {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-      })
-      if (error) {
-        setMessage({ type: 'error', text: error.message })
-      } else {
-        setMessage({ type: 'success', text: 'Registration successful! You can log in now.' })
-        setIsSignUp(false)
-      }
+      const { error } = await supabase.auth.signUp({ email, password })
+      if (error) setMessage({ type: 'error', text: error.message })
+      else { setMessage({ type: 'success', text: 'Registration successful! You can log in now.' }); setIsSignUp(false) }
     } else {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      })
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) setMessage({ type: 'error', text: error.message })
     }
-
     setLoading(false)
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-base-200 p-4">
-      <div className="card w-full max-w-sm shadow-2xl bg-base-100">
-        <form onSubmit={handleAuth} className="card-body">
-          <h2 className="card-title text-2xl font-bold justify-center mb-2 text-primary">
-            {isSignUp ? 'Register mywork' : 'mywork hub'}
-          </h2>
-          
-          {message && (
-            <div className={`alert ${message.type === 'error' ? 'alert-error' : 'alert-success'} p-2 text-sm text-white`}>
-              <span>{message.text}</span>
+    <div className="min-vh-100 d-flex align-items-center justify-content-center px-2 py-4 bg-body">
+      <div className="row g-4 max-w-1200 w-100 mx-auto">
+        <div className="col-lg-6">
+          <div className="card p-5 h-100 d-flex flex-column justify-content-center bg-card-bg">
+            <div className="d-flex flex-column gap-3">
+              <div>
+                <h2 className="fw-bold text-white tracking-tight">mywork</h2>
+                <p className="text-muted mt-2 max-w-480">A clean production and records dashboard inspired by Google AI Studio's design language.</p>
+              </div>
+              <div className="card p-3 rounded-12 border-accent">
+                <div className="text-uppercase text-primary tracking-widest text-11 fw-500">Google AI Studio Design</div>
+                <p className="text-muted mt-1 text-13">Navigate faster, manage records, and keep production organized with a clean, modern interface.</p>
+              </div>
+              <div className="row g-3">
+                <div className="col-sm-6">
+                  <div className="card p-3 rounded-12">
+                    <div className="text-uppercase tracking-widest text-11">Fast access</div>
+                    <h6 className="fw-bold text-white mt-2">Dashboard modules</h6>
+                  </div>
+                </div>
+                <div className="col-sm-6">
+                  <div className="card p-3 rounded-12">
+                    <div className="text-uppercase tracking-widest text-11">Workspace ready</div>
+                    <h6 className="fw-bold text-white mt-2">Secure login</h6>
+                  </div>
+                </div>
+              </div>
             </div>
-          )}
-
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text font-medium">Email</span>
-            </label>
-            {/* Ditambah atribut name dan autoComplete untuk trigger Safari Save Password */}
-            <input 
-              type="email" 
-              name="email"
-              autoComplete="username"
-              placeholder="name@email.com" 
-              className="input input-bordered w-full text-base" 
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required 
-            />
           </div>
-
-          <div className="form-control mt-2">
-            <label className="label">
-              <span className="label-text font-medium">Password</span>
-            </label>
-            {/* Ditambah atribut name dan autoComplete untuk trigger Safari Save Password */}
-            <input 
-              type="password" 
-              name="password"
-              autoComplete={isSignUp ? "new-password" : "current-password"}
-              placeholder="••••••••" 
-              className="input input-bordered w-full text-base" 
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required 
-            />
+        </div>
+        <div className="col-lg-6">
+          <div className="card p-4 h-100 d-flex flex-column justify-content-center bg-card-bg">
+            <form onSubmit={handleAuth}>
+              <div className="d-flex flex-column gap-3">
+                <div>
+                  <h5 className="fw-bold text-white">{isSignUp ? 'Create account' : 'Welcome back'}</h5>
+                  <p className="text-muted mt-1 text-13">Login to your mywork dashboard and start managing production.</p>
+                </div>
+                {message && (
+                  <div className={`alert ${message.type === 'error' ? 'alert-danger' : 'alert-success'} py-2 px-3 rounded-12`}>{message.text}</div>
+                )}
+                <div className="mb-3">
+                  <label className="form-label">Email</label>
+                  <input type="email" className="form-control" autoComplete="username" placeholder="name@email.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                </div>
+                <div className="mb-3">
+                  <label className="form-label">Password</label>
+                  <input type="password" className="form-control" autoComplete={isSignUp ? 'new-password' : 'current-password'} placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required />
+                </div>
+                <button type="submit" className="btn btn-primary w-100 fw-bold py-2" disabled={loading}>
+                  {loading ? (isSignUp ? 'Creating...' : 'Logging in...') : (isSignUp ? 'Create Account' : 'Log In')}
+                </button>
+                <p className="text-center text-muted mt-2 text-13">
+                  {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
+                  <button type="button" onClick={() => { setIsSignUp(!isSignUp); setMessage(null) }}
+                    className="btn btn-link p-0 fw-semibold text-primary align-baseline border-0 bg-transparent text-13"> 
+                    {isSignUp ? 'Log In' : 'Register Here'}
+                  </button>
+                </p>
+              </div>
+            </form>
           </div>
-
-          <div className="form-control mt-6">
-            <button type="submit" disabled={loading} className="btn btn-primary font-bold w-full mt-2">
-              {loading ? <span className="loading loading-spinner"></span> : (isSignUp ? 'Register Account' : 'Log In')}
-            </button>
-          </div>
-
-          <div className="text-center mt-4 text-sm">
-            <span className="opacity-70">
-              {isSignUp ? 'Already have an account?' : "Don't have an account?"} 
-            </span>{' '}
-            <button 
-              type="button"
-              className="link link-primary font-semibold"
-              onClick={() => {
-                setIsSignUp(!isSignUp)
-                setMessage(null)
-              }}
-            >
-              {isSignUp ? 'Log In' : 'Register Here'}
-            </button>
-          </div>
-        </form>
+        </div>
       </div>
     </div>
   )
