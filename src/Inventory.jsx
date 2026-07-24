@@ -42,7 +42,7 @@ export default function Inventory({ session, userRole, allowedModules = {} }) {
   const fetchProducts = async () => {
     if (!hasPageAccess) return
     setLoadingProducts(true)
-    const { data, error } = await supabase.from('inventory').select(`*, stock_productions(id, batch_no, production_date, expiry_date, is_finished, paid_amount, created_at)`).order('created_at', { ascending: true })
+    const { data, error } = await supabase.from('inventory').select(`*, stock_productions(id, batch_no, production_date, expiry_date, is_finished, paid_amount, paid_date, created_at)`).order('created_at', { ascending: true })
     if (error) console.error(error.message)
     else setProducts((data || []).map(prod => {
       const activeStocks = (prod.stock_productions || []).filter(stock => stock.is_finished === false).sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
@@ -181,7 +181,7 @@ export default function Inventory({ session, userRole, allowedModules = {} }) {
                           <div className="text-muted text-uppercase fw-bold text-10 tracking-wider">Batch</div>
                           <h6 className="font-mono fw-bold mb-0">{p.batch_no}</h6>
                         </div>
-                        <span className={`badge ${p.paid_date ? 'badge-success' : 'badge-error'}`}>{p.paid_date ? 'Paid' : 'Unpaid'}</span>
+                        <span className={`badge ${p.paid_date ? 'bg-success' : 'bg-danger'}`}>{p.paid_date ? 'Paid' : 'Unpaid'}</span>
                       </div>
                       <div className="d-flex justify-content-between mb-2">
                         <div><div className="text-muted fw-bold text-10">Date</div><div className="fw-semibold text-white text-14">{p.production_date}</div></div>
@@ -193,6 +193,7 @@ export default function Inventory({ session, userRole, allowedModules = {} }) {
                       </div>
                       <div className="d-flex justify-content-between pt-2 mt-auto border-top border-default">
                         <div><div className="text-muted fw-bold text-10">Wage</div><div className="font-mono fw-bold text-white">RM {flatWage.toFixed(2)}</div></div>
+                        {p.paid_date && <div className="text-end"><div className="text-muted fw-bold text-10">Paid Date</div><div className="font-mono fw-bold text-white text-14">{p.paid_date}</div></div>}
                       </div>
                       <div className="d-flex gap-2 mt-2 pt-2 border-top border-default">
                         {canToggleStockStatus && (
