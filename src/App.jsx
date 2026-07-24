@@ -214,7 +214,7 @@ function App() {
           <div className="topbar-content">
             <div className="d-flex align-items-center gap-2">
               <button className="btn btn-sm btn-link d-flex align-items-center justify-content-center w-32 h-32 p-0"
-                onClick={() => { if (window.innerWidth < 768) setMobileDrawerOpen(true); else setSidebarOpen(prev => !prev) }}>
+                onClick={() => { if (window.innerWidth < 768) setMobileDrawerOpen(prev => !prev); else setSidebarOpen(prev => !prev) }}>
                 <svg className="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
               </button>
               <div className="fw-medium text-white text-14 d-md-none d-inline text-16 d-none d-md-inline">
