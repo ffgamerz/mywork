@@ -27,12 +27,12 @@ const navItems = [
 ]
 
 const cardColors = {
-  records: { bg: 'bg-accent-records', color: 'text-accent-records', icon: 'bar_chart' },
-  inventory: { bg: 'bg-accent-inventory', color: 'text-accent-inventory', icon: 'inventory_2' },
-  receiptManager: { bg: 'bg-accent-receipt', color: 'text-accent-receipt', icon: 'receipt' },
-  wageCalculator: { bg: 'bg-accent-wage', color: 'text-accent-wage', icon: 'payments' },
-  myWage: { bg: 'bg-accent-mywage', color: 'text-accent-mywage', icon: 'attach_money' },
-  productionPlanning: { bg: 'bg-accent-planning', color: 'text-accent-planning', icon: 'calendar_month' },
+  records: { bg: 'bg-accent-records', color: 'text-accent-records', icon: 'campaign' },
+  inventory: { bg: 'bg-accent-inventory', color: 'text-accent-inventory', icon: 'warehouse' },
+  receiptManager: { bg: 'bg-accent-receipt', color: 'text-accent-receipt', icon: 'receipt_long' },
+  wageCalculator: { bg: 'bg-accent-wage', color: 'text-accent-wage', icon: 'paid' },
+  myWage: { bg: 'bg-accent-mywage', color: 'text-accent-mywage', icon: 'account_balance_wallet' },
+  productionPlanning: { bg: 'bg-accent-planning', color: 'text-accent-planning', icon: 'edit_note' },
 }
 
 function App() {
@@ -273,10 +273,10 @@ function App() {
                 {visibleCards.map((card) => {
                   const colors = cardColors[card.id]
                   return (
-                    <div className="col" key={card.id}>
+                      <div className="col" key={card.id}>
                       <div className="card card-hover p-3 cursor-pointer h-100" onClick={() => setActivePage(card.id)}>
-                        <div className={`d-flex align-items-center justify-content-center mb-3 w-36 h-36 rounded-10 ${colors.bg} ${colors.color}`}>
-                          <span className="material-symbols-outlined card-icon">{colors.icon}</span>
+                        <div className="d-flex align-items-center justify-content-center mb-3 w-36 h-36 rounded-10 bg-white-08">
+                          <span className="material-symbols-outlined card-icon text-white-70">{colors.icon}</span>
                         </div>
                         <div className="fw-medium text-white text-14 mb-1">{card.label}</div>
                         <div className="text-muted text-12 lh-15">{card.desc}</div>

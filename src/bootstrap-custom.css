@@ -42,6 +42,7 @@ body {
 .bg-dark-card { background-color: #18181b !important; }
 .bg-blue { background-color: #3b82f6 !important; }
 .bg-gradient-avatar { background: linear-gradient(135deg, #6366f1, #8b5cf6) !important; }
+.bg-white-08 { background-color: rgba(255,255,255,0.08) !important; }
 .bg-accent-8 { background-color: rgba(59, 130, 246, 0.08) !important; }
 .bg-accent-15 { background-color: rgba(59, 130, 246, 0.15) !important; }
 .bg-success-12 { background-color: rgba(74, 222, 128, 0.12) !important; }
@@ -223,7 +224,8 @@ body {
   text-align: center;
 }
 .material-symbols-outlined.card-icon {
-  font-size: 22px;
+  font-size: 26px;
+  font-variation-settings: 'wght' 400, 'opsz' 24;
 }
 .material-symbols-outlined.small-icon {
   font-size: 18px;
