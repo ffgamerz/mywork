@@ -185,13 +185,17 @@ function App() {
           </button>
         ))}
       </div>
-    
+      <div className="mt-auto p-3 border-top border-default">
+        <button onClick={handleLogout} className="nav-link w-100 text-start border-0 bg-transparent">
+          <span className="nav-icon">🚪</span><span>Logout</span>
+        </button>
+      </div>
     </div>
   )
 
   return (
     <div className="d-flex min-vh-100 bg-body">
-      <div className={`sidebar d-none d-md-flex flex-column ${!sidebarOpen ? 'd-none-imp' : ''}`}>SDFS
+      <div className={`sidebar d-none d-md-flex flex-column ${!sidebarOpen ? 'd-none-imp' : ''}`}>
         {sidebarContent}
       </div>
 
