@@ -195,7 +195,7 @@ function App() {
 
   return (
     <div className="d-flex min-vh-100 bg-body">
-      <div className={`sidebar d-none d-md-flex flex-column ${!sidebarOpen ? 'd-none-imp' : ''}`}>
+      <div className={`sidebar d-none d-md-flex flex-column ${!sidebarOpen ? 'sidebar-hidden' : ''}`}>
         {sidebarContent}
       </div>
 
