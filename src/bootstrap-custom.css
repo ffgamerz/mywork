@@ -277,9 +277,8 @@ body {
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
 
-.d-none-imp { display: none !important; }
-
-.sidebar-collapsed { margin-left: 0 !important; }
-
 @media (max-width: 767.98px) { .main-content { margin-left: 0 !important; } .sidebar { display: none; } }
-@media (min-width: 768px) { .sidebar-collapsed { margin-left: 0; } }
+@media (min-width: 768px) {
+  .d-none-imp { display: none !important; }
+  .sidebar-collapsed { margin-left: 0; }
+}
