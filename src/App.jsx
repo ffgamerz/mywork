@@ -261,10 +261,10 @@ function App() {
             <div className="max-w-1024 mx-auto">
               <div className="mb-4">
                 <h1 className="fw-400 tracking-tight text-white mb-1 text-24 d-none d-md-block text-32">
-                  Hello, {session?.user?.email?.split('@')[0] || 'ffgamerz'}
+                  <span className="material-symbols-outlined me-1" style={{fontSize:'24px',verticalAlign:'middle',color:'#3b82f6'}}>dashboard</span> Hello, {session?.user?.email?.split('@')[0] || 'ffgamerz'}
                 </h1>
                 <h1 className="fw-400 tracking-tight text-white mb-1 d-md-none text-24">
-                  Hello, {session?.user?.email?.split('@')[0] || 'ffgamerz'}
+                  <span className="material-symbols-outlined me-1" style={{fontSize:'24px',verticalAlign:'middle',color:'#3b82f6'}}>dashboard</span> Hello, {session?.user?.email?.split('@')[0] || 'ffgamerz'}
                 </h1>
                 <p className="text-muted text-14">What would you like to build or explore today?</p>
               </div>
