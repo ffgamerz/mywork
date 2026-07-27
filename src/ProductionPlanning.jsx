@@ -113,6 +113,9 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
   const [selectedPurchase, setSelectedPurchase] = useState(null)
   const [purchaseNotes, setPurchaseNotes] = useState('')
   const [manualQty, setManualQty] = useState({})
+  const [editRecordQtys, setEditRecordQtys] = useState({})
+  const [isSavingEdit, setIsSavingEdit] = useState(false)
+  const [editingRecordId, setEditingRecordId] = useState(null)
 
   const updateManualQty = (materialId, value) => setManualQty(prev => ({ ...prev, [materialId]: value }))
 
@@ -255,7 +258,35 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
   const handleSavePurchase = async () => {
     if (!purchaseSummary) return showMsg('Generate summary first')
     setLoading(true)
-    const itemsToSave = purchaseSummary.items.map(i => { const qty = getDisplayQty(i); return { purchase_plan_id: null, raw_material_id: i.material_id, total_quantity_needed: qty, raw_quantity_needed: i.rawQty ?? null, unit: i.unit, raw_unit: i.rawUnit ?? null, estimated_cost: getItemCost(i) } })
+    const itemsToSave = purchaseSummary.items.map(i => {
+      const qty = getDisplayQty(i)
+      const mat = i.rawMaterial
+      // Lock the unit price at current raw_material price
+      const unitPrice = mat && mat.price != null ? parseFloat(mat.price) : null
+      let cost = 0
+      if (mat && unitPrice != null) {
+        if (mat.calculation_mode === 'fraction') {
+          // qty is already the number of purchase units (packets), unitPrice is per packet
+          // So total cost = qty (packets) * unitPrice (price per packet)
+          cost = qty * unitPrice
+        } else {
+          // qty * unitPrice (e.g., kg * price per kg)
+          cost = qty * unitPrice
+        }
+      } else {
+        cost = getItemCost(i)
+      }
+      return {
+        purchase_plan_id: null,
+        raw_material_id: i.material_id,
+        total_quantity_needed: qty,
+        raw_quantity_needed: i.rawQty ?? null,
+        unit: i.unit,
+        raw_unit: i.rawUnit ?? null,
+        unit_price: unitPrice,
+        estimated_cost: cost
+      }
+    })
     const totalCost = itemsToSave.reduce((s, i) => s + i.estimated_cost, 0)
     const { data: plan, error: planErr } = await supabase.from('purchase_plans').insert([{ user_id: session.user.id, notes: purchaseNotes || null, total_estimated_cost: totalCost }]).select().single()
     if (planErr) { showMsg('Error: ' + planErr.message); setLoading(false); return }
@@ -272,12 +303,84 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
     setLoading(false)
   }
 
+  // Calculate cost using locked unit_price ONLY, never current price
+  const calcRecordItemCost = (item, qty) => {
+    const lockedPrice = item.unit_price != null ? parseFloat(item.unit_price) : null
+    if (lockedPrice != null) {
+      // Use locked unit_price - multiply by qty (unit_price is per purchase unit)
+      return qty * lockedPrice
+    }
+    // Fallback: prorate from original estimated_cost (for old records without unit_price)
+    return parseFloat(item.estimated_cost || 0) * (qty / (item.total_quantity_needed || 1))
+  }
+
+  const handleEditRecordQty = async () => {
+    if (!selectedPurchase) return
+    setIsSavingEdit(true)
+    const items = selectedPurchase.purchase_plan_items || []
+    let hasChanges = false
+    // Update each item that has been changed
+    for (const item of items) {
+      const newQty = editRecordQtys[item.id]
+      if (newQty !== undefined && newQty !== '' && String(newQty) !== String(item.total_quantity_needed)) {
+        hasChanges = true
+        const cost = calcRecordItemCost(item, parseFloat(newQty))
+        const { error } = await supabase.from('purchase_plan_items').update({ total_quantity_needed: parseFloat(newQty), estimated_cost: cost }).eq('id', item.id)
+        if (error) showMsg('Error updating item: ' + error.message)
+      }
+    }
+    if (!hasChanges) {
+      setEditingRecordId(null)
+      setEditRecordQtys({})
+      setIsSavingEdit(false)
+      showMsg('No changes detected.')
+      return
+    }
+    // Recalculate total cost
+    let totalCost = 0
+    for (const item of items) {
+      const newQty = editRecordQtys[item.id]
+      const qty = (newQty !== undefined && newQty !== '') ? parseFloat(newQty) : item.total_quantity_needed
+      totalCost += calcRecordItemCost(item, qty)
+    }
+    const { error: planErr } = await supabase.from('purchase_plans').update({ total_estimated_cost: totalCost }).eq('id', selectedPurchase.id)
+    if (planErr) showMsg('Error updating total: ' + planErr.message)
+    setEditingRecordId(null)
+    setEditRecordQtys({})
+    setIsSavingEdit(false)
+    showMsg('Quantities updated successfully!')
+    // Refresh records and update selectedPurchase
+    await fetchPurchaseRecords()
+    // Update selectedPurchase with fresh data
+    const { data: freshData } = await supabase.from('purchase_plans').select('*, purchase_plan_items(*, raw_material:raw_material_id(name, price, calculation_mode, fraction_unit)), purchase_plan_batches(*, inventory:inventory_id(product_name))').eq('id', selectedPurchase.id).single()
+    if (freshData) setSelectedPurchase(freshData)
+  }
+
+  const enableEditRecord = () => {
+    const items = selectedPurchase.purchase_plan_items || []
+    const qtys = {}
+    items.forEach(item => { qtys[item.id] = String(item.total_quantity_needed) })
+    setEditRecordQtys(qtys)
+    setEditingRecordId(selectedPurchase.id)
+  }
+
+  const handleEditQtyChange = (itemId, value) => {
+    setEditRecordQtys(prev => ({ ...prev, [itemId]: value }))
+  }
+
   const buildPdfRows = (items, manualQtys = {}) => {
     return items.map((item) => {
       const qty = manualQtys[item.material_id] !== undefined && manualQtys[item.material_id] !== '' ? parseFloat(manualQtys[item.material_id]) : (item.qty ?? item.total_quantity_needed)
-      const normalizedItem = { qty, unit: item.unit, rawMaterial: item.rawMaterial ?? item.raw_material, cost: parseFloat(item.cost ?? item.estimated_cost) || 0, material_name: item.material_name ?? item.raw_material?.name ?? 'Unknown', recipeQty: item.recipeQty ?? 0, rawQty: item.rawQty ?? item.raw_quantity_needed ?? null, rawUnit: item.rawUnit ?? item.raw_unit ?? item.raw_material?.fraction_unit ?? item.unit }
+      const normalizedItem = { qty, unit: item.unit, rawMaterial: item.rawMaterial ?? item.raw_material, cost: parseFloat(item.cost ?? item.estimated_cost) || 0, material_name: item.material_name ?? item.raw_material?.name ?? 'Unknown', recipeQty: item.recipeQty ?? 0, rawQty: item.rawQty ?? item.raw_quantity_needed ?? null, rawUnit: item.rawUnit ?? item.raw_unit ?? item.raw_material?.fraction_unit ?? item.unit, unit_price: item.unit_price }
       const display = formatPurchaseQty(normalizedItem)
-      const itemCost = normalizedItem.rawMaterial && normalizedItem.rawMaterial.price != null ? getItemCost(normalizedItem) : normalizedItem.cost
+      // For saved records with locked unit_price, use that. Otherwise prorate from saved cost.
+      let itemCost
+      if (normalizedItem.unit_price != null) {
+        itemCost = qty * parseFloat(normalizedItem.unit_price)
+      } else {
+        // Prorate from original estimated_cost (old records without unit_price)
+        itemCost = normalizedItem.cost * (qty / (item.total_quantity_needed || 1))
+      }
       return { material: normalizedItem.material_name, quantity: `${display.qty} ${display.unit}`, unit: display.unit, cost: `RM ${itemCost.toFixed(2)}`, note: display.isRoundedUp ? display.note : '' }
     })
   }
@@ -289,10 +392,18 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
     const itemsHtml = rows.map((row) => { const noteHtml = row.note ? `<div class="item-note">${row.note}</div>` : ''; return `<tr><td>${row.material}${noteHtml}</td><td>${row.quantity}</td><td>${row.cost}</td></tr>` }).join('')
     const batchesHtml = summary.batchDetails.map((b) => { const prod = products.find((p) => p.id === b.inventory_id); return `<div class="batch-line">• ${prod?.product_name || b.inventory?.product_name || 'Unknown'} — ${b.batch_count} batch(es)</div>` }).join('')
     const notesHtml = summary.notes ? `<div class="section-row"><span class="section-label">Notes:</span><span>${summary.notes}</span></div>` : ''
+
+    // Format today's date as dd-mm-yyyy for the title (so browser Save to PDF uses this as suggested filename)
+    const today = new Date()
+    const dd = String(today.getDate()).padStart(2, '0')
+    const mm = String(today.getMonth() + 1).padStart(2, '0')
+    const yyyy = today.getFullYear()
+    const pageTitle = `Beli Barang ${dd}-${mm}-${yyyy}`
+
     const html = `<!doctype html>
-<html lang="en"><head><meta charset="utf-8"/><title>${record ? `Purchase Record ${record.id || ''}` : 'Shopping List Preview'}</title>
+<html lang="en"><head><meta charset="utf-8"/><title>${pageTitle}</title>
 <style>body{margin:0;background:#f6f6f6;color:#111;font-family:Arial,sans-serif}.page{width:210mm;min-height:297mm;padding:20mm;margin:10mm auto;background:#fff;box-shadow:0 0 12px rgba(0,0,0,0.08)}h1{margin:0 0 8px;font-size:22px;letter-spacing:-0.5px}.meta{margin:0 0 18px;font-size:13px;color:#444}.section-label{font-weight:700;margin-right:6px}.section-row{margin-bottom:10px}.batch-line{margin-left:14px;margin-bottom:4px;font-size:13px}table.preview-table{width:100%;border-collapse:collapse;margin-top:18px}table.preview-table th,table.preview-table td{border:1px solid #ccc;padding:10px 12px;text-align:left;font-size:13px}table.preview-table th{background:#f3f4f6}.item-note{margin-top:4px;font-size:11px;color:#555}.summary{margin-top:16px;display:flex;justify-content:flex-end;gap:10px;font-size:14px;font-weight:700}.summary-label{color:#555;font-weight:500}@page{size:A4 portrait;margin:20mm}@media print{body{background:#fff}.page{box-shadow:none;margin:0;width:auto;min-height:auto;padding:0}}</style></head>
-<body><div class="page"><h1>${record ? `Purchase Record ${record.id || ''}` : 'Shopping List Preview'}</h1><div class="meta">Date: ${summary.planDate}</div>${notesHtml}<div class="section-row"><span class="section-label">Products / Batches:</span>${batchesHtml || 'None'}</div><table class="preview-table"><thead><tr><th>Material</th><th>Qty Needed</th><th>Estimated Cost</th></tr></thead><tbody>${itemsHtml}</tbody></table><div class="summary"><span class="summary-label">TOTAL:</span><span>RM ${summary.totalCost.toFixed(2)}</span></div></div></body></html>`
+<body><div class="page"><h1>${pageTitle}</h1><div class="meta">Date: ${summary.planDate}</div>${notesHtml}<div class="section-row"><span class="section-label">Products / Batches:</span>${batchesHtml || 'None'}</div><table class="preview-table"><thead><tr><th>Material</th><th>Qty Needed</th><th>Estimated Cost</th></tr></thead><tbody>${itemsHtml}</tbody></table><div class="summary"><span class="summary-label">TOTAL:</span><span>RM ${summary.totalCost.toFixed(2)}</span></div></div></body></html>`
     const previewWindow = window.open('', '_blank')
     if (!previewWindow) return showMsg('Unable to open print preview. Please allow pop-ups for this site.')
     previewWindow.document.write(html); previewWindow.document.close(); previewWindow.focus()
@@ -559,8 +670,18 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
               <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
                 <button onClick={() => setSelectedPurchase(null)} className="btn btn-sm btn-link">← Back to Records</button>
                 <div className="d-flex gap-2">
-                  <button onClick={() => handleDeletePurchase(selectedPurchase.id)} className="btn btn-sm"><span className="material-symbols-outlined me-1" style={{fontSize:'14px',verticalAlign:'middle'}}>delete</span> Delete</button>
-                  <button onClick={() => handleDownloadPDF(selectedPurchase)} className="btn btn-sm btn-primary text-white"><span className="material-symbols-outlined me-1" style={{fontSize:'14px',verticalAlign:'middle'}}>download</span> Download PDF</button>
+                  {editingRecordId === selectedPurchase.id ? (
+                    <>
+                      <button onClick={handleEditRecordQty} disabled={isSavingEdit} className="btn btn-sm btn-success fw-bold text-white"><span className="material-symbols-outlined me-1" style={{fontSize:'14px',verticalAlign:'middle'}}>save</span> {isSavingEdit ? 'Saving...' : 'Save'}</button>
+                      <button onClick={() => { setEditingRecordId(null); setEditRecordQtys({}) }} className="btn btn-sm btn-link">Cancel</button>
+                    </>
+                  ) : (
+                    <>
+                      <button onClick={enableEditRecord} className="btn btn-sm btn-warning fw-bold"><span className="material-symbols-outlined me-1" style={{fontSize:'14px',verticalAlign:'middle'}}>edit</span> Edit</button>
+                      <button onClick={() => handleDeletePurchase(selectedPurchase.id)} className="btn btn-sm"><span className="material-symbols-outlined me-1" style={{fontSize:'14px',verticalAlign:'middle'}}>delete</span> Delete</button>
+                      <button onClick={() => handleDownloadPDF(selectedPurchase)} className="btn btn-sm btn-primary text-white"><span className="material-symbols-outlined me-1" style={{fontSize:'14px',verticalAlign:'middle'}}>download</span> Download PDF</button>
+                    </>
+                  )}
                 </div>
               </div>
               <div className="card p-3 d-flex flex-column gap-3">
@@ -580,8 +701,19 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
                       <table className="table table-sm">
                         <thead><tr><th>Material</th><th className="text-center">Qty</th><th className="text-center">Unit</th><th className="text-end">Cost (RM)</th></tr></thead>
                         <tbody>{(selectedPurchase.purchase_plan_items || []).map((item, i) => {
-                          const display = formatPurchaseQty({ qty: item.total_quantity_needed, unit: item.unit, rawQty: item.raw_quantity_needed || null, rawUnit: item.raw_unit || item.raw_material?.fraction_unit || null })
-                          return <tr key={i}><td className="small">{item.raw_material?.name || 'Unknown'}</td><td className="text-center small text-muted">{display.qty}</td><td className="text-center small text-muted">{display.unit}</td><td className="text-end font-mono">RM {parseFloat(item.estimated_cost).toFixed(2)}</td></tr>
+                          const isEditing = editingRecordId === selectedPurchase.id
+                          const display = formatPurchaseQty({ qty: isEditing && editRecordQtys[item.id] ? parseFloat(editRecordQtys[item.id]) : item.total_quantity_needed, unit: item.unit, rawQty: item.raw_quantity_needed || null, rawUnit: item.raw_unit || item.raw_material?.fraction_unit || null })
+                          const displayCost = isEditing && editRecordQtys[item.id] !== undefined && editRecordQtys[item.id] !== ''
+                            ? calcRecordItemCost(item, parseFloat(editRecordQtys[item.id]))
+                            : parseFloat(item.estimated_cost || 0)
+                          return <tr key={i}>
+                            <td className="small">{item.raw_material?.name || 'Unknown'}</td>
+                            <td className="text-center small">{isEditing ? (
+                              <input type="number" min="0" step="0.01" className="form-control form-control-sm d-inline-block" style={{maxWidth:'80px'}} value={editRecordQtys[item.id] || ''} onChange={(e) => handleEditQtyChange(item.id, e.target.value)} />
+                            ) : <span className="text-muted">{display.qty}</span>}</td>
+                            <td className="text-center small text-muted">{display.unit}</td>
+                            <td className="text-end font-mono">RM {displayCost.toFixed(2)}</td>
+                          </tr>
                         })}</tbody>
                       </table>
                     </div>
@@ -589,13 +721,19 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
                   {/* Mobile card view */}
                   <div className="d-md-none d-flex flex-column gap-2">
                     {(selectedPurchase.purchase_plan_items || []).map((item, i) => {
-                      const display = formatPurchaseQty({ qty: item.total_quantity_needed, unit: item.unit, rawQty: item.raw_quantity_needed || null, rawUnit: item.raw_unit || item.raw_material?.fraction_unit || null })
+                      const isEditing = editingRecordId === selectedPurchase.id
+                      const display = formatPurchaseQty({ qty: isEditing && editRecordQtys[item.id] ? parseFloat(editRecordQtys[item.id]) : item.total_quantity_needed, unit: item.unit, rawQty: item.raw_quantity_needed || null, rawUnit: item.raw_unit || item.raw_material?.fraction_unit || null })
+                      const displayCost = isEditing && editRecordQtys[item.id] !== undefined && editRecordQtys[item.id] !== ''
+                        ? calcRecordItemCost(item, parseFloat(editRecordQtys[item.id]))
+                        : parseFloat(item.estimated_cost || 0)
                       return (
                         <div key={i} className="p-3 rounded-3 border border-default">
                           <div className="fw-bold small mb-2 text-break">{item.raw_material?.name || 'Unknown'}</div>
                           <div className="d-flex justify-content-between small mb-1">
                             <span className="text-muted">Qty:</span>
-                            <span>{display.qty}</span>
+                            {isEditing ? (
+                              <input type="number" min="0" step="0.01" className="form-control form-control-sm d-inline-block" style={{maxWidth:'100px'}} value={editRecordQtys[item.id] || ''} onChange={(e) => handleEditQtyChange(item.id, e.target.value)} />
+                            ) : <span>{display.qty}</span>}
                           </div>
                           <div className="d-flex justify-content-between small mb-1">
                             <span className="text-muted">Unit:</span>
@@ -603,7 +741,7 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
                           </div>
                           <div className="d-flex justify-content-between small fw-bold">
                             <span>Cost:</span>
-                            <span className="font-mono">RM {parseFloat(item.estimated_cost).toFixed(2)}</span>
+                            <span className="font-mono">RM {displayCost.toFixed(2)}</span>
                           </div>
                         </div>
                       )

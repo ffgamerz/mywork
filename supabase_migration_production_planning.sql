@@ -68,6 +68,7 @@ CREATE TABLE IF NOT EXISTS purchase_plan_items (
   raw_quantity_needed NUMERIC,
   unit TEXT NOT NULL DEFAULT 'g',
   raw_unit TEXT,
+  unit_price NUMERIC(10,2),
   estimated_cost NUMERIC(10,2) DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -78,6 +79,9 @@ DO $$ BEGIN
   END IF;
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'purchase_plan_items' AND column_name = 'raw_unit') THEN
     ALTER TABLE purchase_plan_items ADD COLUMN raw_unit TEXT;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'purchase_plan_items' AND column_name = 'unit_price') THEN
+    ALTER TABLE purchase_plan_items ADD COLUMN unit_price NUMERIC(10,2);
   END IF;
 END $$;
 
