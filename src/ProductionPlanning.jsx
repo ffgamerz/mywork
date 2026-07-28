@@ -392,7 +392,7 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
     const dd = String(today.getDate()).padStart(2, '0')
     const mm = String(today.getMonth() + 1).padStart(2, '0')
     const yyyy = today.getFullYear()
-    const pageTitle = `Beli Barang ${dd}-${mm}-${yyyy}`
+    const pageTitle = `Purchase List ${dd}-${mm}-${yyyy}`
 
     const html = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"/><title>${pageTitle}</title>
@@ -505,10 +505,10 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
               <div className="modal d-block" tabIndex="-1">
                 <div className="modal-dialog modal-dialog-centered">
                   <div className="modal-content p-3">
-                    <h5 className="fw-bold text-primary mb-3"><span className="material-symbols-outlined me-1" style={{ fontSize: '18px', verticalAlign: 'middle' }}>{editingMat ? 'edit' : 'kitchen'}</span> {editingMat ? 'Edit Material' : 'Add New Material'}</h5>
+                    <h5 className="fw-bold text-primary mb-3"><span className="material-symbols-outlined me-1" style={{ fontSize: '18px', verticalAlign: 'middle' }}>{editingMat ? 'edit' : 'add'}</span> {editingMat ? 'Edit Material' : 'Add New Material'}</h5>
                     <form onSubmit={handleSaveMat}>
                       <div className="mb-3"><label className="form-label">Material Name *</label><input type="text" required placeholder="e.g., Minyak Masak" className="form-control" value={matName} onChange={(e) => setMatName(e.target.value)} /></div>
-                      <div className="mb-3"><label className="form-label">Unit *</label><select className="form-select fw-bold" value={matUnit} onChange={(e) => setMatUnit(e.target.value)}><option value="packet">packet</option><option value="kg">kg</option><option value="g">g</option><option value="liter">liter</option><option value="ml">ml</option><option value="botol">botol</option><option value="guni">guni</option><option value="tray">tray</option><option value="biji">biji</option><option value="kotak">kotak</option><option value="tin">tin</option><option value="peket">peket</option><option value="other">other</option></select></div>
+                      <div className="mb-3"><label className="form-label">Unit *</label><select className="form-select fw-bold" value={matUnit} onChange={(e) => setMatUnit(e.target.value)}><option value="packet">packet</option><option value="kg">kg</option><option value="g">g</option><option value="liter">liter</option><option value="ml">ml</option><option value="bottle">bottle</option><option value="sack">sack</option><option value="tray">tray</option><option value="piece">piece</option><option value="box">box</option><option value="can">can</option><option value="other">other</option></select></div>
                       <div className="mb-3"><label className="form-label">Price (RM) *</label><input type="number" step="0.01" required min="0" placeholder="0.00" className="form-control fw-bold" value={matPrice} onChange={(e) => setMatPrice(e.target.value)} /></div>
                       <div className="mb-3"><label className="form-label">Calculation Mode</label>
                         <div className="d-flex gap-3"><label className="d-flex align-items-center gap-2 cursor-pointer"><input type="radio" name="matMode" className="form-check-input" checked={matMode === 'unit'} onChange={() => setMatMode('unit')} /><span className="fw-bold small">Unit (by packet/biji/etc)</span></label>
