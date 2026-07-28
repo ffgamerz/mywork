@@ -1,0 +1,238 @@
+{
+  "communities": {
+    "0": [
+      "eslint",
+      "eslint_js",
+      "eslint_plugin_react_hooks",
+      "eslint_plugin_react_refresh",
+      "globals",
+      "package_devdependencies",
+      "package_devdependencies_eslint",
+      "package_devdependencies_eslint_js",
+      "package_devdependencies_eslint_plugin_react_hooks",
+      "package_devdependencies_eslint_plugin_react_refresh",
+      "package_devdependencies_globals",
+      "package_devdependencies_types_react",
+      "package_devdependencies_types_react_dom",
+      "package_devdependencies_vite",
+      "package_devdependencies_vitejs_plugin_react",
+      "types_react",
+      "types_react_dom",
+      "vite",
+      "vitejs_plugin_react"
+    ],
+    "1": [
+      "src_adsrecordmanager",
+      "src_adsrecordmanager_ads_platforms",
+      "src_adsrecordmanager_adsrecordmanager",
+      "src_app",
+      "src_app_cardcolors",
+      "src_app_navitems",
+      "src_inventory",
+      "src_inventory_inventory",
+      "src_login",
+      "src_login_login",
+      "src_privileges",
+      "src_privileges_privileges",
+      "src_settings",
+      "src_settings_settings",
+      "src_supabaseclient",
+      "src_supabaseclient_supabase"
+    ],
+    "2": [
+      "bootstrap",
+      "jspdf",
+      "jspdf_autotable",
+      "package_dependencies",
+      "package_dependencies_bootstrap",
+      "package_dependencies_jspdf",
+      "package_dependencies_jspdf_autotable",
+      "package_dependencies_react",
+      "package_dependencies_react_dom",
+      "package_dependencies_supabase_supabase_js",
+      "react",
+      "react_dom",
+      "supabase_supabase_js"
+    ],
+    "3": [
+      "package",
+      "package_name",
+      "package_private",
+      "package_scripts",
+      "package_scripts_build",
+      "package_scripts_dev",
+      "package_scripts_lint",
+      "package_scripts_preview",
+      "package_type",
+      "package_version"
+    ],
+    "4": [
+      "src_components_toastbar",
+      "src_components_toastbar_toastbar",
+      "src_mywage",
+      "src_mywage_mywage",
+      "src_receiptmanager",
+      "src_receiptmanager_receiptmanager",
+      "src_utils_usetoast",
+      "src_utils_usetoast_usetoast",
+      "src_wagecalculator",
+      "src_wagecalculator_wagecalculator"
+    ],
+    "5": [
+      "src_app_app",
+      "src_components_errorboundary",
+      "src_components_errorboundary_errorboundary",
+      "src_components_errorboundary_errorboundary_componentdidcatch",
+      "src_components_errorboundary_errorboundary_constructor",
+      "src_components_errorboundary_errorboundary_getderivedstatefromerror",
+      "src_components_errorboundary_errorboundary_handleretry",
+      "src_components_errorboundary_errorboundary_render",
+      "src_main"
+    ],
+    "6": [
+      "src_productionplanning",
+      "src_productionplanning_calcingredientcost",
+      "src_productionplanning_formatpurchaseqty",
+      "src_productionplanning_productionplanning",
+      "src_productionplanning_searchableselect",
+      "src_productionplanning_striptrailing"
+    ],
+    "7": [
+      "eslint_config"
+    ],
+    "8": [
+      "vite_config"
+    ]
+  },
+  "cohesion": {
+    "0": 0.10526315789473684,
+    "1": 0.25833333333333336,
+    "2": 0.15384615384615385,
+    "3": 0.2,
+    "4": 0.4444444444444444,
+    "5": 0.25,
+    "6": 0.6,
+    "7": 1.0,
+    "8": 1.0
+  },
+  "gods": [
+    {
+      "id": "src_supabaseclient_supabase",
+      "label": "supabase",
+      "degree": 11
+    },
+    {
+      "id": "src_utils_usetoast_usetoast",
+      "label": "useToast()",
+      "degree": 9
+    },
+    {
+      "id": "src_components_errorboundary_errorboundary",
+      "label": "ErrorBoundary",
+      "degree": 7
+    },
+    {
+      "id": "package_scripts",
+      "label": "scripts",
+      "degree": 5
+    },
+    {
+      "id": "src_productionplanning_productionplanning",
+      "label": "ProductionPlanning()",
+      "degree": 5
+    },
+    {
+      "id": "src_components_toastbar_toastbar",
+      "label": "ToastBar()",
+      "degree": 4
+    },
+    {
+      "id": "src_app_app",
+      "label": "App()",
+      "degree": 3
+    },
+    {
+      "id": "src_mywage_mywage",
+      "label": "MyWage()",
+      "degree": 3
+    },
+    {
+      "id": "src_productionplanning_striptrailing",
+      "label": "stripTrailing()",
+      "degree": 3
+    },
+    {
+      "id": "src_productionplanning_formatpurchaseqty",
+      "label": "formatPurchaseQty()",
+      "degree": 3
+    }
+  ],
+  "surprises": [
+    {
+      "source": "App()",
+      "target": "useToast()",
+      "source_files": [
+        "src/App.jsx",
+        "src/utils/useToast.js"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "calls",
+      "why": "bridges separate communities"
+    },
+    {
+      "source": "MyWage()",
+      "target": "useToast()",
+      "source_files": [
+        "src/MyWage.jsx",
+        "src/utils/useToast.js"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "calls",
+      "why": "cross-file semantic connection"
+    },
+    {
+      "source": "ReceiptManager()",
+      "target": "useToast()",
+      "source_files": [
+        "src/ReceiptManager.jsx",
+        "src/utils/useToast.js"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "calls",
+      "why": "cross-file semantic connection"
+    },
+    {
+      "source": "WageCalculator()",
+      "target": "useToast()",
+      "source_files": [
+        "src/WageCalculator.jsx",
+        "src/utils/useToast.js"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "calls",
+      "why": "cross-file semantic connection"
+    }
+  ],
+  "questions": [
+    {
+      "type": "bridge_node",
+      "question": "Why does `devDependencies` connect `devDependencies` to `package.json`?",
+      "why": "High betweenness centrality (0.160) - this node is a cross-community bridge."
+    },
+    {
+      "type": "bridge_node",
+      "question": "Why does `dependencies` connect `dependencies` to `package.json`?",
+      "why": "High betweenness centrality (0.117) - this node is a cross-community bridge."
+    },
+    {
+      "type": "isolated_nodes",
+      "question": "What connects `name`, `private`, `version` to the rest of the system?",
+      "why": "26 weakly-connected nodes found - possible documentation gaps or missing edges."
+    },
+    {
+      "type": "low_cohesion",
+      "question": "Should `devDependencies` be split into smaller, more focused modules?",
+      "why": "Cohesion score 0.10526315789473684 - nodes in this community are weakly interconnected."
+    }
+  ]
+}

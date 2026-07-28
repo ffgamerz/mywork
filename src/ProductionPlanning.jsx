@@ -286,7 +286,7 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
     if (planErr) { showMsg('Error: ' + planErr.message); setLoading(false); return }
     await supabase.from('purchase_plan_items').insert(itemsToSave.map(i => ({ ...i, purchase_plan_id: plan.id })))
     await supabase.from('purchase_plan_batches').insert(purchaseSummary.batchDetails.map(b => ({ purchase_plan_id: plan.id, inventory_id: b.inventory_id, batch_count: b.batch_count })))
-    showMsg('Purchase plan saved!'); setPurchaseSummary(null); setPurchaseProducts([]); setPurchaseNotes(''); setManualQty({}); fetchPurchaseRecords(); setLoading(false)
+    showMsg('Purchase plan saved!'); setPurchaseSummary(null); setPurchaseProducts([]); setPurchaseNotes(''); setManualQty({}); await fetchPurchaseRecords(); const { data: freshRecord } = await supabase.from('purchase_plans').select('*, purchase_plan_items(*, raw_material:raw_material_id(name, price, calculation_mode, fraction_unit)), purchase_plan_batches(*, inventory:inventory_id(product_name))').eq('id', plan.id).single(); if (freshRecord) setSelectedPurchase(freshRecord); setActiveTab('records'); setLoading(false)
   }
 
   const handleDeletePurchase = async (purchaseId) => {
@@ -595,85 +595,98 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
       {showMainTabs && activeTab === 'purchase' && (
         <div className="row g-4">
           <div className="col-lg-6">
-            <div className="card p-3 d-flex flex-column gap-3">
-              <h6 className="fw-bold">Select Products & Set Batches</h6>
-              <div className="d-flex flex-column gap-2">
-                {products.map(p => {
+            <div className="card p-3 d-flex flex-column gap-0">
+              <div className="text-muted mb-3" style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                <span className="material-symbols-outlined me-1" style={{ fontSize: '14px', verticalAlign: 'middle' }}>inventory_2</span>
+                Select Products & Set Batches
+              </div>
+              <div className="d-flex flex-column">
+                {products.map((p, idx) => {
                   const checked = purchaseProducts.find(x => x.inventory_id === p.id)
                   return (
-                    <div key={p.id} className="flex-wrap d-flex align-items-center gap-2 p-2 rounded-3">
+                    <div key={p.id} className={`d-flex align-items-center gap-2 p-3 ${idx < products.length - 1 ? 'border-bottom' : ''}`}>
+                      <div className="flex-shrink-0 d-flex align-items-center justify-content-center rounded-circle" style={{ width: '32px', height: '32px', background: 'var(--bg-input)', fontSize: '13px' }}>{idx + 1}</div>
                       <input type="checkbox" className="form-check-input flex-shrink-0" checked={!!checked} onChange={() => handleTogglePurchaseProduct(p.id)} />
                       <span className="fw-bold small text-break flex-fill">{p.product_name}</span>
                       {checked && <div className="d-flex align-items-center gap-2 w-100 ps-4 mt-1"><span className="text-muted small">Batch:</span><input type="number" min="1" className="form-control form-control-sm" style={{ maxWidth: '100px' }} value={checked.batch_count} onChange={(e) => handleBatchChange(p.id, e.target.value)} /></div>}
                     </div>
                   )
                 })}
-                {products.length === 0 && <div className="text-center py-4 text-muted">No products. Create in Inventory first.</div>}
+                {products.length === 0 && <div className="text-center py-4 text-muted fw-bold">No products available. Create in Inventory first.</div>}
               </div>
-              <button onClick={handleGenerateSummary} disabled={purchaseProducts.length === 0 || loading} className="btn btn-primary w-100 fw-bold">{loading ? 'Calculating...' : <><span className="material-symbols-outlined me-1" style={{ fontSize: '16px', verticalAlign: 'middle' }}>sync</span> Generate Shopping List</>}</button>
-              {purchaseProducts.length > 0 && <button onClick={() => setPurchaseProducts([])} className="btn btn-sm btn-link w-100">Clear Selection</button>}
+              <div className="pt-3">
+                <button onClick={handleGenerateSummary} disabled={purchaseProducts.length === 0 || loading} className="btn btn-primary w-100 fw-bold">{loading ? 'Calculating...' : <><span className="material-symbols-outlined me-1" style={{ fontSize: '16px', verticalAlign: 'middle' }}>sync</span> Generate Shopping List</>}</button>
+                {purchaseProducts.length > 0 && <button onClick={() => setPurchaseProducts([])} className="btn btn-sm btn-outline-secondary w-100 mt-2">Clear Selection</button>}
+              </div>
             </div>
           </div>
           <div className="col-lg-6">
-            <div className="card p-3 d-flex flex-column gap-3">
-              <h6>Shopping Summary</h6>
+            <div className="card p-3 d-flex flex-column gap-0">
+              <div className="text-muted mb-3" style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                <span className="material-symbols-outlined me-1" style={{ fontSize: '14px', verticalAlign: 'middle' }}>shopping_cart</span>
+                Shopping Summary
+              </div>
               {purchaseSummary ? (
-                <div className="d-flex flex-column gap-3">
-                  <div className="p-3 rounded-3 small">
-                    {purchaseSummary.batchDetails.map((b, i) => { const prod = products.find(p => p.id === b.inventory_id); return <div key={i}>• {prod?.product_name} — {b.batch_count} batch(es)</div> })}
-                  </div>
-                  {/* Desktop table view */}
-                  <div className="d-none d-md-block">
-                    <div className="table-responsive">
-                      <table className="table table-sm">
-                        <thead><tr><th>Material</th><th className="text-center">Original</th><th className="text-center">Buy</th><th className="text-center">Unit</th><th className="text-end">Cost (RM)</th></tr></thead>
-                        <tbody>{purchaseSummary.items.map((item, i) => {
-                          const display = formatPurchaseQty(item); const isManualQty = manualQty[item.material_id] !== undefined && manualQty[item.material_id] !== ''
-                          const originalQty = item.rawQty != null && item.rawUnit ? `${stripTrailing(item.rawQty)} ${item.rawUnit}` : `${stripTrailing(item.qty)} ${item.unit}`
-                          return <tr key={i}><td className="small">{item.material_name}</td><td className="text-center small text-muted">{originalQty}</td>
-                            <td className="text-center"><input type="number" min="0" step="0.01" className={`form-control form-control-sm d-inline-block ${isManualQty ? 'border-warning' : ''}`} value={isManualQty ? manualQty[item.material_id] : ''} onChange={(e) => updateManualQty(item.material_id, e.target.value)} placeholder={display.qty} /></td>
-                            <td className="text-center text-muted">{display.unit}</td><td className="text-end">RM {getItemCost(item).toFixed(2)}</td></tr>
-                        })}</tbody>
-                      </table>
+                <div className="d-flex flex-column gap-0">
+                  {/* Batch chips */}
+                  {purchaseSummary.batchDetails.length > 0 && (
+                    <div className="pb-3">
+                      <div className="d-flex flex-wrap gap-2">
+                        {purchaseSummary.batchDetails.map((b, i) => {
+                          const prod = products.find(p => p.id === b.inventory_id); return (
+                            <span key={i} className="chip-custom d-inline-flex align-items-center gap-1" style={{ fontSize: '12px', padding: '4px 10px' }}>
+                              <span className="fw-bold">{prod?.product_name || 'Unknown'}</span>
+                              <span className="text-muted">— {b.batch_count} batch</span>
+                            </span>
+                          )
+                        })}
+                      </div>
                     </div>
-                  </div>
-                  {/* Mobile card view */}
-                  <div className="d-md-none d-flex flex-column gap-2">
+                  )}
+                  {/* Materials section */}
+                  <div className="text-muted mb-2" style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Materials</div>
+                  <div className="d-flex flex-column">
                     {purchaseSummary.items.map((item, i) => {
                       const display = formatPurchaseQty(item)
                       const isManualQty = manualQty[item.material_id] !== undefined && manualQty[item.material_id] !== ''
-                      const originalQty = item.rawQty != null && item.rawUnit ? `${stripTrailing(item.rawQty)} ${item.rawUnit}` : `${stripTrailing(item.qty)} ${item.unit}`
                       return (
-                        <div key={i} className="p-3 rounded-3 border border-default">
-                          <div className="small mb-2 text-break">{item.material_name}</div>
-                          <div className="d-flex justify-content-between small mb-1">
-                            <span className="text-muted">Original:</span>
-                            <span className="text-muted">{originalQty}</span>
+                        <div key={i} className={`d-flex align-items-center gap-2 p-3 ${i < purchaseSummary.items.length - 1 ? 'border-bottom' : ''}`}>
+                          <div className="flex-shrink-0 d-flex align-items-center justify-content-center rounded-circle" style={{ width: '32px', height: '32px', background: 'var(--bg-input)', fontSize: '13px' }}>{i + 1}</div>
+                          <div className="flex-grow-1 min-w-0">
+                            <div className="fw-bold small text-break mb-1">{item.material_name}</div>
+                            <div className="d-flex align-items-center gap-2 flex-wrap">
+                              <input type="number" min="0" step="0.01" className={`form-control form-control-sm ${isManualQty ? 'border-warning' : ''}`} style={{ maxWidth: '100px' }} value={isManualQty ? manualQty[item.material_id] : ''} onChange={(e) => updateManualQty(item.material_id, e.target.value)} placeholder={display.qty} />
+                              <span className="small text-muted">{display.unit}</span>
+                              {item.rawQty != null && item.rawUnit && (
+                                <span className="small text-muted">(from {stripTrailing(item.rawQty)} {item.rawUnit})</span>
+                              )}
+                            </div>
                           </div>
-                          <div className="d-flex justify-content-between small mb-1 align-items-center gap-2">
-                            <span className="text-muted flex-shrink-0">Buy:</span>
-                            <input type="number" min="0" step="0.01" className={`form-control form-control-sm ${isManualQty ? 'border-warning' : ''}`} value={isManualQty ? manualQty[item.material_id] : ''} onChange={(e) => updateManualQty(item.material_id, e.target.value)} placeholder={display.qty} />
-                          </div>
-                          <div className="d-flex justify-content-between small mb-1">
-                            <span className="text-muted">Unit:</span>
-                            <span>{display.unit}</span>
-                          </div>
-                          <div className="d-flex justify-content-between small">
-                            <span>Cost:</span>
-                            <span>RM {getItemCost(item).toFixed(2)}</span>
+                          <div className="flex-shrink-0 d-flex flex-column align-items-end gap-1">
+                            <span className="font-mono small fw-bold text-nowrap">RM {getItemCost(item).toFixed(2)}</span>
+                            {display.isRoundedUp && <span className="small text-warning" style={{ fontSize: '10px' }}>{display.note}</span>}
                           </div>
                         </div>
                       )
                     })}
                   </div>
-                  <div className="d-flex justify-content-between align-items-center pt-3">
-                    <span>TOTAL</span>
-                    <span>RM {purchaseSummary.items.reduce((sum, item) => sum + getItemCost(item), 0).toFixed(2)}</span>
+                  {/* Total */}
+                  <div className="d-flex justify-content-between align-items-center py-3 border-top border-default">
+                    <div className="text-muted" style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total</div>
+                    <div style={{ fontSize: '20px', fontWeight: 700, lineHeight: 1.2 }}>RM {purchaseSummary.items.reduce((sum, item) => sum + getItemCost(item), 0).toFixed(2)}</div>
                   </div>
-                  <div><label className="form-label">Notes (optional)</label><input type="text" className="form-control small" placeholder="e.g., Purchase for weekend event" value={purchaseNotes} onChange={(e) => setPurchaseNotes(e.target.value)} /></div>
-                  <button onClick={handleSavePurchase} disabled={loading} className="btn w-100 fw-bold text-white"><span className="material-symbols-outlined me-1" style={{ fontSize: '16px', verticalAlign: 'middle' }}>save</span> Save Record</button>
+                  {/* Notes */}
+                  <div className="pt-3 border-top border-default">
+                    <div className="text-muted mb-2" style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Notes</div>
+                    <input type="text" className="form-control" placeholder="e.g., Purchase for weekend event" value={purchaseNotes} onChange={(e) => setPurchaseNotes(e.target.value)} />
+                  </div>
+                  <div className="pt-3">
+                    <button onClick={handleSavePurchase} disabled={loading} className="btn btn-primary w-100 fw-bold"><span className="material-symbols-outlined me-1" style={{ fontSize: '16px', verticalAlign: 'middle' }}>save</span> Save Record</button>
+                  </div>
                 </div>
-              ) : <div className="text-center py-5 text-muted">Select products and batches on the left, then click Generate.</div>}
+              ) : (
+                <div className="text-center py-4 text-muted fw-bold">Select products and batches on the left, then click Generate.</div>
+              )}
             </div>
           </div>
         </div>
