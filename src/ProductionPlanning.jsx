@@ -112,11 +112,13 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
   const [selectedPurchase, setSelectedPurchase] = useState(null)
   const [purchaseNotes, setPurchaseNotes] = useState('')
   const [manualQty, setManualQty] = useState({})
+  const [batchInputs, setBatchInputs] = useState({})
   const [editRecordQtys, setEditRecordQtys] = useState({})
   const [isSavingEdit, setIsSavingEdit] = useState(false)
   const [editingRecordId, setEditingRecordId] = useState(null)
 
   const updateManualQty = (materialId, value) => setManualQty(prev => ({ ...prev, [materialId]: value }))
+  const handleBatchInputChange = (prodId, value) => setBatchInputs(prev => ({ ...prev, [prodId]: value }))
 
   const getDisplayQty = (item) => {
     if (manualQty[item.material_id] !== undefined && manualQty[item.material_id] !== '') {
@@ -222,8 +224,6 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
     })
   }
 
-  const handleBatchChange = (prodId, val) => setPurchaseProducts(prev => prev.map(p => p.inventory_id === prodId ? { ...p, batch_count: Math.max(1, parseInt(val) || 1) } : p))
-
   const handleGenerateSummary = async () => {
     if (purchaseProducts.length === 0) return showMsg('Select at least one product')
     setLoading(true)
@@ -234,10 +234,11 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
     purchaseProducts.forEach(pp => {
       const recipe = recipeData.find(r => r.inventory_id === pp.inventory_id)
       if (!recipe) return
-      batchDetails.push({ inventory_id: pp.inventory_id, batch_count: pp.batch_count })
+      const batchCount = parseInt(batchInputs[pp.inventory_id]) || 1
+      batchDetails.push({ inventory_id: pp.inventory_id, batch_count: batchCount })
       recipe.recipe_ingredients.forEach(ing => {
         const mat = ing.raw_material; if (!mat) return
-        const totalQty = parseFloat(ing.quantity_used) * pp.batch_count
+        const totalQty = parseFloat(ing.quantity_used) * batchCount
         if (agg[mat.id]) { agg[mat.id].qty += totalQty; agg[mat.id].recipeQty += parseFloat(ing.quantity_used) }
         else agg[mat.id] = { mat, qty: totalQty, recipeQty: parseFloat(ing.quantity_used), unit: ing.unit_used }
       })
@@ -612,7 +613,7 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
                       </div>
                       {checked && <div className="d-flex align-items-center gap-2 px-3 pb-3 ps-4" style={{ paddingLeft: '72px' }} onClick={(e) => e.stopPropagation()}>
                         <span className="text-muted small">Batch:</span>
-                        <input type="number" min="1" className="form-control form-control-sm" style={{ maxWidth: '100px' }} value={checked.batch_count} onChange={(e) => handleBatchChange(p.id, e.target.value)} inputMode="numeric" onFocus={(e) => e.target.select()} />
+                        <input type="number" min="1" className="form-control form-control-sm" style={{ maxWidth: '100px' }} value={batchInputs[p.id] ?? ''} placeholder="1" onChange={(e) => handleBatchInputChange(p.id, e.target.value)} inputMode="numeric" />
                       </div>}
                     </div>
                   )
@@ -621,7 +622,7 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
               </div>
               <div className="pt-3">
                 <button onClick={handleGenerateSummary} disabled={purchaseProducts.length === 0 || loading} className="btn btn-primary w-100 fw-bold">{loading ? 'Calculating...' : <><span className="material-symbols-outlined me-1" style={{ fontSize: '16px', verticalAlign: 'middle' }}>sync</span> Generate Shopping List</>}</button>
-                {purchaseProducts.length > 0 && <button onClick={() => setPurchaseProducts([])} className="btn btn-sm btn-outline-secondary w-100 mt-2">Clear Selection</button>}
+                {purchaseProducts.length > 0 && <button onClick={() => { setPurchaseProducts([]); setBatchInputs({}) }} className="btn btn-sm btn-outline-secondary w-100 mt-2">Clear Selection</button>}
               </div>
             </div>
           </div>
