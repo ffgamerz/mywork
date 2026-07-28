@@ -604,11 +604,16 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
                 {products.map((p, idx) => {
                   const checked = purchaseProducts.find(x => x.inventory_id === p.id)
                   return (
-                    <div key={p.id} className={`d-flex align-items-center gap-2 p-3 ${idx < products.length - 1 ? 'border-bottom' : ''}`}>
-                      <div className="flex-shrink-0 d-flex align-items-center justify-content-center rounded-circle" style={{ width: '32px', height: '32px', background: 'var(--bg-input)', fontSize: '13px' }}>{idx + 1}</div>
-                      <input type="checkbox" className="form-check-input flex-shrink-0" checked={!!checked} onChange={() => handleTogglePurchaseProduct(p.id)} />
-                      <span className="fw-bold small text-break flex-fill">{p.product_name}</span>
-                      {checked && <div className="d-flex align-items-center gap-2 w-100 ps-4 mt-1"><span className="text-muted small">Batch:</span><input type="number" min="1" className="form-control form-control-sm" style={{ maxWidth: '100px' }} value={checked.batch_count} onChange={(e) => handleBatchChange(p.id, e.target.value)} /></div>}
+                    <div key={p.id} className={`cursor-pointer ${idx < products.length - 1 ? 'border-bottom' : ''}`} onClick={() => handleTogglePurchaseProduct(p.id)}>
+                      <div className="d-flex align-items-center gap-2 p-3">
+                        <div className="flex-shrink-0 d-flex align-items-center justify-content-center rounded-circle" style={{ width: '32px', height: '32px', background: 'var(--bg-input)', fontSize: '13px' }}>{idx + 1}</div>
+                        <input type="checkbox" className="form-check-input flex-shrink-0" checked={!!checked} readOnly />
+                        <span className="fw-bold small text-break flex-fill">{p.product_name}</span>
+                      </div>
+                      {checked && <div className="d-flex align-items-center gap-2 px-3 pb-3 ps-4" style={{ paddingLeft: '72px' }} onClick={(e) => e.stopPropagation()}>
+                        <span className="text-muted small">Batch:</span>
+                        <input type="number" min="1" className="form-control form-control-sm" style={{ maxWidth: '100px' }} value={checked.batch_count} onChange={(e) => handleBatchChange(p.id, e.target.value)} />
+                      </div>}
                     </div>
                   )
                 })}
