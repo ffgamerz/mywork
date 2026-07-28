@@ -42,7 +42,7 @@ export default function ReceiptManager({ session, userRole, allowedModules = {} 
   if (!isAuthorized) {
     return (
       <div className="alert-unauthorized">
-        <span className="material-symbols-outlined me-1" style={{fontSize:'14px',verticalAlign:'middle'}}>lock</span> Access Denied: You do not have permission to view this page.
+        <span className="material-symbols-outlined me-1" style={{ fontSize: '14px', verticalAlign: 'middle' }}>lock</span> Access Denied: You do not have permission to view this page.
       </div>
     )
   }
@@ -126,12 +126,12 @@ export default function ReceiptManager({ session, userRole, allowedModules = {} 
       <ToastBar toast={toast} onClose={hideToast} />
 
       <div className="page-header-custom">
-        <h1 className="page-title-custom"><span className="material-symbols-outlined me-2" style={{fontSize:'24px',verticalAlign:'middle'}}>receipt</span> Receipt Manager</h1>
+        <h1 className="page-title-custom"><span className="material-symbols-outlined me-2" style={{ fontSize: '24px', verticalAlign: 'middle' }}>receipt</span> Receipt Manager</h1>
         <p className="page-subtitle-custom">Open receipts, export details, and manage collection status.</p>
       </div>
 
       <div className="card p-3 mb-3">
-        <h6 className="fw-bold mb-3 text-primary"><span className="material-symbols-outlined me-1" style={{fontSize:'16px',verticalAlign:'middle'}}>receipt</span> {editingId ? 'Update Receipt' : 'Register New Receipt'}</h6>
+        <h6 className="fw-bold mb-3 text-primary"><span className="material-symbols-outlined me-1" style={{ fontSize: '16px', verticalAlign: 'middle' }}>receipt</span> {editingId ? 'Update Receipt' : 'Register New Receipt'}</h6>
         <form onSubmit={handleSubmit} className="d-flex flex-wrap gap-3 align-items-end">
           <div className="flex-grow-1">
             <label className="form-label">Receipt Date</label>
@@ -139,7 +139,7 @@ export default function ReceiptManager({ session, userRole, allowedModules = {} 
           </div>
           <div className="flex-grow-1">
             <label className="form-label">Amount Total (RM)</label>
-            <input type="number" step="0.01" placeholder="407.90" className="form-control fw-bold" value={amount} onChange={(e) => setAmount(e.target.value)} required />
+            <input type="number" step="0.01" placeholder="407.90" className="form-control fw-bold" value={amount} onChange={(e) => setAmount(e.target.value)} required inputMode="decimal" />
           </div>
           <div className="d-flex gap-2">
             <button type="submit" disabled={loading} className="btn btn-primary fw-bold">{editingId ? 'Save' : 'Add'}</button>
@@ -152,11 +152,11 @@ export default function ReceiptManager({ session, userRole, allowedModules = {} 
         <div className="col-lg-8">
           <div className="card p-3 overflow-x-auto">
             <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-              <h6 className="fw-bold text-white mb-0"><span className="material-symbols-outlined me-1" style={{fontSize:'16px',verticalAlign:'middle'}}>description</span> Receipt Records List</h6>
+              <h6 className="fw-bold text-white mb-0"><span className="material-symbols-outlined me-1" style={{ fontSize: '16px', verticalAlign: 'middle' }}>description</span> Receipt Records List</h6>
               {selectedIds.length > 0 && (
                 <div className="d-flex align-items-center gap-2 flex-wrap">
                   <span className="fw-bold text-primary">Total Selected: RM {(totalSelectedAmount + parseFloat(wageAmount || 0)).toFixed(2)}</span>
-                  <button onClick={copyTotalAmount} className="btn btn-sm btn-outline-light fw-bold"><span className="material-symbols-outlined me-1" style={{fontSize:'14px',verticalAlign:'middle'}}>description</span> Copy Text</button>
+                  <button onClick={copyTotalAmount} className="btn btn-sm btn-outline-light fw-bold"><span className="material-symbols-outlined me-1" style={{ fontSize: '14px', verticalAlign: 'middle' }}>description</span> Copy Text</button>
                   <button onClick={handleDeleteSelected} className="btn btn-sm fw-bold">
                     Delete Selected ({selectedIds.length})
                   </button>
@@ -195,10 +195,10 @@ export default function ReceiptManager({ session, userRole, allowedModules = {} 
 
         <div className="col-lg-4">
           <div className="card p-3 d-flex flex-column gap-3">
-            <h6 className="fw-bold text-white mb-0"><span className="material-symbols-outlined me-1" style={{fontSize:'16px',verticalAlign:'middle'}}>settings</span> Configuration & Output Text</h6>
+            <h6 className="fw-bold text-white mb-0"><span className="material-symbols-outlined me-1" style={{ fontSize: '16px', verticalAlign: 'middle' }}>settings</span> Configuration & Output Text</h6>
             <div>
               <label className="form-label">Wage Rate (RM)</label>
-              <input type="number" step="0.01" className="form-control fw-bold" value={wageAmount} onChange={(e) => setWageAmount(e.target.value)} />
+              <input type="number" step="0.01" className="form-control fw-bold" value={wageAmount} onChange={(e) => setWageAmount(e.target.value)} inputMode="decimal" />
             </div>
             <button onClick={generateFormatText} className="btn btn-primary w-100 fw-bold">Generate Selected Text</button>
             {generatedText && (

@@ -509,7 +509,7 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
                     <form onSubmit={handleSaveMat}>
                       <div className="mb-3"><label className="form-label">Material Name *</label><input type="text" required placeholder="e.g., Cooking Oil" className="form-control" value={matName} onChange={(e) => setMatName(e.target.value)} /></div>
                       <div className="mb-3"><label className="form-label">Unit *</label><select className="form-select fw-bold" value={matUnit} onChange={(e) => setMatUnit(e.target.value)}><option value="packet">packet</option><option value="kg">kg</option><option value="g">g</option><option value="liter">liter</option><option value="ml">ml</option><option value="bottle">bottle</option><option value="sack">sack</option><option value="tray">tray</option><option value="piece">piece</option><option value="box">box</option><option value="can">can</option><option value="other">other</option></select></div>
-                      <div className="mb-3"><label className="form-label">Price (RM) *</label><input type="number" step="0.01" required min="0" placeholder="0.00" className="form-control fw-bold" value={matPrice} onChange={(e) => setMatPrice(e.target.value)} /></div>
+                      <div className="mb-3"><label className="form-label">Price (RM) *</label><input type="number" step="0.01" required min="0" placeholder="0.00" className="form-control fw-bold" value={matPrice} onChange={(e) => setMatPrice(e.target.value)} inputMode="decimal" /></div>
                       <div className="mb-3"><label className="form-label">Calculation Mode</label>
                         <div className="d-flex gap-3"><label className="d-flex align-items-center gap-2 cursor-pointer"><input type="radio" name="matMode" className="form-check-input" checked={matMode === 'unit'} onChange={() => setMatMode('unit')} /><span className="fw-bold small">Unit (by packet/piece/etc)</span></label>
                           <label className="d-flex align-items-center gap-2 cursor-pointer"><input type="radio" name="matMode" className="form-check-input" checked={matMode === 'fraction'} onChange={() => setMatMode('fraction')} /><span className="fw-bold small">Fraction (by g/ml)</span></label></div>
@@ -517,7 +517,7 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
                       {matMode === 'fraction' && (
                         <div className="p-3 mb-3 rounded-3 border">
                           <div className="row g-3">
-                            <div className="col-6"><label className="form-label">1 unit = ? grams/ml</label><input type="number" step="any" required min="0" placeholder="e.g., 8000" className="form-control fw-bold" value={matFractionG} onChange={(e) => setMatFractionG(e.target.value)} /></div>
+                            <div className="col-6"><label className="form-label">1 unit = ? grams/ml</label><input type="number" step="any" required min="0" placeholder="e.g., 8000" className="form-control fw-bold" value={matFractionG} onChange={(e) => setMatFractionG(e.target.value)} inputMode="decimal" /></div>
                             <div className="col-6"><label className="form-label">Unit</label><select className="form-select fw-bold" value={matFractionUnit} onChange={(e) => setMatFractionUnit(e.target.value)}><option value="g">gram (g)</option><option value="ml">milliliter (ml)</option></select></div>
                           </div>
                         </div>
@@ -556,7 +556,7 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
                   <form onSubmit={handleAddIngredient} className="d-flex flex-column gap-3">
                     <div><label className="form-label">Material</label><SearchableSelect items={materials} value={ingMatId} onChange={(id) => { setIngMatId(id); const mat = materials.find(m => m.id === id); if (mat) setIngUnit(mat.calculation_mode === 'fraction' ? (mat.fraction_unit || 'g') : mat.unit) }} placeholder="Search material..." disabled={!currentRecipeId} /></div>
                     <div className="row g-3">
-                      <div className="col-6"><label className="form-label">Qty Used</label><input type="number" step="any" required min="0" placeholder="e.g. 300" className="form-control fw-bold" value={ingQty} onChange={(e) => setIngQty(e.target.value)} disabled={!currentRecipeId} /></div>
+                      <div className="col-6"><label className="form-label">Qty Used</label><input type="number" step="any" required min="0" placeholder="e.g. 300" className="form-control fw-bold" value={ingQty} onChange={(e) => setIngQty(e.target.value)} disabled={!currentRecipeId} inputMode="decimal" /></div>
                       <div className="col-6"><label className="form-label">Unit</label><input type="text" readOnly className="form-control fw-bold" value={ingUnit} placeholder="-" disabled={!currentRecipeId} /></div>
                     </div>
                     <button type="submit" disabled={!currentRecipeId || !ingMatId || !ingQty} className="btn fw-bold btn-sm text-white">+ Add to Recipe</button>
@@ -612,7 +612,7 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
                       </div>
                       {checked && <div className="d-flex align-items-center gap-2 px-3 pb-3 ps-4" style={{ paddingLeft: '72px' }} onClick={(e) => e.stopPropagation()}>
                         <span className="text-muted small">Batch:</span>
-                        <input type="number" min="1" className="form-control form-control-sm" style={{ maxWidth: '100px' }} value={checked.batch_count} onChange={(e) => handleBatchChange(p.id, e.target.value)} />
+                        <input type="number" min="1" className="form-control form-control-sm" style={{ maxWidth: '100px' }} value={checked.batch_count} onChange={(e) => handleBatchChange(p.id, e.target.value)} inputMode="numeric" />
                       </div>}
                     </div>
                   )
@@ -660,7 +660,7 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
                           <div className="flex-grow-1 min-w-0">
                             <div className="fw-bold small text-break mb-1">{item.material_name}</div>
                             <div className="d-flex align-items-center gap-2 flex-wrap">
-                              <input type="number" min="0" step="0.01" className={`form-control form-control-sm ${isManualQty ? 'border-warning' : ''}`} style={{ maxWidth: '100px' }} value={isManualQty ? manualQty[item.material_id] : ''} onChange={(e) => updateManualQty(item.material_id, e.target.value)} placeholder={display.qty} />
+                              <input type="number" min="0" step="0.01" className={`form-control form-control-sm ${isManualQty ? 'border-warning' : ''}`} style={{ maxWidth: '100px' }} value={isManualQty ? manualQty[item.material_id] : ''} onChange={(e) => updateManualQty(item.material_id, e.target.value)} placeholder={display.qty} inputMode="decimal" />
                               <span className="small text-muted">{display.unit}</span>
                               {item.rawQty != null && item.rawUnit && (
                                 <span className="small text-muted">(from {stripTrailing(item.rawQty)} {item.rawUnit})</span>
@@ -799,7 +799,7 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
                               <div className="fw-bold small text-break mb-1">{item.raw_material?.name || 'Unknown'}</div>
                               {isEditing ? (
                                 <div className="d-flex align-items-center gap-2">
-                                  <input type="number" min="0" step="0.01" className="form-control form-control-sm" style={{ maxWidth: '100px' }} value={editRecordQtys[item.id] || ''} onChange={(e) => handleEditQtyChange(item.id, e.target.value)} />
+                                  <input type="number" min="0" step="0.01" className="form-control form-control-sm" style={{ maxWidth: '100px' }} value={editRecordQtys[item.id] || ''} onChange={(e) => handleEditQtyChange(item.id, e.target.value)} inputMode="decimal" />
                                   <span className="small text-muted">{display.unit}</span>
                                 </div>
                               ) : (

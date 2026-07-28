@@ -103,7 +103,7 @@ export default function Inventory({ session, userRole, allowedModules = {} }) {
     return () => { mounted = false }
   }, [isStockModalOpen, productions])
 
-  if (!hasPageAccess) return <div className="alert-unauthorized"><span className="material-symbols-outlined me-1" style={{fontSize:'14px',verticalAlign:'middle'}}>lock</span> Access Denied: Unauthorized.</div>
+  if (!hasPageAccess) return <div className="alert-unauthorized"><span className="material-symbols-outlined me-1" style={{ fontSize: '14px', verticalAlign: 'middle' }}>lock</span> Access Denied: Unauthorized.</div>
 
   const handleToggleStockFinished = async (productionId, currentStatus) => {
     if (!canToggleStockStatus) { showToast('Access denied.', 'error'); return }
@@ -173,7 +173,7 @@ export default function Inventory({ session, userRole, allowedModules = {} }) {
         <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 pb-2 mb-3 border-bottom border-default">
           <div className="d-flex align-items-center gap-3">
             <button onClick={() => { setSelectedProduct(null); fetchProducts() }} className="btn btn-sm btn-link d-flex align-items-center justify-content-center w-32 h-32 text-secondary-custom">
-              <svg className="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              <svg className="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
             </button>
             <div>
               <div className="d-flex align-items-center gap-2 flex-wrap">
@@ -226,11 +226,11 @@ export default function Inventory({ session, userRole, allowedModules = {} }) {
                       <div className="d-flex gap-2 mt-2 pt-2 border-top border-default">
                         {canToggleStockStatus && (
                           <button className={`btn btn-sm flex-grow-1 fw-semibold ${p.is_finished ? 'btn-danger' : 'btn-success'}`} onClick={() => handleToggleStockFinished(p.id, p.is_finished)} disabled={loadingSave}>
-                            {p.is_finished ? <><span className="material-symbols-outlined me-1" style={{fontSize:'14px',verticalAlign:'middle'}}>sync</span> Reopen</> : <><span className="material-symbols-outlined me-1" style={{fontSize:'14px',verticalAlign:'middle'}}>check_circle</span> Finish</>}
+                            {p.is_finished ? <><span className="material-symbols-outlined me-1" style={{ fontSize: '14px', verticalAlign: 'middle' }}>sync</span> Reopen</> : <><span className="material-symbols-outlined me-1" style={{ fontSize: '14px', verticalAlign: 'middle' }}>check_circle</span> Finish</>}
                           </button>
                         )}
                         {canEditStockInfo && (
-                          <button className="btn btn-sm btn-link text-secondary-custom" onClick={() => handleOpenEditStockModal(p)}><span className="material-symbols-outlined me-1" style={{fontSize:'14px',verticalAlign:'middle'}}>edit</span> Edit</button>
+                          <button className="btn btn-sm btn-link text-secondary-custom" onClick={() => handleOpenEditStockModal(p)}><span className="material-symbols-outlined me-1" style={{ fontSize: '14px', verticalAlign: 'middle' }}>edit</span> Edit</button>
                         )}
                       </div>
                     </div>
@@ -251,7 +251,7 @@ export default function Inventory({ session, userRole, allowedModules = {} }) {
             <div className="modal d-block" tabIndex="-1">
               <div className="modal-dialog modal-dialog-centered max-w-448">
                 <div className="modal-content p-3">
-                  <h5 className="fw-bold mb-3 text-success"><span className="material-symbols-outlined me-1" style={{fontSize:'18px',verticalAlign:'middle'}}>factory</span> Record Production Stock</h5>
+                  <h5 className="fw-bold mb-3 text-success"><span className="material-symbols-outlined me-1" style={{ fontSize: '18px', verticalAlign: 'middle' }}>factory</span> Record Production Stock</h5>
                   <form onSubmit={handleAddStock}>
                     <div className="mb-3"><label className="form-label">Production Date</label><input type="date" className="form-control" required value={prodDate} onChange={(e) => setProdDate(e.target.value)} /></div>
                     <div className="mb-3"><label className="form-label">Batch No.</label><input type="text" className="form-control font-mono fw-bold text-accent text-18" value={prodBatch} readOnly /></div>
@@ -262,7 +262,7 @@ export default function Inventory({ session, userRole, allowedModules = {} }) {
                         <input type="text" className="form-control" value={prodName} onChange={(e) => setProdName(e.target.value)} placeholder="Type staff name" />
                       )}
                     </div>
-                    <div className="mb-3"><label className="form-label">Quantity</label><input type="number" className="form-control" required value={prodQty} onChange={(e) => setProdQty(e.target.value)} /></div>
+                    <div className="mb-3"><label className="form-label">Quantity</label><input type="number" className="form-control" required value={prodQty} onChange={(e) => setProdQty(e.target.value)} inputMode="numeric" /></div>
                     <div className="d-flex gap-2 justify-content-end pt-2 border-top border-default">
                       <button type="button" className="btn btn-sm btn-success" onClick={() => setIsStockModalOpen(false)}>Cancel</button>
                       <button type="submit" className="btn btn-sm fw-semibold text-white bg-success" disabled={loadingSave}>{loadingSave ? <span className="spinner-border spinner-border-sm"></span> : 'Save Record'}</button>
@@ -280,7 +280,7 @@ export default function Inventory({ session, userRole, allowedModules = {} }) {
             <div className="modal d-block" tabIndex="-1">
               <div className="modal-dialog modal-dialog-centered max-w-448">
                 <div className="modal-content p-3">
-                  <h5 className="fw-bold mb-3 text-secondary-custom"><span className="material-symbols-outlined me-1" style={{fontSize:'18px',verticalAlign:'middle'}}>edit</span> Edit Stock Information</h5>
+                  <h5 className="fw-bold mb-3 text-secondary-custom"><span className="material-symbols-outlined me-1" style={{ fontSize: '18px', verticalAlign: 'middle' }}>edit</span> Edit Stock Information</h5>
                   <form onSubmit={handleUpdateStock}>
                     <div className="mb-3"><label className="form-label">Production Date</label><input type="date" className="form-control" required value={prodDate} onChange={(e) => setProdDate(e.target.value)} /></div>
                     <div className="mb-3"><label className="form-label">Batch No.</label><input type="text" className="form-control font-mono fw-bold" required value={prodBatch} onChange={(e) => setProdBatch(e.target.value)} /></div>
@@ -291,7 +291,7 @@ export default function Inventory({ session, userRole, allowedModules = {} }) {
                         <input type="text" className="form-control" value={prodName} onChange={(e) => setProdName(e.target.value)} />
                       )}
                     </div>
-                    <div className="mb-3"><label className="form-label">Quantity</label><input type="number" className="form-control" required value={prodQty} onChange={(e) => setProdQty(e.target.value)} /></div>
+                    <div className="mb-3"><label className="form-label">Quantity</label><input type="number" className="form-control" required value={prodQty} onChange={(e) => setProdQty(e.target.value)} inputMode="numeric" /></div>
                     <div className="d-flex gap-2 justify-content-end pt-2 border-top border-default">
                       <button type="button" className="btn btn-sm" onClick={() => { setIsEditStockModalOpen(false); setEditingStock(null) }}>Cancel</button>
                       <button type="submit" className="btn btn-sm btn-outline-light fw-semibold" disabled={loadingSave}>{loadingSave ? <span className="spinner-border spinner-border-sm"></span> : 'Save Changes'}</button>
@@ -313,7 +313,7 @@ export default function Inventory({ session, userRole, allowedModules = {} }) {
 
       <div className="page-header-custom d-flex flex-wrap justify-content-between align-items-start gap-2">
         <div>
-          <h1 className="page-title-custom"><span className="material-symbols-outlined me-2" style={{fontSize:'24px',verticalAlign:'middle'}}>inventory_2</span> Inventory Manager</h1>
+          <h1 className="page-title-custom"><span className="material-symbols-outlined me-2" style={{ fontSize: '24px', verticalAlign: 'middle' }}>inventory_2</span> Inventory Manager</h1>
           <p className="page-subtitle-custom">Monitor product batches and current physical stock levels.</p>
         </div>
         {canEditStockInfo && (
@@ -356,7 +356,7 @@ export default function Inventory({ session, userRole, allowedModules = {} }) {
                     <button className="btn btn-sm flex-grow-1 fw-semibold btn-primary" onClick={() => setSelectedProduct(prod)}>View Stock</button>
                     {canEditStockInfo && (
                       <button className="btn btn-sm btn-link d-flex align-items-center justify-content-center text-secondary-custom border-default w-32 h-32" onClick={() => handleOpenEditProductModal(prod)}>
-                        <span className="material-symbols-outlined" style={{fontSize:'16px'}}>edit</span>
+                        <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>edit</span>
                       </button>
                     )}
                   </div>
@@ -373,11 +373,11 @@ export default function Inventory({ session, userRole, allowedModules = {} }) {
           <div className="modal d-block" tabIndex="-1">
             <div className="modal-dialog modal-dialog-centered max-w-448">
               <div className="modal-content p-3">
-                <h5 className="fw-bold text-accent mb-3"><span className="material-symbols-outlined me-1" style={{fontSize:'18px',verticalAlign:'middle'}}>inventory_2</span> Add New Product</h5>
+                <h5 className="fw-bold text-accent mb-3"><span className="material-symbols-outlined me-1" style={{ fontSize: '18px', verticalAlign: 'middle' }}>inventory_2</span> Add New Product</h5>
                 <form onSubmit={handleAddProduct}>
                   <div className="mb-3"><label className="form-label">Product Name</label><input type="text" className="form-control" required placeholder="e.g., Pes Kari Sambal" value={productName} onChange={(e) => setProductName(e.target.value)} /></div>
-                  <div className="mb-3"><label className="form-label">Shelf Life (Months)</label><input type="number" className="form-control" required value={expiryMonth} onChange={(e) => setExpiryMonth(e.target.value)} /></div>
-                  <div className="mb-3"><label className="form-label">Cooking Wage Rate per Unit (RM)</label><input type="number" step="0.01" className="form-control" required value={wageRate} onChange={(e) => setWageRate(e.target.value)} /></div>
+                  <div className="mb-3"><label className="form-label">Shelf Life (Months)</label><input type="number" className="form-control" required value={expiryMonth} onChange={(e) => setExpiryMonth(e.target.value)} inputMode="numeric" /></div>
+                  <div className="mb-3"><label className="form-label">Cooking Wage Rate per Unit (RM)</label><input type="number" step="0.01" className="form-control" required value={wageRate} onChange={(e) => setWageRate(e.target.value)} inputMode="decimal" /></div>
                   <div className="d-flex gap-2 justify-content-end pt-2 border-top border-default">
                     <button type="button" className="btn btn-sm btn-link" onClick={() => { setIsModalOpen(false); setProductName(''); setExpiryMonth('12'); setWageRate('0.00') }}>Cancel</button>
                     <button type="submit" className="btn btn-sm btn-primary fw-semibold" disabled={loadingSave}>{loadingSave ? <span className="spinner-border spinner-border-sm"></span> : 'Save Product'}</button>
@@ -398,8 +398,8 @@ export default function Inventory({ session, userRole, allowedModules = {} }) {
                 <h5 className="fw-bold mb-3">Edit Product</h5>
                 <form onSubmit={handleUpdateProduct}>
                   <div className="mb-3"><label className="form-label">Product Name</label><input type="text" className="form-control bg-dark-card" value={editingProduct?.product_name || ''} readOnly /></div>
-                  <div className="mb-3"><label className="form-label">Shelf Life (Months)</label><input type="number" className="form-control" required value={editExpiryMonth} onChange={(e) => setEditExpiryMonth(e.target.value)} /></div>
-                  <div className="mb-3"><label className="form-label">Cooking Wage Rate per Unit (RM)</label><input type="number" step="0.01" className="form-control" required value={editWageRate} onChange={(e) => setEditWageRate(e.target.value)} /></div>
+                  <div className="mb-3"><label className="form-label">Shelf Life (Months)</label><input type="number" className="form-control" required value={editExpiryMonth} onChange={(e) => setEditExpiryMonth(e.target.value)} inputMode="numeric" /></div>
+                  <div className="mb-3"><label className="form-label">Cooking Wage Rate per Unit (RM)</label><input type="number" step="0.01" className="form-control" required value={editWageRate} onChange={(e) => setEditWageRate(e.target.value)} inputMode="decimal" /></div>
                   <div className="d-flex gap-2 justify-content-end pt-2 border-top border-default">
                     <button type="button" className="btn btn-sm btn-warning" onClick={() => { setIsEditProductModalOpen(false); setEditingProduct(null) }}>Cancel</button>
                     <button type="submit" className="btn btn-sm btn-success fw-semibold" disabled={loadingSave}>{loadingSave ? <span className="spinner-border spinner-border-sm"></span> : 'Save Changes'}</button>

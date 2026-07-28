@@ -94,7 +94,7 @@ export default function AdsRecordManager({ session }) {
       )}
 
       <div className="page-header-custom">
-        <h1 className="page-title-custom"><span className="material-symbols-outlined me-2" style={{fontSize:'24px',verticalAlign:'middle'}}>bar_chart</span> Ads Record Manager</h1>
+        <h1 className="page-title-custom"><span className="material-symbols-outlined me-2" style={{ fontSize: '24px', verticalAlign: 'middle' }}>bar_chart</span> Ads Record Manager</h1>
         <p className="page-subtitle-custom">Track payments, amounts, and manage financial outputs.</p>
       </div>
 
@@ -104,7 +104,7 @@ export default function AdsRecordManager({ session }) {
             <h6 className="fw-bold mb-3 text-accent">Add New Record</h6>
             <form onSubmit={handleSubmit}>
               <div className="mb-3"><label className="form-label">Date</label><input type="date" className="form-control" required value={date} onChange={(e) => setDate(e.target.value)} /></div>
-              <div className="mb-3"><label className="form-label">Amount (RM)</label><input type="number" step="0.01" className="form-control" required placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)} /></div>
+              <div className="mb-3"><label className="form-label">Amount (RM)</label><input type="number" step="0.01" className="form-control" required placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" /></div>
               <div className="mb-3"><label className="form-label">Ads Platform</label><select className="form-select" value={adsPlatform} onChange={(e) => setAdsPlatform(e.target.value)} required>{ADS_PLATFORMS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}</select></div>
               <button type="submit" className="btn btn-primary w-100 fw-bold" disabled={loadingSave}>{loadingSave ? <span className="spinner-border spinner-border-sm"></span> : 'Save Record'}</button>
             </form>
@@ -121,7 +121,7 @@ export default function AdsRecordManager({ session }) {
                     <span className="text-muted text-12">Selected Total:</span>
                     <span className="fw-bold text-white text-13">RM {totalSelectedAmount.toFixed(2)}</span>
                     <button className="btn btn-sm btn-link p-0 d-flex align-items-center justify-content-center w-20 h-20 text-secondary-custom" onClick={handleCopyTotalNumberOnly}>
-                      <svg className="icon-svg-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                      <svg className="icon-svg-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" /></svg>
                     </button>
                   </div>
                 )}
@@ -144,7 +144,7 @@ export default function AdsRecordManager({ session }) {
                       <td><span className="chip-custom">{rec.ads_platform === 'tiktok' ? 'TikTok' : 'Shopee'}</span></td>
                       <td className="text-end text-13 text-white">{parseFloat(rec.amount).toFixed(2)}
                         <button className="btn btn-sm btn-link p-0 d-inline-flex align-items-center justify-content-center w-20 h-20 text-tertiary ms-1" onClick={() => handleStartEdit(rec)}>
-                          <svg className="icon-svg-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                          <svg className="icon-svg-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
                         </button>
                       </td>
                     </tr>
@@ -172,10 +172,10 @@ export default function AdsRecordManager({ session }) {
           <div className="modal d-block" tabIndex="-1">
             <div className="modal-dialog modal-dialog-centered">
               <div className="modal-content p-3">
-                <h5 className="fw-bold text-accent mb-3"><span className="material-symbols-outlined me-1" style={{fontSize:'18px',verticalAlign:'middle'}}>edit</span> Edit Record</h5>
+                <h5 className="fw-bold text-accent mb-3"><span className="material-symbols-outlined me-1" style={{ fontSize: '18px', verticalAlign: 'middle' }}>edit</span> Edit Record</h5>
                 <form onSubmit={handleUpdateRecord}>
                   <div className="mb-3"><label className="form-label">Date</label><input type="date" className="form-control" required value={editDate} onChange={(e) => setEditDate(e.target.value)} /></div>
-                  <div className="mb-3"><label className="form-label">Amount (RM)</label><input type="number" step="0.01" className="form-control" required value={editAmount} onChange={(e) => setEditAmount(e.target.value)} /></div>
+                  <div className="mb-3"><label className="form-label">Amount (RM)</label><input type="number" step="0.01" className="form-control" required value={editAmount} onChange={(e) => setEditAmount(e.target.value)} inputMode="decimal" /></div>
                   <div className="mb-3"><label className="form-label">Ads Platform</label><select className="form-select" value={editAdsPlatform} onChange={(e) => setEditAdsPlatform(e.target.value)} required>{ADS_PLATFORMS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}</select></div>
                   <div className="d-flex gap-2 justify-content-end">
                     <button type="button" className="btn btn-sm btn-link" onClick={() => setEditingRecord(null)}>Cancel</button>
