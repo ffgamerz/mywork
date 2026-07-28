@@ -249,7 +249,7 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
         const unitsNeeded = Math.ceil(a.qty / perUnit)
         return { material_id: mat.id, material_name: mat.name, qty: unitsNeeded, unit: mat.unit, cost: calcIngredientCost(mat, unitsNeeded * perUnit), rawMaterial: mat, recipeQty: a.recipeQty, rawQty: a.qty, rawUnit: mat.fraction_unit }
       }
-      return { material_id: mat.id, material_name: mat.name, qty: a.qty, unit: a.unit, cost: calcIngredientCost(mat, a.qty), rawMaterial: mat, recipeQty: a.recipeQty }
+      return { material_id: mat.id, material_name: mat.name, qty: a.qty, unit: a.unit, cost: calcIngredientCost(mat, a.qty), rawMaterial: mat, recipeQty: a.recipeQty, rawQty: a.qty, rawUnit: a.unit }
     })
     const totalCost = items.reduce((s, i) => s + i.cost, 0)
     setPurchaseSummary({ items, totalCost, batchDetails }); setManualQty({}); setLoading(false)
