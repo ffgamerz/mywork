@@ -612,7 +612,7 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
                       </div>
                       {checked && <div className="d-flex align-items-center gap-2 px-3 pb-3 ps-4" style={{ paddingLeft: '72px' }} onClick={(e) => e.stopPropagation()}>
                         <span className="text-muted small">Batch:</span>
-                        <input type="number" min="1" className="form-control form-control-sm" style={{ maxWidth: '100px' }} value={checked.batch_count} onChange={(e) => handleBatchChange(p.id, e.target.value)} inputMode="numeric" />
+                        <input type="number" min="1" className="form-control form-control-sm" style={{ maxWidth: '100px' }} value={checked.batch_count} onChange={(e) => handleBatchChange(p.id, e.target.value)} inputMode="numeric" onFocus={(e) => e.target.select()} />
                       </div>}
                     </div>
                   )
@@ -660,7 +660,7 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
                           <div className="flex-grow-1 min-w-0">
                             <div className="fw-bold small text-break mb-1">{item.material_name}</div>
                             <div className="d-flex align-items-center gap-2 flex-wrap">
-                              <input type="number" min="0" step="0.01" className={`form-control form-control-sm ${isManualQty ? 'border-warning' : ''}`} style={{ maxWidth: '100px' }} value={isManualQty ? manualQty[item.material_id] : ''} onChange={(e) => updateManualQty(item.material_id, e.target.value)} placeholder={display.qty} inputMode="decimal" />
+                              <input type="number" min="0" step="0.01" className={`form-control form-control-sm ${isManualQty ? 'border-warning' : ''}`} style={{ maxWidth: '100px' }} value={isManualQty ? manualQty[item.material_id] : ''} onChange={(e) => updateManualQty(item.material_id, e.target.value)} placeholder={display.qty} inputMode="decimal" onFocus={(e) => e.target.select()} />
                               <span className="small text-muted">{display.unit}</span>
                               {item.rawQty != null && item.rawUnit && (
                                 <span className="small text-muted">(from {stripTrailing(item.rawQty)} {item.rawUnit})</span>
@@ -799,7 +799,7 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
                               <div className="fw-bold small text-break mb-1">{item.raw_material?.name || 'Unknown'}</div>
                               {isEditing ? (
                                 <div className="d-flex align-items-center gap-2">
-                                  <input type="number" min="0" step="0.01" className="form-control form-control-sm" style={{ maxWidth: '100px' }} value={editRecordQtys[item.id] || ''} onChange={(e) => handleEditQtyChange(item.id, e.target.value)} inputMode="decimal" />
+                                  <input type="number" min="0" step="0.01" className="form-control form-control-sm" style={{ maxWidth: '100px' }} value={editRecordQtys[item.id] || ''} onChange={(e) => handleEditQtyChange(item.id, e.target.value)} inputMode="decimal" onFocus={(e) => e.target.select()} />
                                   <span className="small text-muted">{display.unit}</span>
                                 </div>
                               ) : (
