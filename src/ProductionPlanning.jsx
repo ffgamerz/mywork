@@ -507,18 +507,18 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
                   <div className="modal-content p-3">
                     <h5 className="fw-bold text-primary mb-3"><span className="material-symbols-outlined me-1" style={{ fontSize: '18px', verticalAlign: 'middle' }}>{editingMat ? 'edit' : 'add'}</span> {editingMat ? 'Edit Material' : 'Add New Material'}</h5>
                     <form onSubmit={handleSaveMat}>
-                      <div className="mb-3"><label className="form-label">Material Name *</label><input type="text" required placeholder="e.g., Minyak Masak" className="form-control" value={matName} onChange={(e) => setMatName(e.target.value)} /></div>
+                      <div className="mb-3"><label className="form-label">Material Name *</label><input type="text" required placeholder="e.g., Cooking Oil" className="form-control" value={matName} onChange={(e) => setMatName(e.target.value)} /></div>
                       <div className="mb-3"><label className="form-label">Unit *</label><select className="form-select fw-bold" value={matUnit} onChange={(e) => setMatUnit(e.target.value)}><option value="packet">packet</option><option value="kg">kg</option><option value="g">g</option><option value="liter">liter</option><option value="ml">ml</option><option value="bottle">bottle</option><option value="sack">sack</option><option value="tray">tray</option><option value="piece">piece</option><option value="box">box</option><option value="can">can</option><option value="other">other</option></select></div>
                       <div className="mb-3"><label className="form-label">Price (RM) *</label><input type="number" step="0.01" required min="0" placeholder="0.00" className="form-control fw-bold" value={matPrice} onChange={(e) => setMatPrice(e.target.value)} /></div>
                       <div className="mb-3"><label className="form-label">Calculation Mode</label>
-                        <div className="d-flex gap-3"><label className="d-flex align-items-center gap-2 cursor-pointer"><input type="radio" name="matMode" className="form-check-input" checked={matMode === 'unit'} onChange={() => setMatMode('unit')} /><span className="fw-bold small">Unit (by packet/biji/etc)</span></label>
+                        <div className="d-flex gap-3"><label className="d-flex align-items-center gap-2 cursor-pointer"><input type="radio" name="matMode" className="form-check-input" checked={matMode === 'unit'} onChange={() => setMatMode('unit')} /><span className="fw-bold small">Unit (by packet/piece/etc)</span></label>
                           <label className="d-flex align-items-center gap-2 cursor-pointer"><input type="radio" name="matMode" className="form-check-input" checked={matMode === 'fraction'} onChange={() => setMatMode('fraction')} /><span className="fw-bold small">Fraction (by g/ml)</span></label></div>
                       </div>
                       {matMode === 'fraction' && (
                         <div className="p-3 mb-3 rounded-3 border">
                           <div className="row g-3">
                             <div className="col-6"><label className="form-label">1 unit = ? grams/ml</label><input type="number" step="any" required min="0" placeholder="e.g., 8000" className="form-control fw-bold" value={matFractionG} onChange={(e) => setMatFractionG(e.target.value)} /></div>
-                            <div className="col-6"><label className="form-label">Unit</label><select className="form-select fw-bold" value={matFractionUnit} onChange={(e) => setMatFractionUnit(e.target.value)}><option value="g">gram (g)</option><option value="ml">mililiter (ml)</option></select></div>
+                            <div className="col-6"><label className="form-label">Unit</label><select className="form-select fw-bold" value={matFractionUnit} onChange={(e) => setMatFractionUnit(e.target.value)}><option value="g">gram (g)</option><option value="ml">milliliter (ml)</option></select></div>
                           </div>
                         </div>
                       )}
