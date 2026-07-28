@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { supabase } from './supabaseClient'
 import ToastBar from './components/ToastBar'
 import { useToast } from './utils/useToast'
@@ -17,19 +17,7 @@ export default function ReceiptManager({ session, userRole, allowedModules = {} 
   const cleanedRole = String(userRole || '').trim().toLowerCase()
   const isAuthorized = cleanedRole === 'super_admin' || cleanedRole === 'admin' || allowedModules['receiptManager'] === true
 
-  useEffect(() => {
-    if (isAuthorized) fetchRecords()
-  }, [isAuthorized])
-
-  if (!isAuthorized) {
-    return (
-      <div className="alert-unauthorized">
-        <span className="material-symbols-outlined me-1" style={{fontSize:'14px',verticalAlign:'middle'}}>lock</span> Access Denied: You do not have permission to view this page.
-      </div>
-    )
-  }
-
-  const fetchRecords = async () => {
+  const fetchRecords = useCallback(async () => {
     setLoading(true)
     const { data, error } = await supabase
       .from('receipt_records')
@@ -37,6 +25,26 @@ export default function ReceiptManager({ session, userRole, allowedModules = {} 
       .order('receipt_date', { ascending: false })
     if (!error && data) setRecords(data)
     setLoading(false)
+  }, [])
+
+  useEffect(() => {
+    let mounted = true
+    if (isAuthorized) {
+      Promise.resolve().then(() => { if (mounted) fetchRecords() })
+    }
+    return () => { mounted = false }
+  }, [isAuthorized, fetchRecords])
+
+  const totalSelectedAmount = useMemo(() => {
+    return records.filter(r => selectedIds.includes(r.id)).reduce((sum, r) => sum + (r.amount || 0), 0)
+  }, [records, selectedIds])
+
+  if (!isAuthorized) {
+    return (
+      <div className="alert-unauthorized">
+        <span className="material-symbols-outlined me-1" style={{fontSize:'14px',verticalAlign:'middle'}}>lock</span> Access Denied: You do not have permission to view this page.
+      </div>
+    )
   }
 
   const handleSubmit = async (e) => {
@@ -112,10 +120,6 @@ export default function ReceiptManager({ session, userRole, allowedModules = {} 
     navigator.clipboard.writeText(total)
     showToast('Text copied successfully!')
   }
-
-  const totalSelectedAmount = useMemo(() => {
-    return records.filter(r => selectedIds.includes(r.id)).reduce((sum, r) => sum + (r.amount || 0), 0)
-  }, [records, selectedIds])
 
   return (
     <div>

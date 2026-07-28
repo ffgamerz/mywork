@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
 
 export default function Settings({ session, themeMode, setThemeMode }) {
@@ -12,10 +12,12 @@ export default function Settings({ session, themeMode, setThemeMode }) {
   useEffect(() => {
     const fetchProfile = async () => {
       const { data, error } = await supabase.from('profiles').select('theme_mode, preferred_language').eq('id', session.user.id).single()
-      if (data) {} else if (error && error.code === 'PGRST116') await supabase.from('profiles').insert([{ id: session.user.id, theme_mode: themeMode, preferred_language: 'en' }])
+      if (!data && error && error.code === 'PGRST116') {
+        await supabase.from('profiles').insert([{ id: session.user.id, theme_mode: themeMode, preferred_language: 'en' }])
+      }
     }
     if (session?.user?.id) fetchProfile()
-  }, [session])
+  }, [session, themeMode])
 
   const handleSaveGeneralSettings = async (e) => {
     e.preventDefault(); setLoading(true)

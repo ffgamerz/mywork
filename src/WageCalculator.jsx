@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { supabase } from './supabaseClient'
 import ToastBar from './components/ToastBar'
 import { useToast } from './utils/useToast'
 
-export default function WageCalculator({ session, userRole, allowedModules = {} }) {
+export default function WageCalculator({ userRole, allowedModules = {} }) {
   const { toast, showToast, hideToast } = useToast()
   const [staffList, setStaffList] = useState([])
   const [loadingStaff, setLoadingStaff] = useState(false)
@@ -32,22 +32,14 @@ export default function WageCalculator({ session, userRole, allowedModules = {} 
   const isSuperAdmin = cleanedRole === 'super_admin'
   const hasPageAccess = isSuperAdmin || allowedModules['wageCalculator'] === true || cleanedRole === 'admin'
 
-  useEffect(() => { if (hasPageAccess) fetchStaffList() }, [hasPageAccess])
-  useEffect(() => { if (hasPageAccess) fetchRecords() }, [selectedStaff, paymentStatus, dateFrom, dateTo, hasPageAccess])
-  useEffect(() => { setVisibleCount(8) }, [selectedStaff, paymentStatus, dateFrom, dateTo, searchTerm, monthFilter, activeTab])
-
-  if (!hasPageAccess) {
-    return <div className="alert-unauthorized"><span className="material-symbols-outlined me-1" style={{fontSize:'14px',verticalAlign:'middle'}}>lock</span> Access Denied: Unauthorized.</div>
-  }
-
-  const fetchStaffList = async () => {
+  const fetchStaffList = useCallback(async () => {
     setLoadingStaff(true)
     const { data, error } = await supabase.from('profiles').select('full_name').order('full_name', { ascending: true })
     if (!error && data) setStaffList(data)
     setLoadingStaff(false)
-  }
+  }, [])
 
-  const fetchRecords = async () => {
+  const fetchRecords = useCallback(async () => {
     setLoading(true)
     let query = supabase
       .from('stock_productions')
@@ -61,7 +53,23 @@ export default function WageCalculator({ session, userRole, allowedModules = {} 
     const { data, error } = await query
     if (!error && data) setRecords(data)
     setSelectedIds([]); setGeneratedText(''); setLoading(false)
-  }
+  }, [selectedStaff, paymentStatus, dateFrom, dateTo])
+
+  useEffect(() => {
+    let mounted = true
+    if (hasPageAccess) {
+      Promise.resolve().then(() => { if (mounted) fetchStaffList() })
+    }
+    return () => { mounted = false }
+  }, [hasPageAccess, fetchStaffList])
+
+  useEffect(() => {
+    let mounted = true
+    if (hasPageAccess) {
+      Promise.resolve().then(() => { if (mounted) fetchRecords() })
+    }
+    return () => { mounted = false }
+  }, [hasPageAccess, fetchRecords])
 
   const paymentHistory = useMemo(() => {
     const paidRecords = records.filter(r => r.paid_date && r.wage_payment_id)
@@ -89,6 +97,10 @@ export default function WageCalculator({ session, userRole, allowedModules = {} 
     })
   }, [paymentHistory, searchTerm, dateFrom, dateTo])
 
+  if (!hasPageAccess) {
+    return <div className="alert-unauthorized"><span className="material-symbols-outlined me-1" style={{fontSize:'14px',verticalAlign:'middle'}}>lock</span> Access Denied: Unauthorized.</div>
+  }
+
   const formatLocalDate = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 
   const handleMonthFilterChange = (value) => {
@@ -101,14 +113,6 @@ export default function WageCalculator({ session, userRole, allowedModules = {} 
     else if (value === '3-months') fromDate = new Date(today.getFullYear(), today.getMonth() - 2, 1)
     else if (value === '6-months') fromDate = new Date(today.getFullYear(), today.getMonth() - 5, 1)
     setDateFrom(formatLocalDate(fromDate)); setDateTo(formatLocalDate(toDate))
-  }
-
-  const handleQuickDate = (range) => {
-    const today = new Date(); let fromDate = new Date()
-    if (range === 'week') fromDate.setDate(today.getDate() - 7)
-    else if (range === 'month') fromDate.setMonth(today.getMonth() - 1)
-    else if (range === 'year') fromDate.setFullYear(today.getFullYear() - 1)
-    setDateFrom(formatLocalDate(fromDate)); setDateTo(formatLocalDate(today))
   }
 
   const handleResetFilters = () => { setSelectedStaff(''); setPaymentStatus('unpaid'); setMonthFilter('all'); setDateFrom(''); setDateTo(''); setSearchTerm('') }

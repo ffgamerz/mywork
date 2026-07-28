@@ -1,16 +1,15 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from './supabaseClient'
 import ToastBar from './components/ToastBar'
 import { useToast } from './utils/useToast'
 
 export default function MyWage({ session }) {
-  const { toast, showToast, hideToast } = useToast()
+  const { toast, hideToast } = useToast()
   const [staffName, setStaffName] = useState('')
   const [loading, setLoading] = useState(false)
   const [activeTab, setActiveTab] = useState('unpaid')
   
   const [unpaidRecords, setUnpaidRecords] = useState([])
-  const [paidRecords, setPaidRecords] = useState([])
   const [paymentHistory, setPaymentHistory] = useState([])
   
   const [selectedPayment, setSelectedPayment] = useState(null)
@@ -22,26 +21,14 @@ export default function MyWage({ session }) {
   const [visibleCount, setVisibleCount] = useState(8)
   const pageSize = 8
 
-  useEffect(() => {
-    const getStaffName = async () => {
-      if (!session?.user?.id) return
-      const { data, error } = await supabase.from('profiles').select('full_name').eq('id', session.user.id).single()
-      if (!error && data) setStaffName(data.full_name)
-    }
-    getStaffName()
-  }, [session])
-
-  useEffect(() => { if (staffName) fetchRecords() }, [staffName])
-  useEffect(() => { setVisibleCount(8) }, [searchTerm, dateFrom, dateTo, activeTab])
-
-  const fetchRecords = async () => {
+  const fetchRecords = useCallback(async () => {
+    if (!staffName) return
     setLoading(true)
     const { data: unpaidData } = await supabase.from('stock_productions').select(`id, batch_no, production_date, production_name, quantity, paid_date, paid_amount, wage_payment_id, inventory ( product_name, wage_rate )`).eq('production_name', staffName).is('paid_date', null).order('production_date', { ascending: false })
     if (unpaidData) setUnpaidRecords(unpaidData)
 
     const { data: paidData } = await supabase.from('stock_productions').select(`id, batch_no, production_date, production_name, quantity, paid_date, paid_amount, wage_payment_id, inventory ( product_name, wage_rate )`).eq('production_name', staffName).not('paid_date', 'is', null).order('paid_date', { ascending: false })
     if (paidData) {
-      setPaidRecords(paidData)
       const grouped = paidData.reduce((acc, record) => {
         const paymentId = record.wage_payment_id
         if (!paymentId) return acc
@@ -53,7 +40,24 @@ export default function MyWage({ session }) {
       setPaymentHistory(Object.values(grouped).sort((a, b) => new Date(b.date_paid) - new Date(a.date_paid)))
     }
     setLoading(false)
-  }
+  }, [staffName])
+
+  useEffect(() => {
+    const getStaffName = async () => {
+      if (!session?.user?.id) return
+      const { data, error } = await supabase.from('profiles').select('full_name').eq('id', session.user.id).single()
+      if (!error && data) setStaffName(data.full_name)
+    }
+    getStaffName()
+  }, [session])
+
+  useEffect(() => {
+    let mounted = true
+    if (staffName) {
+      Promise.resolve().then(() => { if (mounted) fetchRecords() })
+    }
+    return () => { mounted = false }
+  }, [staffName, fetchRecords])
 
   const filteredUnpaid = unpaidRecords.filter(rec => {
     const term = searchTerm.trim().toLowerCase()

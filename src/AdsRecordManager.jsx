@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from './supabaseClient'
 
 const ADS_PLATFORMS = [
@@ -22,16 +22,25 @@ export default function AdsRecordManager({ session }) {
   const [editAdsPlatform, setEditAdsPlatform] = useState('tiktok')
   const [editDate, setEditDate] = useState('')
 
-  const showToast = (message, severity = 'success') => { setToast({ open: true, message, severity }); setTimeout(() => setToast({ ...toast, open: false }), 3000) }
+  const showToast = (message, severity = 'success') => { setToast({ open: true, message, severity }); setTimeout(() => setToast({ open: false, message: '', severity: 'success' }), 3000) }
 
-  const fetchRecords = async () => {
+  const userId = session?.user?.id
+
+  const fetchRecords = useCallback(async () => {
+    if (!userId) return
     setLoadingFetch(true)
-    const { data, error } = await supabase.from('records').select('*').eq('user_id', session.user.id).order('date', { ascending: true })
+    const { data, error } = await supabase.from('records').select('*').eq('user_id', userId).order('date', { ascending: true })
     if (error) console.error('Error fetching data:', error.message); else setRecords(data || [])
     setLoadingFetch(false)
-  }
+  }, [userId])
 
-  useEffect(() => { if (session?.user?.id) fetchRecords() }, [session?.user?.id])
+  useEffect(() => {
+    let mounted = true
+    if (userId) {
+      Promise.resolve().then(() => { if (mounted) fetchRecords() })
+    }
+    return () => { mounted = false }
+  }, [userId, fetchRecords])
 
   const handleSubmit = async (e) => {
     e.preventDefault(); setLoadingSave(true)

@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from './supabaseClient'
 
-export default function Privileges({ session }) {
+export default function Privileges() {
   const [users, setUsers] = useState([])
   const [modules, setModules] = useState([])
   const [permissions, setPermissions] = useState({})
@@ -26,7 +26,7 @@ export default function Privileges({ session }) {
     setTimeout(() => setToast(''), 5000)
   }
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoadingData(true)
     try {
       const { data: mods, error: modsError } = await supabase.from('system_modules').select('*').order('name')
@@ -50,9 +50,13 @@ export default function Privileges({ session }) {
     } finally {
       setLoadingData(false)
     }
-  }
+  }, [])
 
-  useEffect(() => { loadData() }, [])
+  useEffect(() => {
+    let mounted = true
+    Promise.resolve().then(() => { if (mounted) loadData() })
+    return () => { mounted = false }
+  }, [loadData])
 
   const generateRandomPassword = () => {
     const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#'

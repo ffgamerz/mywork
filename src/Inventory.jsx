@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from './supabaseClient'
 
 export default function Inventory({ session, userRole, allowedModules = {} }) {
@@ -37,9 +37,9 @@ export default function Inventory({ session, userRole, allowedModules = {} }) {
   const canEditStockInfo = isSuperAdmin
   const canToggleStockStatus = isSuperAdmin || isAdmin
 
-  const showToast = (message, severity = 'success') => { setToast({ open: true, message, severity }); setTimeout(() => setToast({ ...toast, open: false }), 3000) }
+  const showToast = (message, severity = 'success') => { setToast({ open: true, message, severity }); setTimeout(() => setToast({ open: false, message: '', severity: 'success' }), 3000) }
 
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     if (!hasPageAccess) return
     setLoadingProducts(true)
     const { data, error } = await supabase.from('inventory').select(`*, stock_productions(id, batch_no, production_date, expiry_date, is_finished, paid_amount, paid_date, created_at)`).order('created_at', { ascending: true })
@@ -49,30 +49,58 @@ export default function Inventory({ session, userRole, allowedModules = {} }) {
       return { ...prod, fifo_stock: activeStocks[0] || null }
     }))
     setLoadingProducts(false)
-  }
+  }, [hasPageAccess])
 
-  const fetchProductions = async (productId) => {
+  const fetchProductions = useCallback(async (productId) => {
     setLoadingProductions(true)
     const { data, error } = await supabase.from('stock_productions').select('*').eq('inventory_id', productId).order('production_date', { ascending: false })
     if (error) console.error(error.message); else setProductions(data || [])
     setLoadingProductions(false)
-  }
+  }, [])
 
-  const fetchStaffList = async () => {
+  const fetchStaffList = useCallback(async () => {
     const { data, error } = await supabase.from('profiles').select('full_name').order('full_name', { ascending: true })
     if (error) console.error('Error fetching staff names:', error.message); else setStaffList((data || []).filter(s => s.full_name))
-  }
+  }, [])
 
-  useEffect(() => { if (hasPageAccess) { fetchProducts(); fetchStaffList() } }, [hasPageAccess])
-  useEffect(() => { if (selectedProduct && hasPageAccess) { fetchProductions(selectedProduct.id); setVisibleCount(6) } }, [selectedProduct])
   useEffect(() => {
-    if (!isStockModalOpen) return
-    if (productions.length === 0) setProdBatch('BATCH-001')
-    else {
-      const latestProd = productions[0]; const match = (latestProd?.batch_no || 'BATCH-000').match(/\d+$/)
-      if (match) setProdBatch(`BATCH-${String(parseInt(match[0], 10) + 1).padStart(match[0].length, '0')}`)
-      else setProdBatch(`BATCH-${productions.length + 1}`)
+    let mounted = true
+    if (hasPageAccess) {
+      Promise.resolve().then(() => {
+        if (mounted) {
+          fetchProducts()
+          fetchStaffList()
+        }
+      })
     }
+    return () => { mounted = false }
+  }, [hasPageAccess, fetchProducts, fetchStaffList])
+
+  useEffect(() => {
+    let mounted = true
+    if (selectedProduct && hasPageAccess) {
+      Promise.resolve().then(() => {
+        if (mounted) {
+          fetchProductions(selectedProduct.id)
+          setVisibleCount(6)
+        }
+      })
+    }
+    return () => { mounted = false }
+  }, [selectedProduct, hasPageAccess, fetchProductions])
+  useEffect(() => {
+    let mounted = true
+    if (!isStockModalOpen) return
+    Promise.resolve().then(() => {
+      if (!mounted) return
+      if (productions.length === 0) setProdBatch('BATCH-001')
+      else {
+        const latestProd = productions[0]; const match = (latestProd?.batch_no || 'BATCH-000').match(/\d+$/)
+        if (match) setProdBatch(`BATCH-${String(parseInt(match[0], 10) + 1).padStart(match[0].length, '0')}`)
+        else setProdBatch(`BATCH-${productions.length + 1}`)
+      }
+    })
+    return () => { mounted = false }
   }, [isStockModalOpen, productions])
 
   if (!hasPageAccess) return <div className="alert-unauthorized"><span className="material-symbols-outlined me-1" style={{fontSize:'14px',verticalAlign:'middle'}}>lock</span> Access Denied: Unauthorized.</div>

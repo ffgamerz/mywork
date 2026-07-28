@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from './supabaseClient'
 import Login from './Login'
 import AdsRecordManager from './AdsRecordManager'
@@ -10,8 +10,6 @@ import WageCalculator from './WageCalculator'
 import ProductionPlanning from './ProductionPlanning'
 import MyWage from './MyWage'
 import { useToast } from './utils/useToast'
-
-const SIDEBAR_WIDTH = 240
 
 const navItems = [
   { id: 'home', label: 'Home', icon: 'home' },
@@ -64,7 +62,7 @@ function App() {
     return () => subscription.unsubscribe()
   }, [])
 
-  const loadUserPermissions = async (userId) => {
+  const loadUserPermissions = useCallback(async (userId) => {
     if (!userId) return
     setAllowedModules({})
     const { data: prof } = await supabase.from('profiles').select('theme_mode, role, requires_password_change, preferred_language').eq('id', userId).single()
@@ -76,9 +74,17 @@ function App() {
     }
     const { data: perms = [] } = await supabase.from('user_permissions').select('module_id, is_allowed').eq('user_id', userId)
     if (perms) { const allowedMap = {}; perms.forEach(p => { allowedMap[p.module_id] = p.is_allowed }); setAllowedModules(allowedMap) }
-  }
+  }, [])
 
-  useEffect(() => { if (session?.user?.id) loadUserPermissions(session.user.id) }, [session?.user?.id])
+  const userId = session?.user?.id
+
+  useEffect(() => {
+    let mounted = true
+    if (userId) {
+      Promise.resolve().then(() => { if (mounted) loadUserPermissions(userId) })
+    }
+    return () => { mounted = false }
+  }, [userId, loadUserPermissions])
 
   const isSuperAdmin = userRole === 'super_admin'
   const canAccessRecords = isSuperAdmin || allowedModules['records'] === true
@@ -90,17 +96,26 @@ function App() {
   const canAccessProductionPlanning = isSuperAdmin || allowedModules['productionPlanning'] === true 
 
   useEffect(() => {
+    let mounted = true
     if (!session) return
-    if (activePage === 'records' && !canAccessRecords) setActivePage('home')
-    if (activePage === 'privileges' && !canAccessPrivileges) setActivePage('home')
-    if (activePage === 'inventory' && !canAccessInventory) setActivePage('home')
-    if (activePage === 'receiptManager' && !canAccessReceiptManager) setActivePage('home')
-    if (activePage === 'wageCalculator' && !canAccessWageCalculator) setActivePage('home')
-    if (activePage === 'myWage' && !canAccessMyWage) setActivePage('home')
-    if (activePage === 'productionPlanning' && !canAccessProductionPlanning) setActivePage('home')
-  }, [activePage, userRole, allowedModules, session])
+    Promise.resolve().then(() => {
+      if (!mounted) return
+      if (activePage === 'records' && !canAccessRecords) setActivePage('home')
+      if (activePage === 'privileges' && !canAccessPrivileges) setActivePage('home')
+      if (activePage === 'inventory' && !canAccessInventory) setActivePage('home')
+      if (activePage === 'receiptManager' && !canAccessReceiptManager) setActivePage('home')
+      if (activePage === 'wageCalculator' && !canAccessWageCalculator) setActivePage('home')
+      if (activePage === 'myWage' && !canAccessMyWage) setActivePage('home')
+      if (activePage === 'productionPlanning' && !canAccessProductionPlanning) setActivePage('home')
+    })
+    return () => { mounted = false }
+  }, [activePage, canAccessRecords, canAccessPrivileges, canAccessInventory, canAccessReceiptManager, canAccessWageCalculator, canAccessMyWage, canAccessProductionPlanning, session])
 
-  useEffect(() => { setMobileDrawerOpen(false) }, [activePage])
+  useEffect(() => {
+    let mounted = true
+    Promise.resolve().then(() => { if (mounted) setMobileDrawerOpen(false) })
+    return () => { mounted = false }
+  }, [activePage])
 
   const handleThemeChange = async (newMode) => {
     setThemeMode(newMode)
