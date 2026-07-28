@@ -248,7 +248,7 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
       if (mat.calculation_mode === 'fraction') {
         const perUnit = parseFloat(mat.fraction_grams) || 1
         if (a.qty < 1000) {
-          return { material_id: mat.id, material_name: mat.name, qty: a.qty, unit: mat.fraction_unit, cost: calcIngredientCost(mat, a.qty), rawMaterial: mat, recipeQty: a.recipeQty }
+          return { material_id: mat.id, material_name: mat.name, qty: a.qty, unit: mat.fraction_unit, cost: calcIngredientCost(mat, a.qty), rawMaterial: mat, recipeQty: a.recipeQty, rawQty: a.qty, rawUnit: mat.fraction_unit }
         }
         const unitsNeeded = Math.ceil(a.qty / perUnit)
         return { material_id: mat.id, material_name: mat.name, qty: unitsNeeded, unit: mat.unit, cost: calcIngredientCost(mat, unitsNeeded * perUnit), rawMaterial: mat, recipeQty: a.recipeQty, rawQty: a.qty, rawUnit: mat.fraction_unit }
