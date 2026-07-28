@@ -131,8 +131,7 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
     if (!item.rawMaterial) return parseFloat(item.cost || 0)
     if (item.rawMaterial.calculation_mode === 'fraction') {
       const perUnit = parseFloat(item.rawMaterial.fraction_grams) || 1
-      const rawQty = (item.unit === item.rawMaterial.fraction_unit) ? currentQty : currentQty * perUnit
-      return calcIngredientCost(item.rawMaterial, rawQty)
+      return calcIngredientCost(item.rawMaterial, currentQty * perUnit)
     }
     return calcIngredientCost(item.rawMaterial, currentQty)
   }
@@ -247,9 +246,6 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
       const mat = a.mat
       if (mat.calculation_mode === 'fraction') {
         const perUnit = parseFloat(mat.fraction_grams) || 1
-        if (a.qty < 1000) {
-          return { material_id: mat.id, material_name: mat.name, qty: a.qty, unit: mat.fraction_unit, cost: calcIngredientCost(mat, a.qty), rawMaterial: mat, recipeQty: a.recipeQty, rawQty: a.qty, rawUnit: mat.fraction_unit }
-        }
         const unitsNeeded = Math.ceil(a.qty / perUnit)
         return { material_id: mat.id, material_name: mat.name, qty: unitsNeeded, unit: mat.unit, cost: calcIngredientCost(mat, unitsNeeded * perUnit), rawMaterial: mat, recipeQty: a.recipeQty, rawQty: a.qty, rawUnit: mat.fraction_unit }
       }
@@ -269,14 +265,8 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
       const unitPrice = mat && mat.price != null ? parseFloat(mat.price) : null
       let cost
       if (mat && unitPrice != null) {
-        if (i.unit === mat.fraction_unit) {
-          // qty is in raw unit (g/ml), cost = (qty / fraction_grams) * unitPrice
-          const perUnit = parseFloat(mat.fraction_grams) || 1
-          cost = (qty / perUnit) * unitPrice
-        } else {
-          // qty * unitPrice (e.g., packets × price per packet, kg × price per kg)
-          cost = qty * unitPrice
-        }
+        // qty * unitPrice (e.g., packets × price per packet, kg × price per kg)
+        cost = qty * unitPrice
       } else {
         cost = getItemCost(i)
       }
@@ -311,12 +301,6 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
   const calcRecordItemCost = (item, qty) => {
     const lockedPrice = item.unit_price != null ? parseFloat(item.unit_price) : null
     if (lockedPrice != null) {
-      const rawMat = item.raw_material
-      if (rawMat && rawMat.calculation_mode === 'fraction' && item.unit === rawMat.fraction_unit) {
-        // qty is in raw unit (g/ml), unit_price is per purchase unit (packet)
-        const perUnit = parseFloat(rawMat.fraction_grams) || 1
-        return (qty / perUnit) * lockedPrice
-      }
       // Use locked unit_price - multiply by qty (unit_price is per purchase unit)
       return qty * lockedPrice
     }
@@ -386,12 +370,7 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
       // For saved records with locked unit_price, use that. Otherwise prorate from saved cost.
       let itemCost
       if (normalizedItem.unit_price != null) {
-        if (normalizedItem.rawMaterial && normalizedItem.rawMaterial.calculation_mode === 'fraction' && normalizedItem.unit === normalizedItem.rawMaterial.fraction_unit) {
-          const perUnit = parseFloat(normalizedItem.rawMaterial.fraction_grams) || 1
-          itemCost = (qty / perUnit) * parseFloat(normalizedItem.unit_price)
-        } else {
-          itemCost = qty * parseFloat(normalizedItem.unit_price)
-        }
+        itemCost = qty * parseFloat(normalizedItem.unit_price)
       } else {
         // Prorate from original estimated_cost (old records without unit_price)
         itemCost = normalizedItem.cost * (qty / (item.total_quantity_needed || 1))
