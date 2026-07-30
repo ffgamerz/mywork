@@ -26,7 +26,7 @@ export default function Inventory({ session, userRole, allowedModules = {} }) {
   const [prodDate, setProdDate] = useState(new Date().toISOString().split('T')[0])
   const [prodQty, setProdQty] = useState('')
   const [prodName, setProdName] = useState('')
-  const [prodBatch, setProdBatch] = useState('BATCH-001')
+  const [prodBatch, setProdBatch] = useState('010001')
   const [visibleCount, setVisibleCount] = useState(6)
   const prodPageSize = 6
 
@@ -93,11 +93,11 @@ export default function Inventory({ session, userRole, allowedModules = {} }) {
     if (!isStockModalOpen) return
     Promise.resolve().then(() => {
       if (!mounted) return
-      if (productions.length === 0) setProdBatch('BATCH-001')
+      if (productions.length === 0) setProdBatch('010001')
       else {
-        const latestProd = productions[0]; const match = (latestProd?.batch_no || 'BATCH-000').match(/\d+$/)
-        if (match) setProdBatch(`BATCH-${String(parseInt(match[0], 10) + 1).padStart(match[0].length, '0')}`)
-        else setProdBatch(`BATCH-${productions.length + 1}`)
+        const latestProd = productions[0]; const match = (latestProd?.batch_no || '000000').match(/\d+$/)
+        if (match) setProdBatch(String(parseInt(match[0], 10) + 1).padStart(match[0].length, '0'))
+        else setProdBatch(String(productions.length + 1).padStart(6, '0'))
       }
     })
     return () => { mounted = false }
