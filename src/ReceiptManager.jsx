@@ -98,13 +98,13 @@ export default function ReceiptManager({ session, userRole, allowedModules = {} 
     const selectedRecords = records.filter(r => selectedIds.includes(r.id))
     if (selectedRecords.length === 0) { setGeneratedText('Please select a receipt first to generate text.'); return }
     const sorted = [...selectedRecords].sort((a, b) => new Date(a.receipt_date) - new Date(b.receipt_date))
-    let text = `Purchase Items for Pes Production\n`
+    let text = `Beli Barang Untuk Pes Production\n`
     sorted.forEach((rec, index) => {
       const [year, month, day] = rec.receipt_date.split('-')
       const formattedDate = `${parseInt(day)}/${parseInt(month)}/${year}`
       text += `Receipt ${index + 1}: RM${rec.amount.toFixed(2)} - ${formattedDate}\n`
     })
-    text += `\nWage: RM${parseFloat(wageAmount || 0).toFixed(2)}`
+    text += `\nUpah: RM${parseFloat(wageAmount || 0).toFixed(2)}`
     setGeneratedText(text)
   }
 
