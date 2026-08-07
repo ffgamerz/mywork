@@ -130,6 +130,7 @@ export default function ReceiptManager({ session, userRole, allowedModules = {} 
       .from('receipts_payment')
       .insert([{
         total_amount: totalAmount,
+        wage_amount: parseFloat(wageAmount) || 0,
         paid_date: new Date().toISOString().split('T')[0]
       }]).select('id').single()
     if (payError) { showToast('Failed to create payment: ' + payError.message, 'error') }
@@ -151,6 +152,7 @@ export default function ReceiptManager({ session, userRole, allowedModules = {} 
       .from('receipts_payment')
       .insert([{
         total_amount: parseFloat(rec.amount) || 0,
+        wage_amount: parseFloat(wageAmount) || 0,
         paid_date: new Date().toISOString().split('T')[0]
       }]).select('id').single()
     if (payError) { showToast('Failed to create payment: ' + payError.message, 'error') }
@@ -336,6 +338,12 @@ export default function ReceiptManager({ session, userRole, allowedModules = {} 
                 <div className="mb-3">
                   <div className="d-flex justify-content-end mb-2">
                     <span className="fw-bold text-white">Total: RM {parseFloat(selectedPayment.total_amount || 0).toFixed(2)}</span>
+                  </div>
+                  <div className="d-flex justify-content-end mb-2">
+                    <span className="text-muted text-13">Wage: RM {parseFloat(selectedPayment.wage_amount || 0).toFixed(2)}</span>
+                  </div>
+                  <div className="d-flex justify-content-end mb-3">
+                    <span className="fw-bold text-white">Grand Total: RM {(parseFloat(selectedPayment.total_amount || 0) + parseFloat(selectedPayment.wage_amount || 0)).toFixed(2)}</span>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="table table-sm table-hover mb-0">
