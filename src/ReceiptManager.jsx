@@ -125,7 +125,7 @@ export default function ReceiptManager({ session, userRole, allowedModules = {} 
     if (selectedIds.length === 0) return
     if (!window.confirm(`Mark ${selectedIds.length} receipt(s) as paid?`)) return
     setLoadingMarkAsPaid(true)
-    const totalAmount = totalSelectedAmount
+    const totalAmount = totalSelectedAmount + (parseFloat(wageAmount) || 0)
     const { data: paymentData, error: payError } = await supabase
       .from('receipts_payment')
       .insert([{
@@ -151,7 +151,7 @@ export default function ReceiptManager({ session, userRole, allowedModules = {} 
     const { data: paymentData, error: payError } = await supabase
       .from('receipts_payment')
       .insert([{
-        total_amount: parseFloat(rec.amount) || 0,
+        total_amount: (parseFloat(rec.amount) || 0) + (parseFloat(wageAmount) || 0),
         wage_amount: parseFloat(wageAmount) || 0,
         paid_date: new Date().toISOString().split('T')[0]
       }]).select('id').single()
@@ -229,7 +229,7 @@ export default function ReceiptManager({ session, userRole, allowedModules = {} 
               <h6 className="fw-bold text-white mb-0"><span className="material-symbols-outlined me-1" style={{ fontSize: '16px', verticalAlign: 'middle' }}>description</span> Unpaid Receipt Records</h6>
               {selectedIds.length > 0 && (
                 <div className="d-flex align-items-center gap-2 flex-wrap">
-                  <span className="fw-bold text-primary">Selected Total: RM {totalSelectedAmount.toFixed(2)}</span>
+                  <span className="fw-bold text-primary">Selected Total: RM {(totalSelectedAmount + parseFloat(wageAmount || 0)).toFixed(2)}</span>
                   <button onClick={handleMarkAsPaid} disabled={loadingMarkAsPaid} className="btn btn-sm btn-outline-warning fw-bold">
                     {loadingMarkAsPaid ? <span className="spinner-border spinner-border-sm"></span> : <><span className="material-symbols-outlined me-1" style={{ fontSize: '14px' }}>paid</span> Mark as Paid</>}
                   </button>
@@ -337,13 +337,10 @@ export default function ReceiptManager({ session, userRole, allowedModules = {} 
                 </div>
                 <div className="mb-3">
                   <div className="d-flex justify-content-end mb-2">
-                    <span className="fw-bold text-white">Total: RM {parseFloat(selectedPayment.total_amount || 0).toFixed(2)}</span>
+                    <span className="fw-bold text-white">Total (termasuk upah): RM {parseFloat(selectedPayment.total_amount || 0).toFixed(2)}</span>
                   </div>
                   <div className="d-flex justify-content-end mb-2">
                     <span className="text-muted text-13">Wage: RM {parseFloat(selectedPayment.wage_amount || 0).toFixed(2)}</span>
-                  </div>
-                  <div className="d-flex justify-content-end mb-3">
-                    <span className="fw-bold text-white">Grand Total: RM {(parseFloat(selectedPayment.total_amount || 0) + parseFloat(selectedPayment.wage_amount || 0)).toFixed(2)}</span>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="table table-sm table-hover mb-0">
