@@ -67,7 +67,7 @@ export default function AdsRecordManager({ session }) {
 
   // --- Only show unpaid records (payment_id IS NULL) ---
   const unpaidRecords = useMemo(
-    () => records.filter(r => !r.payment_id),
+    () => records.filter(r => !r.payment_id).sort((a, b) => new Date(a.date) - new Date(b.date)),
     [records]
   )
 
