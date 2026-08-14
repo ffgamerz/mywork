@@ -401,25 +401,23 @@ export default function ReceiptManager({ session, userRole, allowedModules = {} 
                 </div>
                 {/* Icon-only receipt link buttons — bottom of modal */}
                 <div className="d-flex justify-content-start align-items-center gap-2 mt-3 pt-2 border-top border-default">
-                  {selectedPayment.bank_receipt_link ? (
-                    editingLinks ? (
-                      <input type="url" className="form-control form-control-sm w-100" placeholder="bank receipt link" value={bankReceiptLink} onChange={(e) => setBankReceiptLink(e.target.value)} />
-                    ) : (
-                      <button type="button" className="btn btn-sm btn-outline-secondary" title="Bank Receipt" onClick={() => window.open(selectedPayment.bank_receipt_link, '_blank', 'noopener,noreferrer')}>
-                        <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>account_balance</span>
-                      </button>
-                    )
+                  {/* Bank Receipt */}
+                  {editingLinks ? (
+                    <input type="url" className="form-control form-control-sm w-100" placeholder="bank receipt link" value={bankReceiptLink} onChange={(e) => setBankReceiptLink(e.target.value)} />
+                  ) : selectedPayment.bank_receipt_link ? (
+                    <button type="button" className="btn btn-sm btn-outline-secondary" title="Bank Receipt" onClick={() => window.open(selectedPayment.bank_receipt_link, '_blank', 'noopener,noreferrer')}>
+                      <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>account_balance</span>
+                    </button>
                   ) : (
                     <span className="text-muted text-11 fst-italic">No bank receipt</span>
                   )}
-                  {selectedPayment.purchase_receipt_link ? (
-                    editingLinks ? (
-                      <input type="url" className="form-control form-control-sm w-100" placeholder="purchase receipt link" value={purchaseReceiptLink} onChange={(e) => setPurchaseReceiptLink(e.target.value)} />
-                    ) : (
-                      <button type="button" className="btn btn-sm btn-outline-secondary" title="Purchase Receipt" onClick={() => window.open(selectedPayment.purchase_receipt_link, '_blank', 'noopener,noreferrer')}>
-                        <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>shopping_basket</span>
-                      </button>
-                    )
+                  {/* Purchase Receipt */}
+                  {editingLinks ? (
+                    <input type="url" className="form-control form-control-sm w-100" placeholder="purchase receipt link" value={purchaseReceiptLink} onChange={(e) => setPurchaseReceiptLink(e.target.value)} />
+                  ) : selectedPayment.purchase_receipt_link ? (
+                    <button type="button" className="btn btn-sm btn-outline-secondary" title="Purchase Receipt" onClick={() => window.open(selectedPayment.purchase_receipt_link, '_blank', 'noopener,noreferrer')}>
+                      <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>shopping_basket</span>
+                    </button>
                   ) : (
                     <span className="text-muted text-11 fst-italic">No purchase receipt</span>
                   )}
