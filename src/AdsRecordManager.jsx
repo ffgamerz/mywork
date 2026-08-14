@@ -26,6 +26,10 @@ export default function AdsRecordManager({ session }) {
   const [editDate, setEditDate] = useState('')
   const [activeTab, setActiveTab] = useState('records')
   const [selectedPayment, setSelectedPayment] = useState(null)
+  const [editingLinks, setEditingLinks] = useState(false)
+  const [transferOwnAccLink, setTransferOwnAccLink] = useState('')
+  const [transferCcLink, setTransferCcLink] = useState('')
+  const [loadingLinks, setLoadingLinks] = useState(false)
 
   const showToast = (message, severity = 'success') => { setToast({ open: true, message, severity }); setTimeout(() => setToast({ open: false, message: '', severity: 'success' }), 3000) }
 
@@ -153,8 +157,43 @@ export default function AdsRecordManager({ session }) {
   const handleCopyTotalNumberOnly = () => { navigator.clipboard.writeText(totalSelectedAmount.toFixed(2)); showToast(`Amount ${totalSelectedAmount.toFixed(2)} copied successfully!`) }
 
   // --- Toggle payment detail popup ---
-  const openPaymentDetail = (pay) => setSelectedPayment(pay)
+  const openPaymentDetail = (pay) => {
+    setSelectedPayment(pay)
+    setTransferOwnAccLink(pay.transfer_own_acc_link || '')
+    setTransferCcLink(pay.transfer_cc_link || '')
+    setEditingLinks(false)
+  }
   const closePaymentDetail = () => setSelectedPayment(null)
+
+  const startEditingLinks = () => {
+    setTransferOwnAccLink(selectedPayment?.transfer_own_acc_link || '')
+    setTransferCcLink(selectedPayment?.transfer_cc_link || '')
+    setEditingLinks(true)
+  }
+
+  const saveLinks = async () => {
+    if (!selectedPayment) return
+    setLoadingLinks(true)
+    const { error } = await supabase
+      .from('ads_payment')
+      .update({
+        transfer_own_acc_link: transferOwnAccLink || null,
+        transfer_cc_link: transferCcLink || null,
+      })
+      .eq('id', selectedPayment.id)
+    if (error) {
+      showToast('Failed to save links: ' + error.message, 'error')
+    } else {
+      setSelectedPayment(prev => ({
+        ...prev,
+        transfer_own_acc_link: transferOwnAccLink || null,
+        transfer_cc_link: transferCcLink || null,
+      }))
+      showToast('Transfer links saved!')
+    }
+    setEditingLinks(false)
+    setLoadingLinks(false)
+  }
 
   // Get record details for a payment — records WHERE payment_id = pay.id
   const getRecordsForPayment = (payment) => {
@@ -278,7 +317,44 @@ export default function AdsRecordManager({ session }) {
                     </table>
                   </div>
                 </div>
-                <div className="d-flex justify-content-end">
+                {/* Transfer receipt links — icon-only, bottom of modal */}
+                <div className="d-flex justify-content-start align-items-center gap-2 mt-3 pt-2 border-top border-default">
+                  {editingLinks ? (
+                    <input type="url" className="form-control form-control-sm w-100" placeholder="own account transfer link" value={transferOwnAccLink} onChange={(e) => setTransferOwnAccLink(e.target.value)} />
+                  ) : selectedPayment.transfer_own_acc_link ? (
+                    <button type="button" className="btn btn-sm btn-outline-secondary" title="Own Acc Transfer" onClick={() => window.open(selectedPayment.transfer_own_acc_link, '_blank', 'noopener,noreferrer')}>
+                      <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>account_balance</span>
+                    </button>
+                  ) : (
+                    <span className="text-muted text-11 fst-italic">No own acc transfer</span>
+                  )}
+                  {editingLinks ? (
+                    <input type="url" className="form-control form-control-sm w-100" placeholder="credit card transfer link" value={transferCcLink} onChange={(e) => setTransferCcLink(e.target.value)} />
+                  ) : selectedPayment.transfer_cc_link ? (
+                    <button type="button" className="btn btn-sm btn-outline-secondary" title="CC Transfer" onClick={() => window.open(selectedPayment.transfer_cc_link, '_blank', 'noopener,noreferrer')}>
+                      <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>credit_card</span>
+                    </button>
+                  ) : (
+                    <span className="text-muted text-11 fst-italic">No CC transfer</span>
+                  )}
+                </div>
+                <div className="d-flex justify-content-between align-items-center mt-3">
+                  <div>
+                    {!editingLinks ? (
+                      <button type="button" className="btn btn-sm btn-outline-primary fw-bold" onClick={startEditingLinks}>
+                        <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>edit</span> Edit Links
+                      </button>
+                    ) : (
+                      <>
+                        <button type="button" className="btn btn-sm btn-primary fw-bold me-2" onClick={saveLinks} disabled={loadingLinks}>
+                          {loadingLinks ? <span className="spinner-border spinner-border-sm"></span> : <><span className="material-symbols-outlined" style={{ fontSize: '14px' }}>save</span> Save</>}
+                        </button>
+                        <button type="button" className="btn btn-sm btn-link fw-bold" onClick={() => { setEditingLinks(false); setTransferOwnAccLink(selectedPayment?.transfer_own_acc_link || ''); setTransferCcLink(selectedPayment?.transfer_cc_link || '') }}>
+                          Cancel
+                        </button>
+                      </>
+                    )}
+                  </div>
                   <button type="button" className="btn btn-sm btn-link" onClick={closePaymentDetail}>Tutup</button>
                 </div>
               </div>
