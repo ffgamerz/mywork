@@ -16,8 +16,12 @@ export default function ReceiptManager({ session, userRole, allowedModules = {} 
   const [loading, setLoading] = useState(false)
   const [loadingPayments, setLoadingPayments] = useState(false)
   const [loadingMarkAsPaid, setLoadingMarkAsPaid] = useState(false)
+  const [loadingLinks, setLoadingLinks] = useState(false)
   const [activeTab, setActiveTab] = useState('records')
   const [selectedPayment, setSelectedPayment] = useState(null)
+  const [editingLinks, setEditingLinks] = useState(false)
+  const [bankReceiptLink, setBankReceiptLink] = useState('')
+  const [purchaseReceiptLink, setPurchaseReceiptLink] = useState('')
 
   const cleanedRole = String(userRole || '').trim().toLowerCase()
   const isAuthorized = cleanedRole === 'super_admin' || cleanedRole === 'admin' || allowedModules['receiptManager'] === true
@@ -199,8 +203,43 @@ export default function ReceiptManager({ session, userRole, allowedModules = {} 
     return records.filter(r => r.payment_id === payment.id)
   }
 
-  const openPaymentDetail = (pay) => setSelectedPayment(pay)
+  const openPaymentDetail = (pay) => {
+    setSelectedPayment(pay)
+    setBankReceiptLink(pay.bank_receipt_link || '')
+    setPurchaseReceiptLink(pay.purchase_receipt_link || '')
+    setEditingLinks(false)
+  }
   const closePaymentDetail = () => setSelectedPayment(null)
+
+  const startEditingLinks = () => {
+    setBankReceiptLink(selectedPayment?.bank_receipt_link || '')
+    setPurchaseReceiptLink(selectedPayment?.purchase_receipt_link || '')
+    setEditingLinks(true)
+  }
+
+  const saveLinks = async () => {
+    if (!selectedPayment) return
+    setLoadingLinks(true)
+    const { error } = await supabase
+      .from('receipts_payment')
+      .update({
+        bank_receipt_link: bankReceiptLink || null,
+        purchase_receipt_link: purchaseReceiptLink || null,
+      })
+      .eq('id', selectedPayment.id)
+    if (error) {
+      showToast('Failed to save links: ' + error.message, 'error')
+    } else {
+      setSelectedPayment(prev => ({
+        ...prev,
+        bank_receipt_link: bankReceiptLink || null,
+        purchase_receipt_link: purchaseReceiptLink || null,
+      }))
+      showToast('Receipt links saved!')
+    }
+    setEditingLinks(false)
+    setLoadingLinks(false)
+  }
 
   const renderReceiptsTab = () => (
     <>
@@ -340,8 +379,10 @@ export default function ReceiptManager({ session, userRole, allowedModules = {} 
                     <span className="fw-bold text-white">Total (termasuk upah): RM {parseFloat(selectedPayment.total_amount || 0).toFixed(2)}</span>
                   </div>
                   <div className="d-flex justify-content-end mb-2">
-                    <span className="text-muted text-13">Wage: RM {parseFloat(selectedPayment.wage_amount || 0).toFixed(2)}</span>
-                  </div>
+                  <span className="text-muted text-13">Wage: RM {parseFloat(selectedPayment.wage_amount || 0).toFixed(2)}</span>
+                </div>
+
+                {/* Icon-only receipt link buttons at the bottom */}
                   <div className="overflow-x-auto">
                     <table className="table table-sm table-hover mb-0">
                       <thead><tr><th>Receipt Date</th><th>Amount (RM)</th></tr></thead>
@@ -358,7 +399,48 @@ export default function ReceiptManager({ session, userRole, allowedModules = {} 
                     </table>
                   </div>
                 </div>
-                <div className="d-flex justify-content-end">
+                {/* Icon-only receipt link buttons — bottom of modal */}
+                <div className="d-flex justify-content-start align-items-center gap-2 mt-3 pt-2 border-top border-default">
+                  {selectedPayment.bank_receipt_link ? (
+                    editingLinks ? (
+                      <input type="url" className="form-control form-control-sm w-100" placeholder="bank receipt link" value={bankReceiptLink} onChange={(e) => setBankReceiptLink(e.target.value)} />
+                    ) : (
+                      <button type="button" className="btn btn-sm btn-outline-secondary" title="Bank Receipt" onClick={() => window.open(selectedPayment.bank_receipt_link, '_blank', 'noopener,noreferrer')}>
+                        <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>account_balance</span>
+                      </button>
+                    )
+                  ) : (
+                    <span className="text-muted text-11 fst-italic">No bank receipt</span>
+                  )}
+                  {selectedPayment.purchase_receipt_link ? (
+                    editingLinks ? (
+                      <input type="url" className="form-control form-control-sm w-100" placeholder="purchase receipt link" value={purchaseReceiptLink} onChange={(e) => setPurchaseReceiptLink(e.target.value)} />
+                    ) : (
+                      <button type="button" className="btn btn-sm btn-outline-secondary" title="Purchase Receipt" onClick={() => window.open(selectedPayment.purchase_receipt_link, '_blank', 'noopener,noreferrer')}>
+                        <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>shopping_basket</span>
+                      </button>
+                    )
+                  ) : (
+                    <span className="text-muted text-11 fst-italic">No purchase receipt</span>
+                  )}
+                </div>
+                <div className="d-flex justify-content-between align-items-center mt-3">
+                  <div>
+                    {!editingLinks ? (
+                      <button type="button" className="btn btn-sm btn-outline-primary fw-bold" onClick={startEditingLinks}>
+                        <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>edit</span> Edit Links
+                      </button>
+                    ) : (
+                      <>
+                        <button type="button" className="btn btn-sm btn-primary fw-bold me-2" onClick={saveLinks} disabled={loadingLinks}>
+                          {loadingLinks ? <span className="spinner-border spinner-border-sm"></span> : <><span className="material-symbols-outlined" style={{ fontSize: '14px' }}>save</span> Save</>}
+                        </button>
+                        <button type="button" className="btn btn-sm btn-link fw-bold" onClick={() => { setEditingLinks(false); setBankReceiptLink(selectedPayment?.bank_receipt_link || ''); setPurchaseReceiptLink(selectedPayment?.purchase_receipt_link || '') }}>
+                          Cancel
+                        </button>
+                      </>
+                    )}
+                  </div>
                   <button type="button" className="btn btn-sm btn-link" onClick={closePaymentDetail}>Tutup</button>
                 </div>
               </div>
