@@ -26,6 +26,9 @@ export default function WageCalculator({ userRole, allowedModules = {} }) {
   const [isPaidModalOpen, setIsPaidModalOpen] = useState(false)
   const [customPaidDate, setCustomPaidDate] = useState(new Date().toISOString().split('T')[0])
   const [selectedPayment, setSelectedPayment] = useState(null)
+  const [editingLinks, setEditingLinks] = useState(false)
+  const [wageReceiptLink, setWageReceiptLink] = useState('')
+  const [loadingLinks, setLoadingLinks] = useState(false)
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
 
   const cleanedRole = String(userRole || '').trim().toLowerCase()
@@ -161,7 +164,40 @@ export default function WageCalculator({ userRole, allowedModules = {} }) {
 
   const copyToClipboard = () => { if (!generatedText) return; navigator.clipboard.writeText(generatedText); showToast('Text copied!') }
 
-  const handleViewPaymentDetail = (payment) => { setSelectedPayment(payment); setIsDetailModalOpen(true) }
+  const handleViewPaymentDetail = async (payment) => {
+    setSelectedPayment(payment)
+    setWageReceiptLink(payment.wage_receipt_link || '')
+    setEditingLinks(false)
+    // fetch full detail from wage_payments so wage_receipt_link is fresh
+    const { data, error } = await supabase.from('wage_payments').select('*').eq('id', payment.id).single()
+    if (!error && data) {
+      setSelectedPayment(prev => ({ ...prev, ...data }))
+      setWageReceiptLink(data.wage_receipt_link || '')
+    }
+    setIsDetailModalOpen(true)
+  }
+
+  const startEditingLinks = () => {
+    setWageReceiptLink(selectedPayment?.wage_receipt_link || '')
+    setEditingLinks(true)
+  }
+
+  const saveLinks = async () => {
+    if (!selectedPayment) return
+    setLoadingLinks(true)
+    const { error } = await supabase
+      .from('wage_payments')
+      .update({ wage_receipt_link: wageReceiptLink || null })
+      .eq('id', selectedPayment.id)
+    if (error) {
+      showToast('Failed to save link: ' + error.message, 'error')
+    } else {
+      setSelectedPayment(prev => ({ ...prev, wage_receipt_link: wageReceiptLink || null }))
+      showToast('Wage receipt link saved!')
+    }
+    setEditingLinks(false)
+    setLoadingLinks(false)
+  }
 
   const formatDate = (dateStr) => { if (!dateStr) return '-'; const [y, m, d] = dateStr.split('-'); return `${parseInt(d)}/${parseInt(m)}/${y}` }
 
@@ -348,7 +384,37 @@ export default function WageCalculator({ userRole, allowedModules = {} }) {
                     </tbody>
                   </table>
                 </div>
-                <div className="d-flex gap-2 justify-content-end mt-3 pt-3">
+
+                {/* Wage receipt link — icon-only button at bottom */}
+                <div className="d-flex justify-content-start align-items-center gap-2 mt-3 pt-2 border-top border-default">
+                  {editingLinks ? (
+                    <input type="url" className="form-control form-control-sm w-100" placeholder="wage receipt link" value={wageReceiptLink} onChange={(e) => setWageReceiptLink(e.target.value)} />
+                  ) : selectedPayment.wage_receipt_link ? (
+                    <button type="button" className="btn btn-sm btn-outline-secondary" title="Wage Receipt" onClick={() => window.open(selectedPayment.wage_receipt_link, '_blank', 'noopener,noreferrer')}>
+                      <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>receipt_long</span>
+                    </button>
+                  ) : (
+                    <span className="text-muted text-11 fst-italic">No wage receipt</span>
+                  )}
+                </div>
+
+                <div className="d-flex justify-content-between align-items-center mt-3 pt-2 border-top border-default">
+                  <div>
+                    {!editingLinks ? (
+                      <button type="button" className="btn btn-sm btn-outline-primary fw-bold" onClick={startEditingLinks}>
+                        <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>edit</span> Edit Link
+                      </button>
+                    ) : (
+                      <>
+                        <button type="button" className="btn btn-sm btn-primary fw-bold me-2" onClick={saveLinks} disabled={loadingLinks}>
+                          {loadingLinks ? <span className="spinner-border spinner-border-sm"></span> : <><span className="material-symbols-outlined" style={{ fontSize: '14px' }}>save</span> Save</>}
+                        </button>
+                        <button type="button" className="btn btn-sm btn-link fw-bold" onClick={() => { setEditingLinks(false); setWageReceiptLink(selectedPayment?.wage_receipt_link || '') }}>
+                          Cancel
+                        </button>
+                      </>
+                    )}
+                  </div>
                   <button className="btn btn-sm btn-link" onClick={() => setIsDetailModalOpen(false)}>Close</button>
                 </div>
               </div>
