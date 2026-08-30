@@ -162,3 +162,10 @@ CREATE POLICY "Users can CRUD own purchase_plan_batches" ON purchase_plan_batche
 INSERT INTO system_modules (id, name, description)
 VALUES ('productionPlanning', 'Production Planning', 'Manage materials, recipes, and purchase planning.')
 ON CONFLICT (id) DO NOTHING;
+
+-- ============================================================
+-- Purchase exact toggle for raw materials
+-- TRUE  = beli kuantiti tepat (no round-up)
+-- FALSE = loose (round up ke unit penuh)
+-- ============================================================
+ALTER TABLE raw_materials ADD COLUMN IF NOT EXISTS purchase_exact BOOLEAN NOT NULL DEFAULT FALSE;

@@ -18,7 +18,7 @@ function stripTrailing(n) {
 
 function formatPurchaseQty(item) {
   const val = parseFloat(item.qty) || 0
-  if (item.rawQty != null && item.rawUnit) return { qty: stripTrailing(val), unit: item.unit, isRoundedUp: true, note: `Rounded up from ${stripTrailing(item.rawQty)} ${item.rawUnit}` }
+  if (item.rawQty != null && item.rawUnit) return { qty: stripTrailing(val), unit: item.unit, isRoundedUp: true, note: item.unit === 'other' ? null : `Rounded up from ${stripTrailing(item.rawQty)} ${item.rawUnit}` }
   if (item.unit === 'g' && val >= 1000) return { qty: stripTrailing(val / 1000), unit: 'kg', isRoundedUp: false }
   if (item.unit === 'ml' && val >= 1000) return { qty: stripTrailing(val / 1000), unit: 'L', isRoundedUp: false }
   return { qty: stripTrailing(val), unit: item.unit, isRoundedUp: false }
@@ -88,6 +88,7 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
   const [matMode, setMatMode] = useState('unit')
   const [matFractionG, setMatFractionG] = useState('')
   const [matFractionUnit, setMatFractionUnit] = useState('g')
+  const [matExact, setMatExact] = useState(false)
 
   const filteredMaterials = useMemo(() => {
     if (!materialSearch.trim()) return materials
@@ -166,8 +167,8 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
   }, [hasAccess])
 
   const openMatModal = (mat = null) => {
-    if (mat) { setEditingMat(mat); setMatName(mat.name); setMatUnit(mat.unit); setMatPrice(String(mat.price)); setMatMode(mat.calculation_mode); setMatFractionG(mat.fraction_grams ? String(mat.fraction_grams) : ''); setMatFractionUnit(mat.fraction_unit || 'g') }
-    else { setEditingMat(null); setMatName(''); setMatUnit('packet'); setMatPrice(''); setMatMode('unit'); setMatFractionG(''); setMatFractionUnit('g') }
+    if (mat) { setEditingMat(mat); setMatName(mat.name); setMatUnit(mat.unit); setMatPrice(String(mat.price)); setMatMode(mat.calculation_mode); setMatFractionG(mat.fraction_grams ? String(mat.fraction_grams) : ''); setMatFractionUnit(mat.fraction_unit || 'g'); setMatExact(!!mat.purchase_exact) }
+    else { setEditingMat(null); setMatName(''); setMatUnit('packet'); setMatPrice(''); setMatMode('unit'); setMatFractionG(''); setMatFractionUnit('g'); setMatExact(false) }
     setMatModal(true)
   }
 
@@ -175,7 +176,7 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
     e.preventDefault()
     if (!matName.trim() || !matPrice) return
     setLoading(true)
-    const payload = { user_id: session.user.id, name: matName.trim(), unit: matUnit, price: parseFloat(matPrice) || 0, calculation_mode: matMode, fraction_grams: matMode === 'fraction' ? (parseFloat(matFractionG) || null) : null, fraction_unit: matMode === 'fraction' ? matFractionUnit : null }
+    const payload = { user_id: session.user.id, name: matName.trim(), unit: matUnit, price: parseFloat(matPrice) || 0, calculation_mode: matMode, fraction_grams: matMode === 'fraction' ? (parseFloat(matFractionG) || null) : null, fraction_unit: matMode === 'fraction' ? matFractionUnit : null, purchase_exact: matExact }
     const response = editingMat ? await supabase.from('raw_materials').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', editingMat.id) : await supabase.from('raw_materials').insert([payload])
     if (response.error) showMsg('Error: ' + response.error.message)
     else { showMsg(editingMat ? 'Material updated!' : 'Material added!'); setMatModal(false); fetchMaterials() }
@@ -187,6 +188,14 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
     const { error } = await supabase.from('raw_materials').delete().eq('id', id)
     if (error) showMsg('Error: ' + error.message)
     else { showMsg('Material deleted!'); fetchMaterials() }
+  }
+
+  const handleToggleMatExact = async (mat) => {
+    const newValue = !mat.purchase_exact
+    setMaterials(prev => prev.map(m => m.id === mat.id ? { ...m, purchase_exact: newValue } : m))
+    const { error } = await supabase.from('raw_materials').update({ purchase_exact: newValue, updated_at: new Date().toISOString() }).eq('id', mat.id)
+    if (error) { showMsg('Error: ' + error.message); setMaterials(prev => prev.map(m => m.id === mat.id ? { ...m, purchase_exact: mat.purchase_exact } : m)) }
+    else showMsg(newValue ? `${mat.name}: buy exact enabled` : `${mat.name}: loose purchase (round up)`)
   }
 
   const handleProductSelect = async (prodId) => {
@@ -247,6 +256,12 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
       const mat = a.mat
       if (mat.calculation_mode === 'fraction') {
         const perUnit = parseFloat(mat.fraction_grams) || 1
+        // Sukatan 'other' sentiasa beli tepat tanpa round-up
+        if (mat.purchase_exact || mat.unit === 'other') {
+          // Exact: beli kuantiti tepat tanpa round-up (boleh dalam perpuluhan unit)
+          const exactUnits = a.qty / perUnit
+          return { material_id: mat.id, material_name: mat.name, qty: exactUnits, unit: mat.unit, cost: calcIngredientCost(mat, a.qty), rawMaterial: mat, recipeQty: a.recipeQty, rawQty: null, rawUnit: mat.fraction_unit }
+        }
         const unitsNeeded = Math.ceil(a.qty / perUnit)
         return { material_id: mat.id, material_name: mat.name, qty: unitsNeeded, unit: mat.unit, cost: calcIngredientCost(mat, unitsNeeded * perUnit), rawMaterial: mat, recipeQty: a.recipeQty, rawQty: a.qty, rawUnit: mat.fraction_unit }
       }
@@ -490,6 +505,16 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
                         <div className="d-flex justify-content-between pt-1 mt-1"><span className="text-muted">Price/{m.fraction_unit}:</span><span className="font-mono fw-bold small text-warning">RM {(parseFloat(m.price) / parseFloat(m.fraction_grams || 1)).toFixed(4)}</span></div>
                       </>
                     ) : <div className="d-flex justify-content-between pt-1 mt-1"><span className="text-muted">Mode:</span><span className="chip-custom">Unit</span></div>}
+                    <div className="d-flex justify-content-between align-items-center pt-1 mt-1 border-top">
+                      <span className="text-muted small" title="ON: beli kuantiti tepat (no round-up). OFF: loose, round up ke unit penuh.">Buy Exact</span>
+                      {m.unit === 'other' ? (
+                        <span className="chip-custom small text-muted" title="Sukatan 'other' sentiasa beli tepat">Always Exact</span>
+                      ) : (
+                        <div className="form-check form-switch mb-0">
+                          <input className="form-check-input" type="checkbox" role="switch" checked={!!m.purchase_exact} onChange={() => handleToggleMatExact(m)} />
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -670,7 +695,8 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
                           </div>
                           <div className="flex-shrink-0 d-flex flex-column align-items-end gap-1">
                             <span className="font-mono small fw-bold text-nowrap">RM {getItemCost(item).toFixed(2)}</span>
-                            {display.isRoundedUp && <span className="small text-warning" style={{ fontSize: '10px' }}>{display.note}</span>}
+                            {display.isRoundedUp && display.note && <span className="small text-warning" style={{ fontSize: '10px' }}>{display.note}</span>}
+
                           </div>
                         </div>
                       )
@@ -809,8 +835,9 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
                             </div>
                             {/* Cost */}
                             <div className="flex-shrink-0 d-flex flex-column align-items-end gap-1">
-                              <span className="font-mono small fw-bold text-nowrap">RM {displayCost.toFixed(2)}</span>
                               {display.note && <span className="small text-warning" style={{ fontSize: '10px' }}>{display.note}</span>}
+                              <span className="font-mono small fw-bold text-nowrap">RM {displayCost.toFixed(2)}</span>
+
                             </div>
                           </div>
                         )
