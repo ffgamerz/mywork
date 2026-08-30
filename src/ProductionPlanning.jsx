@@ -1,5 +1,9 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { supabase } from './supabaseClient'
+import { cleanRole } from './utils/role'
+import ToastBar from './components/ToastBar'
+import { useToast } from './utils/useToast'
+import AccessDenied from './components/AccessDenied'
 
 function calcIngredientCost(material, qtyUsed, priceOverride = null) {
   if (!material) return 0
@@ -49,7 +53,7 @@ function SearchableSelect({ items, value, onChange, placeholder, disabled }) {
         <svg className={`transition-all ${open ? 'rotate-180' : ''}`} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
       </div>
       {open && (
-        <div className="position-absolute w-100 mt-1 rounded-3 shadow-lg">
+        <div className="position-absolute w-100 mt-1 rounded-8 shadow-lg">
           <div className="p-2 border-bottom">
             <input ref={inputRef} type="text" className="form-control form-control-sm" placeholder="Type to search..." value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
@@ -68,12 +72,11 @@ function SearchableSelect({ items, value, onChange, placeholder, disabled }) {
 }
 
 export default function ProductionPlanning({ session, userRole, allowedModules = {} }) {
-  const [toastMsg, setToastMsg] = useState('')
-  const showMsg = (msg) => { setToastMsg(msg); setTimeout(() => setToastMsg(''), 3000) }
+  const { toast, showToast, hideToast } = useToast()
   const [activeTab, setActiveTab] = useState('purchase')
   const [loading, setLoading] = useState(false)
 
-  const cleanedRole = String(userRole || '').trim().toLowerCase()
+  const cleanedRole = cleanRole(userRole)
   const isSuperAdmin = cleanedRole === 'super_admin'
   const isAdmin = cleanedRole === 'admin'
   const hasAccess = isSuperAdmin || isAdmin || allowedModules['productionPlanning'] === true
@@ -178,24 +181,24 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
     setLoading(true)
     const payload = { user_id: session.user.id, name: matName.trim(), unit: matUnit, price: parseFloat(matPrice) || 0, calculation_mode: matMode, fraction_grams: matMode === 'fraction' ? (parseFloat(matFractionG) || null) : null, fraction_unit: matMode === 'fraction' ? matFractionUnit : null, purchase_exact: matExact }
     const response = editingMat ? await supabase.from('raw_materials').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', editingMat.id) : await supabase.from('raw_materials').insert([payload])
-    if (response.error) showMsg('Error: ' + response.error.message)
-    else { showMsg(editingMat ? 'Material updated!' : 'Material added!'); setMatModal(false); fetchMaterials() }
+    if (response.error) showToast('Error: ' + response.error.message, 'error')
+    else { showToast(editingMat ? 'Material updated!' : 'Material added!'); setMatModal(false); fetchMaterials() }
     setLoading(false)
   }
 
   const handleDeleteMat = async (id) => {
-    if (!confirm('Delete this material? This will affect recipes using it.')) return
+    if (!window.confirm('Delete this material? This will affect recipes using it.')) return
     const { error } = await supabase.from('raw_materials').delete().eq('id', id)
-    if (error) showMsg('Error: ' + error.message)
-    else { showMsg('Material deleted!'); fetchMaterials() }
+    if (error) showToast('Error: ' + error.message, 'error')
+    else { showToast('Material deleted!'); fetchMaterials() }
   }
 
   const handleToggleMatExact = async (mat) => {
     const newValue = !mat.purchase_exact
     setMaterials(prev => prev.map(m => m.id === mat.id ? { ...m, purchase_exact: newValue } : m))
     const { error } = await supabase.from('raw_materials').update({ purchase_exact: newValue, updated_at: new Date().toISOString() }).eq('id', mat.id)
-    if (error) { showMsg('Error: ' + error.message); setMaterials(prev => prev.map(m => m.id === mat.id ? { ...m, purchase_exact: mat.purchase_exact } : m)) }
-    else showMsg(newValue ? `${mat.name}: buy exact enabled` : `${mat.name}: loose purchase (round up)`)
+    if (error) { showToast('Error: ' + error.message, 'error'); setMaterials(prev => prev.map(m => m.id === mat.id ? { ...m, purchase_exact: mat.purchase_exact } : m)) }
+    else showToast(newValue ? `${mat.name}: buy exact enabled` : `${mat.name}: loose purchase (round up)`)
   }
 
   const handleProductSelect = async (prodId) => {
@@ -214,8 +217,8 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
     e.preventDefault()
     if (!ingMatId || !ingQty || !currentRecipeId) return
     const { error } = await supabase.from('recipe_ingredients').insert([{ recipe_id: currentRecipeId, raw_material_id: ingMatId, quantity_used: parseFloat(ingQty), unit_used: ingUnit }])
-    if (error) showMsg('Error: ' + error.message)
-    else { showMsg('Ingredient added!'); setIngMatId(''); setIngQty(''); setIngUnit(''); fetchRecipeIngredients(currentRecipeId) }
+    if (error) showToast('Error: ' + error.message, 'error')
+    else { showToast('Ingredient added!'); setIngMatId(''); setIngQty(''); setIngUnit(''); fetchRecipeIngredients(currentRecipeId) }
   }
 
   const handleRemoveIngredient = async (id) => {
@@ -234,11 +237,11 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
   }
 
   const handleGenerateSummary = async () => {
-    if (purchaseProducts.length === 0) return showMsg('Select at least one product')
+    if (purchaseProducts.length === 0) return showToast('Select at least one product', 'error')
     setLoading(true)
     const prodIds = purchaseProducts.map(p => p.inventory_id)
     const { data: recipeData } = await supabase.from('product_recipes').select('*, recipe_ingredients(*, raw_material:raw_material_id(*))').in('inventory_id', prodIds)
-    if (!recipeData || recipeData.length === 0) { showMsg('No recipes found for selected products.'); setLoading(false); return }
+    if (!recipeData || recipeData.length === 0) { showToast('No recipes found for selected products.'); setLoading(false); return }
     const agg = {}; const batchDetails = []
     purchaseProducts.forEach(pp => {
       const recipe = recipeData.find(r => r.inventory_id === pp.inventory_id)
@@ -272,7 +275,7 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
   }
 
   const handleSavePurchase = async () => {
-    if (!purchaseSummary) return showMsg('Generate summary first')
+    if (!purchaseSummary) return showToast('Generate summary first')
     setLoading(true)
     const itemsToSave = purchaseSummary.items.map(i => {
       const qty = getDisplayQty(i)
@@ -299,17 +302,17 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
     })
     const totalCost = itemsToSave.reduce((s, i) => s + i.estimated_cost, 0)
     const { data: plan, error: planErr } = await supabase.from('purchase_plans').insert([{ user_id: session.user.id, notes: purchaseNotes || null, total_estimated_cost: totalCost }]).select().single()
-    if (planErr) { showMsg('Error: ' + planErr.message); setLoading(false); return }
+    if (planErr) { showToast('Error: ' + planErr.message, 'error'); setLoading(false); return }
     await supabase.from('purchase_plan_items').insert(itemsToSave.map(i => ({ ...i, purchase_plan_id: plan.id })))
     await supabase.from('purchase_plan_batches').insert(purchaseSummary.batchDetails.map(b => ({ purchase_plan_id: plan.id, inventory_id: b.inventory_id, batch_count: b.batch_count })))
-    showMsg('Purchase plan saved!'); setPurchaseSummary(null); setPurchaseProducts([]); setPurchaseNotes(''); setManualQty({}); await fetchPurchaseRecords(); const { data: freshRecord } = await supabase.from('purchase_plans').select('*, purchase_plan_items(*, raw_material:raw_material_id(name, price, calculation_mode, fraction_unit)), purchase_plan_batches(*, inventory:inventory_id(product_name))').eq('id', plan.id).single(); if (freshRecord) setSelectedPurchase(freshRecord); setActiveTab('records'); setLoading(false)
+    showToast('Purchase plan saved!'); setPurchaseSummary(null); setPurchaseProducts([]); setPurchaseNotes(''); setManualQty({}); await fetchPurchaseRecords(); const { data: freshRecord } = await supabase.from('purchase_plans').select('*, purchase_plan_items(*, raw_material:raw_material_id(name, price, calculation_mode, fraction_unit)), purchase_plan_batches(*, inventory:inventory_id(product_name))').eq('id', plan.id).single(); if (freshRecord) setSelectedPurchase(freshRecord); setActiveTab('records'); setLoading(false)
   }
 
   const handleDeletePurchase = async (purchaseId) => {
-    if (!confirm('Delete this purchase record? This cannot be undone.')) return
+    if (!window.confirm('Delete this purchase record? This cannot be undone.')) return
     setLoading(true)
     const { error } = await supabase.from('purchase_plans').delete().eq('id', purchaseId)
-    if (error) showMsg('Error: ' + error.message); else { showMsg('Purchase record deleted!'); if (selectedPurchase?.id === purchaseId) setSelectedPurchase(null); fetchPurchaseRecords() }
+    if (error) showToast('Error: ' + error.message, 'error'); else { showToast('Purchase record deleted!'); if (selectedPurchase?.id === purchaseId) setSelectedPurchase(null); fetchPurchaseRecords() }
     setLoading(false)
   }
 
@@ -336,14 +339,14 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
         hasChanges = true
         const cost = calcRecordItemCost(item, parseFloat(newQty))
         const { error } = await supabase.from('purchase_plan_items').update({ total_quantity_needed: parseFloat(newQty), estimated_cost: cost }).eq('id', item.id)
-        if (error) showMsg('Error updating item: ' + error.message)
+        if (error) showToast('Error updating item: ' + error.message, 'error')
       }
     }
     if (!hasChanges) {
       setEditingRecordId(null)
       setEditRecordQtys({})
       setIsSavingEdit(false)
-      showMsg('No changes detected.')
+      showToast('No changes detected.')
       return
     }
     // Recalculate total cost
@@ -354,11 +357,11 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
       totalCost += calcRecordItemCost(item, qty)
     }
     const { error: planErr } = await supabase.from('purchase_plans').update({ total_estimated_cost: totalCost }).eq('id', selectedPurchase.id)
-    if (planErr) showMsg('Error updating total: ' + planErr.message)
+    if (planErr) showToast('Error updating total: ' + planErr.message, 'error')
     setEditingRecordId(null)
     setEditRecordQtys({})
     setIsSavingEdit(false)
-    showMsg('Quantities updated successfully!')
+    showToast('Quantities updated successfully!')
     // Refresh records and update selectedPurchase
     await fetchPurchaseRecords()
     // Update selectedPurchase with fresh data
@@ -397,7 +400,7 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
 
   const handleDownloadPDF = (record = null) => {
     const summary = record ? { batchDetails: record.purchase_plan_batches || [], items: record.purchase_plan_items || [], totalCost: parseFloat(record.total_estimated_cost || 0), notes: record.notes || '', planDate: record.plan_date || new Date().toISOString().slice(0, 10) } : purchaseSummary
-    if (!summary || !summary.items || summary.items.length === 0) return showMsg('No purchase summary available to export.')
+    if (!summary || !summary.items || summary.items.length === 0) return showToast('No purchase summary available to export.')
     const rows = record ? buildPdfRows(summary.items) : buildPdfRows(summary.items, manualQty)
     const itemsHtml = rows.map((row) => { const noteHtml = row.note ? `<div class="item-note">${row.note}</div>` : ''; return `<tr><td>${row.material}${noteHtml}</td><td>${row.quantity}</td><td>${row.cost}</td></tr>` }).join('')
     const batchesHtml = summary.batchDetails.map((b) => { const prod = products.find((p) => p.id === b.inventory_id); return `<div class="batch-line">• ${prod?.product_name || b.inventory?.product_name || 'Unknown'} — ${b.batch_count} batch(es)</div>` }).join('')
@@ -415,12 +418,12 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
 <style>body{margin:0;background:#f6f6f6;color:#111;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}.page{width:210mm;min-height:297mm;padding:20mm;margin:10mm auto;background:#fff;box-shadow:0 0 12px rgba(0,0,0,0.08)}h1{margin:0 0 8px;font-size:22px;letter-spacing:-0.5px}.meta{margin:0 0 18px;font-size:13px;color:#444}.section-label{font-weight:700;margin-right:6px}.section-row{margin-bottom:10px}.batch-line{margin-left:14px;margin-bottom:4px;font-size:13px}table.preview-table{width:100%;border-collapse:collapse;margin-top:18px}table.preview-table th,table.preview-table td{border:1px solid #ccc;padding:10px 12px;text-align:left;font-size:13px}table.preview-table th{background:#f3f4f6}.item-note{margin-top:4px;font-size:11px;color:#555}.summary{margin-top:16px;display:flex;justify-content:flex-end;gap:10px;font-size:14px;font-weight:700}.summary-label{color:#555;font-weight:500}@page{size:A4 portrait;margin:20mm}@media print{body{background:#fff}.page{box-shadow:none;margin:0;width:auto;min-height:auto;padding:0}}</style></head>
 <body><div class="page"><h1>${pageTitle}</h1><div class="meta">Date: ${summary.planDate}</div>${notesHtml}<div class="section-row"><span class="section-label">Products / Batches:</span>${batchesHtml || 'None'}</div><table class="preview-table"><thead><tr><th>Material</th><th>Qty Needed</th><th>Estimated Cost</th></tr></thead><tbody>${itemsHtml}</tbody></table><div class="summary"><span class="summary-label">TOTAL:</span><span>RM ${summary.totalCost.toFixed(2)}</span></div></div></body></html>`
     const previewWindow = window.open('', '_blank')
-    if (!previewWindow) return showMsg('Unable to open print preview. Please allow pop-ups for this site.')
+    if (!previewWindow) return showToast('Unable to open print preview. Please allow pop-ups for this site.', 'error')
     previewWindow.document.write(html); previewWindow.document.close(); previewWindow.focus()
   }
 
   const viewPurchaseDetail = (record) => setSelectedPurchase(record)
-  if (!hasAccess) return <div className="alert-unauthorized"><span className="material-symbols-outlined me-1" style={{ fontSize: '14px', verticalAlign: 'middle' }}>lock</span> Access Denied: Unauthorized.</div>
+  if (!hasAccess) return <AccessDenied />
 
   const tabs = [{ id: 'purchase', label: 'Purchase' }, { id: 'records', label: 'Records' }]
   const showSideSection = (section) => setActiveTab(section)
@@ -428,11 +431,11 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
   const showMainTabs = activeTab === 'purchase' || activeTab === 'records'
 
   return (
-    <div className="position-relative">
-      {toastMsg && <div className="toast-container-custom"><div className="alert-toast d-flex align-items-center gap-2 px-3 py-2 rounded-pill shadow-lg"><span>{toastMsg}</span></div></div>}
+    <div className="position-relative max-w-1200 mx-auto">
+      <ToastBar toast={toast} onClose={hideToast} />
       <div className="page-header-custom d-flex flex-wrap justify-content-between align-items-center gap-3">
         <div>
-          <h1 className="page-title-custom"><span className="material-symbols-outlined me-2" style={{ fontSize: '24px', verticalAlign: 'middle' }}>calendar_month</span> Production Planning</h1>
+          <h1 className="page-title-custom"><span className="material-symbols-outlined me-2 icon-xl">calendar_month</span> Production Planning</h1>
           <p className="page-subtitle-custom">Manage materials, recipes, and purchase planning.</p>
         </div>
         {showMainTabs && (
@@ -531,7 +534,7 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
               <div className="modal d-block" tabIndex="-1">
                 <div className="modal-dialog modal-dialog-centered">
                   <div className="modal-content p-3">
-                    <h5 className="fw-bold text-primary mb-3"><span className="material-symbols-outlined me-1" style={{ fontSize: '18px', verticalAlign: 'middle' }}>{editingMat ? 'edit' : 'add'}</span> {editingMat ? 'Edit Material' : 'Add New Material'}</h5>
+                    <h5 className="fw-bold text-primary mb-3"><span className="material-symbols-outlined me-1 icon-lg">{editingMat ? 'edit' : 'add'}</span> {editingMat ? 'Edit Material' : 'Add New Material'}</h5>
                     <form onSubmit={handleSaveMat}>
                       <div className="mb-3"><label className="form-label">Material Name *</label><input type="text" required placeholder="e.g., Cooking Oil" className="form-control" value={matName} onChange={(e) => setMatName(e.target.value)} /></div>
                       <div className="mb-3"><label className="form-label">Unit *</label><select className="form-select fw-bold" value={matUnit} onChange={(e) => setMatUnit(e.target.value)}><option value="packet">packet</option><option value="kg">kg</option><option value="g">g</option><option value="liter">liter</option><option value="ml">ml</option><option value="bottle">bottle</option><option value="sack">sack</option><option value="tray">tray</option><option value="piece">piece</option><option value="box">box</option><option value="can">can</option><option value="other">other</option></select></div>
@@ -541,7 +544,7 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
                           <label className="d-flex align-items-center gap-2 cursor-pointer"><input type="radio" name="matMode" className="form-check-input" checked={matMode === 'fraction'} onChange={() => setMatMode('fraction')} /><span className="fw-bold small">Fraction (by g/ml)</span></label></div>
                       </div>
                       {matMode === 'fraction' && (
-                        <div className="p-3 mb-3 rounded-3 border">
+                        <div className="p-3 mb-3 rounded-8 border">
                           <div className="row g-3">
                             <div className="col-6"><label className="form-label">1 unit = ? grams/ml</label><input type="number" step="any" required min="0" placeholder="e.g., 8000" className="form-control fw-bold" value={matFractionG} onChange={(e) => setMatFractionG(e.target.value)} inputMode="decimal" /></div>
                             <div className="col-6"><label className="form-label">Unit</label><select className="form-select fw-bold" value={matFractionUnit} onChange={(e) => setMatFractionUnit(e.target.value)}><option value="g">gram (g)</option><option value="ml">milliliter (ml)</option></select></div>
@@ -571,7 +574,7 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
                 <option value="">-- Select Product --</option>
                 {products.map(p => <option key={p.id} value={p.id}>{p.product_name}</option>)}
               </select>
-              {selectedProduct && <div className="chip-custom w-100 justify-content-center p-2"><span className="material-symbols-outlined me-1" style={{ fontSize: '14px', verticalAlign: 'middle' }}>{currentRecipeId ? 'check_circle' : 'sync'}</span> {currentRecipeId ? 'Recipe ready' : 'Select a product to start'}</div>}
+              {selectedProduct && <div className="chip-custom w-100 justify-content-center p-2"><span className="material-symbols-outlined me-1 icon-sm">{currentRecipeId ? 'check_circle' : 'sync'}</span> {currentRecipeId ? 'Recipe ready' : 'Select a product to start'}</div>}
             </div>
           </div>
           <div className="col-lg-8">
@@ -622,8 +625,8 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
         <div className="row g-4">
           <div className="col-lg-6">
             <div className="card p-3 d-flex flex-column gap-0">
-              <div className="text-muted mb-3" style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                <span className="material-symbols-outlined me-1" style={{ fontSize: '14px', verticalAlign: 'middle' }}>inventory_2</span>
+              <div className="text-muted mb-3 section-label">
+                <span className="material-symbols-outlined me-1 icon-sm">inventory_2</span>
                 Select Products & Set Batches
               </div>
               <div className="d-flex flex-column">
@@ -646,15 +649,15 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
                 {products.length === 0 && <div className="text-center py-4 text-muted fw-bold">No products available. Create in Inventory first.</div>}
               </div>
               <div className="pt-3">
-                <button onClick={handleGenerateSummary} disabled={purchaseProducts.length === 0 || loading} className="btn btn-primary w-100 fw-bold">{loading ? 'Calculating...' : <><span className="material-symbols-outlined me-1" style={{ fontSize: '16px', verticalAlign: 'middle' }}>sync</span> Generate Shopping List</>}</button>
+                <button onClick={handleGenerateSummary} disabled={purchaseProducts.length === 0 || loading} className="btn btn-primary w-100 fw-bold">{loading ? 'Calculating...' : <><span className="material-symbols-outlined me-1 icon-md">sync</span> Generate Shopping List</>}</button>
                 {purchaseProducts.length > 0 && <button onClick={() => { setPurchaseProducts([]); setBatchInputs({}) }} className="btn btn-sm btn-outline-secondary w-100 mt-2">Clear Selection</button>}
               </div>
             </div>
           </div>
           <div className="col-lg-6">
             <div className="card p-3 d-flex flex-column gap-0">
-              <div className="text-muted mb-3" style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                <span className="material-symbols-outlined me-1" style={{ fontSize: '14px', verticalAlign: 'middle' }}>shopping_cart</span>
+              <div className="text-muted mb-3 section-label">
+                <span className="material-symbols-outlined me-1 icon-sm">shopping_cart</span>
                 Shopping Summary
               </div>
               {purchaseSummary ? (
@@ -675,7 +678,7 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
                     </div>
                   )}
                   {/* Materials section */}
-                  <div className="text-muted mb-2" style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Materials</div>
+                  <div className="text-muted mb-2 section-label">Materials</div>
                   <div className="d-flex flex-column">
                     {purchaseSummary.items.map((item, i) => {
                       const display = formatPurchaseQty(item)
@@ -709,11 +712,11 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
                   </div>
                   {/* Notes */}
                   <div className="pt-3 border-top border-default">
-                    <div className="text-muted mb-2" style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Notes</div>
+                    <div className="text-muted mb-2 section-label">Notes</div>
                     <input type="text" className="form-control" placeholder="e.g., Purchase for weekend event" value={purchaseNotes} onChange={(e) => setPurchaseNotes(e.target.value)} />
                   </div>
                   <div className="pt-3">
-                    <button onClick={handleSavePurchase} disabled={loading} className="btn btn-primary w-100 fw-bold"><span className="material-symbols-outlined me-1" style={{ fontSize: '16px', verticalAlign: 'middle' }}>save</span> Save Record</button>
+                    <button onClick={handleSavePurchase} disabled={loading} className="btn btn-primary w-100 fw-bold"><span className="material-symbols-outlined me-1 icon-md">save</span> Save Record</button>
                   </div>
                 </div>
               ) : (
@@ -734,14 +737,14 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
                 <div className="d-flex gap-2">
                   {editingRecordId === selectedPurchase.id ? (
                     <>
-                      <button onClick={handleEditRecordQty} disabled={isSavingEdit} className="btn btn-sm btn-success fw-bold text-white"><span className="material-symbols-outlined me-1" style={{ fontSize: '14px', verticalAlign: 'middle' }}>save</span> {isSavingEdit ? 'Saving...' : 'Save'}</button>
+                      <button onClick={handleEditRecordQty} disabled={isSavingEdit} className="btn btn-sm btn-primary fw-bold"><span className="material-symbols-outlined me-1 icon-sm">save</span> {isSavingEdit ? 'Saving...' : 'Save'}</button>
                       <button onClick={() => { setEditingRecordId(null); setEditRecordQtys({}) }} className="btn btn-sm btn-link">Cancel</button>
                     </>
                   ) : (
                     <>
-                      <button onClick={enableEditRecord} className="btn btn-sm btn-warning fw-bold"><span className="material-symbols-outlined me-1" style={{ fontSize: '14px', verticalAlign: 'middle' }}>edit</span> Edit</button>
-                      <button onClick={() => handleDeletePurchase(selectedPurchase.id)} className="btn btn-sm"><span className="material-symbols-outlined me-1" style={{ fontSize: '14px', verticalAlign: 'middle' }}>delete</span> Delete</button>
-                      <button onClick={() => handleDownloadPDF(selectedPurchase)} className="btn btn-sm btn-primary text-white"><span className="material-symbols-outlined me-1" style={{ fontSize: '14px', verticalAlign: 'middle' }}>download</span> Download PDF</button>
+                      <button onClick={enableEditRecord} className="btn btn-sm btn-warning fw-bold"><span className="material-symbols-outlined me-1 icon-sm">edit</span> Edit</button>
+                      <button onClick={() => handleDeletePurchase(selectedPurchase.id)} className="btn btn-sm"><span className="material-symbols-outlined me-1 icon-sm">delete</span> Delete</button>
+                      <button onClick={() => handleDownloadPDF(selectedPurchase)} className="btn btn-sm btn-primary text-white"><span className="material-symbols-outlined me-1 icon-sm">download</span> Download PDF</button>
                     </>
                   )}
                 </div>
@@ -750,7 +753,7 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
                 {/* Header with date block + total + notes */}
                 <div className="d-flex align-items-center gap-3 pb-3 border-bottom border-default">
                   {/* Date block - matching records list style */}
-                  <div className="flex-shrink-0 text-center rounded-3 px-2 py-1" style={{ minWidth: '54px', background: 'var(--bg-input, #f3f4f6)' }}>
+                  <div className="flex-shrink-0 text-center rounded-8 px-2 py-1" style={{ minWidth: '54px', background: 'var(--bg-input, #f3f4f6)' }}>
                     <div style={{ fontSize: '18px', fontWeight: 700, lineHeight: 1.1 }}>
                       {selectedPurchase.plan_date ? selectedPurchase.plan_date.slice(8, 10) : '--'}
                     </div>
@@ -772,11 +775,11 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
                     {/* Mini chips for batch/product counts */}
                     <div className="d-flex flex-wrap gap-1 mt-2">
                       <span className="chip-custom" style={{ fontSize: '11px', padding: '1px 8px' }}>
-                        <span className="material-symbols-outlined me-1" style={{ fontSize: '12px', verticalAlign: 'middle' }}>inventory_2</span>
+                        <span className="material-symbols-outlined me-1" icon-xs>inventory_2</span>
                         {(selectedPurchase.purchase_plan_batches || []).length} product(s)
                       </span>
                       <span className="chip-custom" style={{ fontSize: '11px', padding: '1px 8px' }}>
-                        <span className="material-symbols-outlined me-1" style={{ fontSize: '12px', verticalAlign: 'middle' }}>kitchen</span>
+                        <span className="material-symbols-outlined me-1" icon-xs>kitchen</span>
                         {(selectedPurchase.purchase_plan_items || []).length} item(s)
                       </span>
                     </div>
@@ -790,7 +793,7 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
                 {/* Batches section */}
                 {(selectedPurchase.purchase_plan_batches || []).length > 0 && (
                   <div className="py-3 border-bottom border-default">
-                    <div className="text-muted mb-2" style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Products / Batches</div>
+                    <div className="text-muted mb-2 section-label">Products / Batches</div>
                     <div className="d-flex flex-wrap gap-2">
                       {(selectedPurchase.purchase_plan_batches || []).map((b, i) => {
                         const prod = products.find(p => p.id === b.inventory_id)
@@ -806,7 +809,7 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
                 )}
                 {/* Materials section */}
                 <div className="pt-3">
-                  <div className="text-muted mb-3" style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Materials</div>
+                  <div className="text-muted mb-3 section-label">Materials</div>
                   {(selectedPurchase.purchase_plan_items || []).length === 0 ? (
                     <div className="text-center py-4 text-muted fw-bold">No materials in this record.</div>
                   ) : (
@@ -855,7 +858,7 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
                 <div key={rec.id || i} className="card px-3 py-3 cursor-pointer transition-all" onClick={() => viewPurchaseDetail(rec)}>
                   <div className="d-flex align-items-center gap-3">
                     {/* Date block */}
-                    <div className="flex-shrink-0 text-center rounded-3 px-2 py-1" style={{ minWidth: '54px', background: 'var(--bg-input, #f3f4f6)' }}>
+                    <div className="flex-shrink-0 text-center rounded-8 px-2 py-1" style={{ minWidth: '54px', background: 'var(--bg-input, #f3f4f6)' }}>
                       <div style={{ fontSize: '18px', fontWeight: 700, lineHeight: 1.1 }}>
                         {rec.plan_date ? rec.plan_date.slice(8, 10) : '--'}
                       </div>
@@ -874,11 +877,11 @@ export default function ProductionPlanning({ session, userRole, allowedModules =
                       }
                       <div className="d-flex flex-wrap gap-1">
                         <span className="chip-custom" style={{ fontSize: '11px', padding: '1px 8px' }}>
-                          <span className="material-symbols-outlined me-1" style={{ fontSize: '12px', verticalAlign: 'middle' }}>inventory_2</span>
+                          <span className="material-symbols-outlined me-1" icon-xs>inventory_2</span>
                           {(rec.purchase_plan_batches || []).length} product(s)
                         </span>
                         <span className="chip-custom" style={{ fontSize: '11px', padding: '1px 8px' }}>
-                          <span className="material-symbols-outlined me-1" style={{ fontSize: '12px', verticalAlign: 'middle' }}>kitchen</span>
+                          <span className="material-symbols-outlined me-1" icon-xs>kitchen</span>
                           {(rec.purchase_plan_items || []).length} item(s)
                         </span>
                       </div>

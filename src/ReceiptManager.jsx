@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import { supabase } from './supabaseClient'
 import ToastBar from './components/ToastBar'
 import { useToast } from './utils/useToast'
+import AccessDenied from './components/AccessDenied'
+import { cleanRole } from './utils/role'
 
 export default function ReceiptManager({ session, userRole, allowedModules = {} }) {
   const { toast, showToast, hideToast } = useToast()
@@ -23,7 +25,7 @@ export default function ReceiptManager({ session, userRole, allowedModules = {} 
   const [bankReceiptLink, setBankReceiptLink] = useState('')
   const [purchaseReceiptLink, setPurchaseReceiptLink] = useState('')
 
-  const cleanedRole = String(userRole || '').trim().toLowerCase()
+  const cleanedRole = cleanRole(userRole)
   const isAuthorized = cleanedRole === 'super_admin' || cleanedRole === 'admin' || allowedModules['receiptManager'] === true
 
   const fetchRecords = useCallback(async () => {
@@ -70,11 +72,7 @@ export default function ReceiptManager({ session, userRole, allowedModules = {} 
   }, [unpaidRecords, selectedIds])
 
   if (!isAuthorized) {
-    return (
-      <div className="alert-unauthorized">
-        <span className="material-symbols-outlined me-1" style={{ fontSize: '14px', verticalAlign: 'middle' }}>lock</span> Access Denied: You do not have permission to view this page.
-      </div>
-    )
+    return <AccessDenied message="Access Denied: You do not have permission to view this page." />
   }
 
   const handleSubmit = async (e) => {
@@ -103,14 +101,14 @@ export default function ReceiptManager({ session, userRole, allowedModules = {} 
   }
 
   const handleDelete = async (id) => {
-    if (!confirm('Are you sure you want to delete this record?')) return
+    if (!window.confirm('Are you sure you want to delete this record?')) return
     const { error } = await supabase.from('receipt_records').delete().eq('id', id)
     if (!error) { setSelectedIds(selectedIds.filter(sid => sid !== id)); fetchRecords() }
   }
 
   const handleDeleteSelected = async () => {
     if (selectedIds.length === 0) return
-    if (!confirm(`Are you sure you want to delete ${selectedIds.length} selected records?`)) return
+    if (!window.confirm(`Are you sure you want to delete ${selectedIds.length} selected records?`)) return
     const { error } = await supabase.from('receipt_records').delete().in('id', selectedIds)
     if (!error) { setSelectedIds([]); fetchRecords() }
   }
@@ -244,7 +242,7 @@ export default function ReceiptManager({ session, userRole, allowedModules = {} 
   const renderReceiptsTab = () => (
     <>
       <div className="card p-3 mb-3">
-        <h6 className="fw-bold mb-3 text-primary"><span className="material-symbols-outlined me-1" style={{ fontSize: '16px', verticalAlign: 'middle' }}>receipt</span> {editingId ? 'Update Receipt' : 'Register New Receipt'}</h6>
+        <h6 className="fw-bold mb-3 text-primary"><span className="material-symbols-outlined me-1 icon-md">receipt</span> {editingId ? 'Update Receipt' : 'Register New Receipt'}</h6>
         <form onSubmit={handleSubmit} className="d-flex flex-wrap gap-3 align-items-end">
           <div className="flex-grow-1">
             <label className="form-label">Receipt Date</label>
@@ -265,21 +263,21 @@ export default function ReceiptManager({ session, userRole, allowedModules = {} 
         <div className="col-lg-8">
           <div className="card p-3 overflow-x-auto">
             <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-              <h6 className="fw-bold text-white mb-0"><span className="material-symbols-outlined me-1" style={{ fontSize: '16px', verticalAlign: 'middle' }}>description</span> Unpaid Receipt Records</h6>
+              <h6 className="fw-bold text-white mb-0"><span className="material-symbols-outlined me-1 icon-md">description</span> Unpaid Receipt Records</h6>
               {selectedIds.length > 0 && (
                 <div className="d-flex align-items-center gap-2 flex-wrap">
                   <span className="fw-bold text-primary">Selected Total: RM {(totalSelectedAmount + parseFloat(wageAmount || 0)).toFixed(2)}</span>
                   <button onClick={handleMarkAsPaid} disabled={loadingMarkAsPaid} className="btn btn-sm btn-outline-warning fw-bold">
                     {loadingMarkAsPaid ? <span className="spinner-border spinner-border-sm"></span> : <><span className="material-symbols-outlined me-1" style={{ fontSize: '14px' }}>paid</span> Mark as Paid</>}
                   </button>
-                  <button onClick={copyTotalAmount} className="btn btn-sm btn-outline-light fw-bold"><span className="material-symbols-outlined me-1" style={{ fontSize: '14px' }}>content_copy</span> Copy</button>
+                  <button onClick={copyTotalAmount} className="btn btn-sm btn-outline-secondary fw-bold"><span className="material-symbols-outlined me-1" style={{ fontSize: '14px' }}>content_copy</span> Copy</button>
                   <button onClick={handleDeleteSelected} className="btn btn-sm btn-bold btn-danger">
                     Delete ({selectedIds.length})
                   </button>
                 </div>
               )}
             </div>
-            <table className="table">
+            <div className="table-responsive"><table className="table">
               <thead>
                 <tr>
                   <th><input type="checkbox" className="form-check-input" checked={unpaidRecords.length > 0 && selectedIds.length === unpaidRecords.length} onChange={handleSelectAll} /></th>
@@ -306,13 +304,13 @@ export default function ReceiptManager({ session, userRole, allowedModules = {} 
                   ))
                 )}
               </tbody>
-            </table>
+            </table></div>
           </div>
         </div>
 
         <div className="col-lg-4">
           <div className="card p-3 d-flex flex-column gap-3">
-            <h6 className="fw-bold text-white mb-0"><span className="material-symbols-outlined me-1" style={{ fontSize: '16px', verticalAlign: 'middle' }}>settings</span> Configuration & Output Text</h6>
+            <h6 className="fw-bold text-white mb-0"><span className="material-symbols-outlined me-1 icon-md">settings</span> Configuration & Output Text</h6>
             <div>
               <label className="form-label">Wage Rate (RM)</label>
               <input type="number" step="0.01" className="form-control fw-bold" value={wageAmount} onChange={(e) => setWageAmount(e.target.value)} inputMode="decimal" />
@@ -323,7 +321,7 @@ export default function ReceiptManager({ session, userRole, allowedModules = {} 
                 <pre className="p-3 font-mono user-select-all">
                   {generatedText}
                 </pre>
-                <button onClick={copyToClipboard} className="btn btn-sm btn-outline-light fw-bold">Copy Text</button>
+                <button onClick={copyToClipboard} className="btn btn-sm btn-outline-secondary fw-bold">Copy Text</button>
               </div>
             )}
           </div>
@@ -340,7 +338,7 @@ export default function ReceiptManager({ session, userRole, allowedModules = {} 
 
       {loadingPayments ? <div className="text-center py-5"><span className="spinner-border"></span></div> : payments.length === 0 ? <div className="text-center py-5 text-muted fw-semibold">No payment records yet.</div> : (
         <div className="overflow-x-auto">
-          <table className="table table-hover">
+          <div className="table-responsive"><table className="table table-hover">
             <thead><tr><th>#</th><th>Paid Date</th><th className="text-end">Total Amount (RM)</th></tr></thead>
             <tbody>{payments.map((pay, index) => (
               <tr key={pay.id} onClick={() => openPaymentDetail(pay)} style={{ cursor: 'pointer' }}>
@@ -349,7 +347,7 @@ export default function ReceiptManager({ session, userRole, allowedModules = {} 
                 <td className="text-end text-13 text-white fw-bold">RM {parseFloat(pay.total_amount || 0).toFixed(2)}</td>
               </tr>
             ))}</tbody>
-          </table>
+          </table></div>
         </div>
       )}
 
@@ -384,7 +382,7 @@ export default function ReceiptManager({ session, userRole, allowedModules = {} 
 
                 {/* Icon-only receipt link buttons at the bottom */}
                   <div className="overflow-x-auto">
-                    <table className="table table-sm table-hover mb-0">
+                    <div className="table-responsive"><table className="table table-sm table-hover mb-0">
                       <thead><tr><th>Receipt Date</th><th>Amount (RM)</th></tr></thead>
                       <tbody>
                         {getRecordsForPayment(selectedPayment).length === 0 ? (
@@ -396,7 +394,7 @@ export default function ReceiptManager({ session, userRole, allowedModules = {} 
                           </tr>
                         ))}
                       </tbody>
-                    </table>
+                    </table></div>
                   </div>
                 </div>
                 {/* Icon-only receipt link buttons — bottom of modal */}
@@ -450,30 +448,20 @@ export default function ReceiptManager({ session, userRole, allowedModules = {} 
   )
 
   return (
-    <div>
+    <div className="max-w-1200 mx-auto">
       <ToastBar toast={toast} onClose={hideToast} />
 
       <div className="page-header-custom">
-        <h1 className="page-title-custom"><span className="material-symbols-outlined me-2" style={{ fontSize: '24px', verticalAlign: 'middle' }}>receipt</span> Receipt Manager</h1>
+        <h1 className="page-title-custom"><span className="material-symbols-outlined me-2 icon-xl">receipt</span> Receipt Manager</h1>
         <p className="page-subtitle-custom">Open receipts, export details, and manage collection status.</p>
       </div>
 
       {/* Tab Navigation */}
       <div className="mb-3">
-        <div className="d-flex gap-2 flex-wrap">
-          <button
-            className={`btn btn-sm fw-semibold ${activeTab === 'records' ? 'btn-primary' : 'btn-outline-secondary'}`}
-            onClick={() => setActiveTab('records')}
-          >
-            <i className="bi bi-table me-1"></i> Receipts
-          </button>
-          <button
-            className={`btn btn-sm fw-semibold ${activeTab === 'payments' ? 'btn-primary' : 'btn-outline-secondary'}`}
-            onClick={() => setActiveTab('payments')}
-          >
-            <i className="bi bi-wallet2 me-1"></i> Payment History
-          </button>
-        </div>
+        <ul className="nav nav-tabs">
+          <li className="nav-item"><button className={`nav-link fw-bold text-nowrap ${activeTab === 'records' ? 'active' : ''}`} onClick={() => setActiveTab('records')}>Receipts</button></li>
+          <li className="nav-item"><button className={`nav-link fw-bold text-nowrap ${activeTab === 'payments' ? 'active' : ''}`} onClick={() => setActiveTab('payments')}>Payment History</button></li>
+        </ul>
       </div>
 
       {activeTab === 'records' && renderReceiptsTab()}

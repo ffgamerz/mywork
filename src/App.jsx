@@ -5,17 +5,18 @@ import AdsRecordManager from './AdsRecordManager'
 import Settings from './Settings'
 import Privileges from './Privileges'
 import Inventory from './Inventory'
-import ReceiptManager from './ReceiptManager' 
+import ReceiptManager from './ReceiptManager'
 import WageCalculator from './WageCalculator'
 import ProductionPlanning from './ProductionPlanning'
 import MyWage from './MyWage'
 import { useToast } from './utils/useToast'
+import ToastBar from './components/ToastBar'
+import { cleanRole } from './utils/role'
 
 const navItems = [
   { id: 'home', label: 'Home', icon: 'home' },
   { id: 'records', label: 'Ads Records', icon: 'bar_chart' },
   { id: 'inventory', label: 'Inventory', icon: 'inventory_2' },
-  { id: 'inventoryNew', label: 'Inventory (New)', icon: 'inventory_2' },
   { id: 'receiptManager', label: 'Receipts', icon: 'receipt' },
   { id: 'wageCalculator', label: 'Wages', icon: 'payments' },
   { id: 'myWage', label: 'My Wage', icon: 'attach_money' },
@@ -45,7 +46,6 @@ function App() {
   const [forceConfirmPassword, setForceConfirmPassword] = useState('')
   const [forceLoading, setForceLoading] = useState(false)
 
-  const [themeMode, setThemeMode] = useState(() => localStorage.getItem('bol_theme_mode') || 'dark')
 
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false)
@@ -65,10 +65,9 @@ function App() {
   const loadUserPermissions = useCallback(async (userId) => {
     if (!userId) return
     setAllowedModules({})
-    const { data: prof } = await supabase.from('profiles').select('theme_mode, role, requires_password_change, preferred_language').eq('id', userId).single()
+    const { data: prof } = await supabase.from('profiles').select('role, requires_password_change, preferred_language').eq('id', userId).single()
     if (prof) {
-      if (prof.theme_mode) setThemeMode(prof.theme_mode)
-      const dbRole = String(prof.role || 'default').trim().toLowerCase()
+      const dbRole = cleanRole(prof.role || 'default')
       setUserRole(dbRole)
       setMustChangePassword(!!prof.requires_password_change)
     }
@@ -117,10 +116,6 @@ function App() {
     return () => { mounted = false }
   }, [activePage])
 
-  const handleThemeChange = async (newMode) => {
-    setThemeMode(newMode)
-    if (session) await supabase.from('profiles').upsert({ id: session.user.id, theme_mode: newMode, updated_at: new Date().toISOString() })
-  }
 
   const handleLogout = async () => { await supabase.auth.signOut() }
 
@@ -275,11 +270,8 @@ function App() {
           {activePage === 'home' && (
             <div className="max-w-1024 mx-auto">
               <div className="mb-4">
-                <h1 className="fw-400 tracking-tight text-white mb-1 text-24 d-none d-md-block text-32">
-                  <span className="material-symbols-outlined me-1" style={{fontSize:'24px',verticalAlign:'middle',color:'#3b82f6'}}>dashboard</span> Hello, {session?.user?.email?.split('@')[0] || 'ffgamerz'}
-                </h1>
-                <h1 className="fw-400 tracking-tight text-white mb-1 d-md-none text-24">
-                  <span className="material-symbols-outlined me-1" style={{fontSize:'24px',verticalAlign:'middle',color:'#3b82f6'}}>dashboard</span> Hello, {session?.user?.email?.split('@')[0] || 'ffgamerz'}
+                <h1 className="fw-400 tracking-tight text-white mb-1" style={{ fontSize: 'clamp(24px, 3vw, 32px)' }}>
+                  <span className="material-symbols-outlined me-1 icon-xl text-accent">dashboard</span> Hello, {session?.user?.email?.split('@')[0] || 'ffgamerz'}
                 </h1>
                 <p className="text-muted text-14">What would you like to build or explore today?</p>
               </div>
@@ -304,7 +296,7 @@ function App() {
           )}
           
           {activePage === 'records' && canAccessRecords && <AdsRecordManager session={session} />}
-          {activePage === 'settings' && <Settings session={session} themeMode={themeMode} setThemeMode={handleThemeChange} />}
+          {activePage === 'settings' && <Settings session={session} />}
           {activePage === 'privileges' && canAccessPrivileges && <Privileges session={session} />}
           {activePage === 'inventory' && canAccessInventory && <Inventory session={session} userRole={userRole} allowedModules={allowedModules} />}
           {activePage === 'receiptManager' && canAccessReceiptManager && <ReceiptManager session={session} userRole={userRole} allowedModules={allowedModules} />}
@@ -314,14 +306,7 @@ function App() {
         </div>
       </div>
 
-      {toast.visible && (
-        <div className="toast-container-custom">
-          <div className={`d-flex align-items-center gap-2 px-3 py-2 rounded-pill shadow-lg ${toast.type === 'success' ? 'bg-success text-white' : toast.type === 'error' ? 'bg-error text-white' : 'bg-blue text-white'}`}>
-              <span>{toast.message}</span>
-              <button onClick={hideToast} className="btn btn-sm p-0 border-0 d-flex align-items-center justify-content-center bg-transparent text-white w-24 h-24 rounded-circle"><span className="material-symbols-outlined" style={{fontSize:'16px'}}>close</span></button>
-          </div>
-        </div>
-      )}
+      <ToastBar toast={toast} onClose={hideToast} />
     </div>
   )
 }

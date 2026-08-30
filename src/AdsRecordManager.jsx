@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from './supabaseClient'
+import ToastBar from './components/ToastBar'
+import { useToast } from './utils/useToast'
 
 const ADS_PLATFORMS = [
   { value: 'tiktok', label: 'TikTok' },
@@ -19,7 +21,6 @@ export default function AdsRecordManager({ session }) {
   const [loadingMarkAsPaid, setLoadingMarkAsPaid] = useState(false)
   const [checkedIds, setCheckedIds] = useState([])
   const [generatedText, setGeneratedText] = useState('')
-  const [toast, setToast] = useState({ open: false, message: '', severity: 'success' })
   const [editingRecord, setEditingRecord] = useState(null)
   const [editAmount, setEditAmount] = useState('')
   const [editAdsPlatform, setEditAdsPlatform] = useState('tiktok')
@@ -31,7 +32,7 @@ export default function AdsRecordManager({ session }) {
   const [transferCcLink, setTransferCcLink] = useState('')
   const [loadingLinks, setLoadingLinks] = useState(false)
 
-  const showToast = (message, severity = 'success') => { setToast({ open: true, message, severity }); setTimeout(() => setToast({ open: false, message: '', severity: 'success' }), 3000) }
+  const { toast, showToast, hideToast } = useToast()
 
   const userId = session?.user?.id
 
@@ -40,9 +41,9 @@ export default function AdsRecordManager({ session }) {
     if (!userId) return
     setLoadingFetch(true)
     const { data, error } = await supabase.from('records').select('*').eq('user_id', userId).order('date', { ascending: false })
-    if (error) console.error('Error fetching data:', error.message); else setRecords(data || [])
+    if (error) showToast('Failed to fetch records: ' + error.message, 'error'); else setRecords(data || [])
     setLoadingFetch(false)
-  }, [userId])
+  }, [userId, showToast])
 
   // --- Fetch payments ---
   const fetchPayments = useCallback(async () => {
@@ -52,9 +53,9 @@ export default function AdsRecordManager({ session }) {
       .from('ads_payment')
       .select('*')
       .order('created_at', { ascending: false })
-    if (error) console.error('Error fetching payments:', error.message); else setPayments(data || [])
+    if (error) showToast('Failed to fetch payments: ' + error.message, 'error'); else setPayments(data || [])
     setLoadingPayments(false)
-  }, [userId])
+  }, [userId, showToast])
 
   const fetchData = useCallback(() => {
     fetchRecords()
@@ -227,7 +228,7 @@ export default function AdsRecordManager({ session }) {
 
       {loadingFetch ? <div className="text-center py-5"><span className="spinner-border"></span></div> : unpaidRecords.length === 0 ? <div className="text-center py-5 text-muted fw-semibold">No unpaid records.</div> : (
         <div className="overflow-x-auto">
-          <table className="table table-hover">
+          <div className="table-responsive"><table className="table table-hover">
             <thead><tr><th className="w-40"><input type="checkbox" className="form-check-input" checked={unpaidRecords.length > 0 && checkedIds.length === unpaidRecords.length} onChange={handleCheckAll} /></th><th>No.</th><th>Date</th><th>Ads Platform</th><th className="text-end">Amount (RM)</th><th className="text-end">Tindakan</th></tr></thead>
             <tbody>{unpaidRecords.map((rec, index) => (
               <tr key={rec.id} className={checkedIds.includes(rec.id) ? 'row-selected' : ''}>
@@ -247,7 +248,7 @@ export default function AdsRecordManager({ session }) {
                 </td>
               </tr>
             ))}</tbody>
-          </table>
+          </table></div>
         </div>
       )}
     </div>
@@ -262,7 +263,7 @@ export default function AdsRecordManager({ session }) {
 
       {loadingPayments ? <div className="text-center py-5"><span className="spinner-border"></span></div> : payments.length === 0 ? <div className="text-center py-5 text-muted fw-semibold">No payment records yet.</div> : (
         <div className="overflow-x-auto">
-          <table className="table table-hover">
+          <div className="table-responsive"><table className="table table-hover">
             <thead><tr><th>#</th><th>Paid Date</th><th className="text-end">Total Amount (RM)</th></tr></thead>
             <tbody>{payments.map((pay, index) => (
               <tr key={pay.id} onClick={() => openPaymentDetail(pay)} style={{ cursor: 'pointer' }}>
@@ -271,7 +272,7 @@ export default function AdsRecordManager({ session }) {
                 <td className="text-end text-13 text-white fw-bold">RM {parseFloat(pay.total_amount || 0).toFixed(2)}</td>
               </tr>
             ))}</tbody>
-          </table>
+          </table></div>
         </div>
       )}
 
@@ -301,7 +302,7 @@ export default function AdsRecordManager({ session }) {
                     <span className="fw-bold text-white">Total: RM {parseFloat(selectedPayment.total_amount || 0).toFixed(2)}</span>
                   </div>
                   <div className="overflow-x-auto">
-                    <table className="table table-sm table-hover mb-0">
+                    <div className="table-responsive"><table className="table table-sm table-hover mb-0">
                       <thead><tr><th>Date</th><th>Ads Platform</th><th className="text-end">Amount (RM)</th></tr></thead>
                       <tbody>
                         {getRecordsForPayment(selectedPayment).length === 0 ? (
@@ -314,7 +315,7 @@ export default function AdsRecordManager({ session }) {
                           </tr>
                         ))}
                       </tbody>
-                    </table>
+                    </table></div>
                   </div>
                 </div>
                 {/* Transfer receipt links — icon-only, bottom of modal */}
@@ -367,35 +368,19 @@ export default function AdsRecordManager({ session }) {
 
   return (
     <div className="max-w-1200 mx-auto">
-      {toast.open && (
-        <div className="toast-container-custom">
-          <div className={`d-flex align-items-center gap-2 px-3 py-2 rounded-pill shadow-lg fw-600 text-14 text-white ${toast.severity === 'error' ? 'bg-error' : 'bg-success'}`}>
-            <span>{toast.message}</span>
-          </div>
-        </div>
-      )}
+      <ToastBar toast={toast} onClose={hideToast} />
 
       <div className="page-header-custom">
-        <h1 className="page-title-custom"><span className="material-symbols-outlined me-2" style={{ fontSize: '24px', verticalAlign: 'middle' }}>bar_chart</span> Ads Record Manager</h1>
+        <h1 className="page-title-custom"><span className="material-symbols-outlined me-2 icon-xl">bar_chart</span> Ads Record Manager</h1>
         <p className="page-subtitle-custom">Track payments, amounts, and manage financial outputs.</p>
       </div>
 
       {/* Tab Navigation */}
       <div className="mb-3">
-        <div className="d-flex gap-2 flex-wrap">
-          <button
-            className={`btn btn-sm fw-semibold ${activeTab === 'records' ? 'btn-primary' : 'btn-outline-secondary'}`}
-            onClick={() => setActiveTab('records')}
-          >
-            <i className="bi bi-table me-1"></i> Records
-          </button>
-          <button
-            className={`btn btn-sm fw-semibold ${activeTab === 'payments' ? 'btn-primary' : 'btn-outline-secondary'}`}
-            onClick={() => setActiveTab('payments')}
-          >
-            <i className="bi bi-wallet2 me-1"></i> Payment History
-          </button>
-        </div>
+        <ul className="nav nav-tabs">
+          <li className="nav-item"><button className={`nav-link fw-bold text-nowrap ${activeTab === 'records' ? 'active' : ''}`} onClick={() => setActiveTab('records')}>Records</button></li>
+          <li className="nav-item"><button className={`nav-link fw-bold text-nowrap ${activeTab === 'payments' ? 'active' : ''}`} onClick={() => setActiveTab('payments')}>Payment History</button></li>
+        </ul>
       </div>
 
       {activeTab === 'records' && (
@@ -430,7 +415,7 @@ export default function AdsRecordManager({ session }) {
         <div className="card p-3 mt-3">
           <div className="d-flex justify-content-between align-items-center mb-2">
             <h6 className="fw-bold text-accent mb-0">Generated Note Result</h6>
-            <button className="btn btn-sm btn-outline-light fw-semibold" onClick={handleCopyToClipboard}>Copy Text</button>
+            <button className="btn btn-sm btn-outline-secondary fw-semibold" onClick={handleCopyToClipboard}>Copy Text</button>
           </div>
           <pre className="p-3 rounded-12 font-mono user-select-all text-13 text-pre-wrap bg-dark-card text-secondary-custom border-default">{generatedText}</pre>
         </div>
@@ -442,7 +427,7 @@ export default function AdsRecordManager({ session }) {
           <div className="modal d-block" tabIndex="-1">
             <div className="modal-dialog modal-dialog-centered">
               <div className="modal-content p-3">
-                <h5 className="fw-bold text-accent mb-3"><span className="material-symbols-outlined me-1" style={{ fontSize: '18px', verticalAlign: 'middle' }}>edit</span> Edit Record</h5>
+                <h5 className="fw-bold text-accent mb-3"><span className="material-symbols-outlined me-1 icon-lg">edit</span> Edit Record</h5>
                 <form onSubmit={handleUpdateRecord}>
                   <div className="mb-3"><label className="form-label">Date</label><input type="date" className="form-control" required value={editDate} onChange={(e) => setEditDate(e.target.value)} /></div>
                   <div className="mb-3"><label className="form-label">Amount (RM)</label><input type="number" step="0.01" className="form-control" required value={editAmount} onChange={(e) => setEditAmount(e.target.value)} inputMode="decimal" /></div>

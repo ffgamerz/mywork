@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { supabase } from './supabaseClient'
+import AccessDenied from './components/AccessDenied'
+import { cleanRole } from './utils/role'
 import ToastBar from './components/ToastBar'
 import { useToast } from './utils/useToast'
 
@@ -31,7 +33,7 @@ export default function WageCalculator({ userRole, allowedModules = {} }) {
   const [loadingLinks, setLoadingLinks] = useState(false)
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
 
-  const cleanedRole = String(userRole || '').trim().toLowerCase()
+  const cleanedRole = cleanRole(userRole)
   const isSuperAdmin = cleanedRole === 'super_admin'
   const hasPageAccess = isSuperAdmin || allowedModules['wageCalculator'] === true || cleanedRole === 'admin'
 
@@ -101,7 +103,7 @@ export default function WageCalculator({ userRole, allowedModules = {} }) {
   }, [paymentHistory, searchTerm, dateFrom, dateTo])
 
   if (!hasPageAccess) {
-    return <div className="alert-unauthorized"><span className="material-symbols-outlined me-1" style={{fontSize:'14px',verticalAlign:'middle'}}>lock</span> Access Denied: Unauthorized.</div>
+    return <AccessDenied />
   }
 
   const formatLocalDate = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
@@ -204,10 +206,10 @@ export default function WageCalculator({ userRole, allowedModules = {} }) {
   const handleTabChange = (tab) => { setActiveTab(tab); setSelectedIds([]); setGeneratedText(''); setPaymentStatus(tab === 'history' ? 'paid' : 'unpaid'); setVisibleCount(8) }
 
   return (
-    <div>
+    <div className="max-w-1200 mx-auto">
       <ToastBar toast={toast} onClose={hideToast} />
       <div className="page-header-custom">
-        <h1 className="page-title-custom"><span className="material-symbols-outlined me-2" style={{fontSize:'24px',verticalAlign:'middle'}}>payments</span> Staff Wage Calculator</h1>
+        <h1 className="page-title-custom"><span className="material-symbols-outlined me-2 icon-xl">payments</span> Staff Wage Calculator</h1>
         <p className="page-subtitle-custom">Calculate staff wages based on unpaid cooking production batches.</p>
       </div>
 
@@ -240,14 +242,14 @@ export default function WageCalculator({ userRole, allowedModules = {} }) {
           <div className="col-lg-8">
             <div className="card p-3 overflow-x-auto">
               <div className="d-flex flex-wrap align-items-center justify-content-between mb-3 gap-2">
-                <h6 className="fw-bold mb-0"><span className="material-symbols-outlined me-1" style={{fontSize:'16px',verticalAlign:'middle'}}>inventory_2</span> Batch Records ({displayRecords.length})</h6>
+                <h6 className="fw-bold mb-0"><span className="material-symbols-outlined me-1 icon-md">inventory_2</span> Batch Records ({displayRecords.length})</h6>
                 <div className="d-flex flex-wrap gap-2">
                   <span className="chip-custom">Filtered: {displayRecords.length}</span>
                   <span className="chip-custom">Selected: {selectedIds.length}</span>
                   <span className={`chip-custom ${paymentStatus === 'paid' ? 'badge-success' : 'badge-warning'}`}>Status: {paymentStatus === 'paid' ? 'Paid' : 'Unpaid'}</span>
                 </div>
               </div>
-              <table className="table">
+              <div className="table-responsive"><table className="table">
                 <thead><tr><th><input type="checkbox" className="form-check-input" checked={displayRecords.length > 0 && displayRecords.every(r => selectedIds.includes(r.id))} onChange={handleSelectAll} /></th><th>Date</th><th>Batch No.</th><th>Product Name (Quantity)</th><th>Status</th><th className="text-end">Wage</th></tr></thead>
                 <tbody>
                   {loading ? <tr><td colSpan="6" className="text-center py-4"><span className="spinner-border"></span></td></tr> : displayRecords.length === 0 ? <tr><td colSpan="6" className="text-center text-muted py-4">No records found.</td></tr> : visibleRecords.map((rec) => {
@@ -265,24 +267,24 @@ export default function WageCalculator({ userRole, allowedModules = {} }) {
                     )
                   })}
                 </tbody>
-              </table>
+              </table></div>
               {displayRecords.length > 0 && visibleCount < displayRecords.length && (
                 <div className="text-center mt-3">
-                  <button className="btn btn-sm btn-outline-light fw-bold" onClick={() => setVisibleCount(prev => Math.min(prev + pageSize, displayRecords.length))}>Load More</button>
+                  <button className="btn btn-sm btn-outline-secondary fw-bold" onClick={() => setVisibleCount(prev => Math.min(prev + pageSize, displayRecords.length))}>Load More</button>
                 </div>
               )}
             </div>
           </div>
           <div className="col-lg-4">
             <div className="card p-3 d-flex flex-column gap-3">
-              <h6 className="fw-bold mb-0"><span className="material-symbols-outlined me-1" style={{fontSize:'16px',verticalAlign:'middle'}}>payments</span> Selected Summary ({selectedIds.length})</h6>
+              <h6 className="fw-bold mb-0"><span className="material-symbols-outlined me-1 icon-md">payments</span> Selected Summary ({selectedIds.length})</h6>
               <div className="summary-box text-center">
                 <div className="text-uppercase small fw-bold text-muted">Selected Wages Total</div>
                 <h3 className="fw-bold">RM {totalWagesDue.toFixed(2)}</h3>
               </div>
-              <button onClick={generateFormatText} disabled={selectedIds.length === 0} className="btn fw-bold w-100"><span className="material-symbols-outlined me-1" style={{fontSize:'16px',verticalAlign:'middle'}}>bolt</span> Generate Text Format</button>
+              <button onClick={generateFormatText} disabled={selectedIds.length === 0} className="btn fw-bold w-100"><span className="material-symbols-outlined me-1 icon-md">bolt</span> Generate Text Format</button>
               {paymentStatus === 'unpaid' && selectedIds.length > 0 && (
-                <button onClick={() => setIsPaidModalOpen(true)} className="btn fw-bold w-100"><span className="material-symbols-outlined me-1" style={{fontSize:'16px',verticalAlign:'middle'}}>check_circle</span> Mark as Paid ({selectedIds.length})</button>
+                <button onClick={() => setIsPaidModalOpen(true)} className="btn fw-bold w-100"><span className="material-symbols-outlined me-1 icon-md">check_circle</span> Mark as Paid ({selectedIds.length})</button>
               )}
             </div>
           </div>
@@ -291,7 +293,7 @@ export default function WageCalculator({ userRole, allowedModules = {} }) {
 
       {activeTab === 'history' && (
         <div className="card p-3">
-          <h6 className="fw-bold mb-3"><span className="material-symbols-outlined me-1" style={{fontSize:'16px',verticalAlign:'middle'}}>bar_chart</span> Payment History ({filteredHistory.length})</h6>
+          <h6 className="fw-bold mb-3"><span className="material-symbols-outlined me-1 icon-md">bar_chart</span> Payment History ({filteredHistory.length})</h6>
           {loading ? <div className="text-center py-4"><span className="spinner-border"></span></div> : filteredHistory.length === 0 ? <div className="text-center text-muted py-4">No payment history found.</div> : (
             <>
               <div className="d-flex flex-column gap-2">
@@ -308,7 +310,7 @@ export default function WageCalculator({ userRole, allowedModules = {} }) {
               </div>
               {filteredHistory.length > 0 && visibleCount < filteredHistory.length && (
                 <div className="text-center mt-3">
-                  <button className="btn btn-sm btn-outline-light fw-bold" onClick={() => setVisibleCount(prev => Math.min(prev + pageSize, filteredHistory.length))}>Load More</button>
+                  <button className="btn btn-sm btn-outline-secondary fw-bold" onClick={() => setVisibleCount(prev => Math.min(prev + pageSize, filteredHistory.length))}>Load More</button>
                 </div>
               )}
             </>
@@ -322,7 +324,7 @@ export default function WageCalculator({ userRole, allowedModules = {} }) {
           <div className="modal d-block" tabIndex="-1">
             <div className="modal-dialog modal-dialog-centered">
               <div className="modal-content p-3">
-                <h5 className="fw-bold text-primary mb-3"><span className="material-symbols-outlined me-1" style={{fontSize:'18px',verticalAlign:'middle'}}>description</span> Wage Text Copy</h5>
+                <h5 className="fw-bold text-primary mb-3"><span className="material-symbols-outlined me-1 icon-lg">description</span> Wage Text Copy</h5>
                 <pre className="p-3 font-mono user-select-all">{generatedText}</pre>
                 <div className="d-flex gap-2 justify-content-end mt-3 pt-3">
                   <button className="btn btn-sm btn-link" onClick={() => setIsTextModalOpen(false)}>Cancel</button>
@@ -340,7 +342,7 @@ export default function WageCalculator({ userRole, allowedModules = {} }) {
           <div className="modal d-block" tabIndex="-1">
             <div className="modal-dialog modal-dialog-centered">
               <div className="modal-content p-3">
-                <h5 className="fw-bold mb-2"><span className="material-symbols-outlined me-1" style={{fontSize:'18px',verticalAlign:'middle'}}>payments</span> Confirm Payment</h5>
+                <h5 className="fw-bold mb-2"><span className="material-symbols-outlined me-1 icon-lg">payments</span> Confirm Payment</h5>
                 <p className="text-muted mb-3">Please review the payment date before saving.</p>
                 <form onSubmit={handleMarkAsPaidSubmit}>
                   <div className="mb-3">
@@ -368,7 +370,7 @@ export default function WageCalculator({ userRole, allowedModules = {} }) {
           <div className="modal d-block" tabIndex="-1">
             <div className="modal-dialog modal-dialog-centered">
               <div className="modal-content p-3">
-                <h5 className="fw-bold text-primary mb-3"><span className="material-symbols-outlined me-1" style={{fontSize:'18px',verticalAlign:'middle'}}>description</span> Payment Details</h5>
+                <h5 className="fw-bold text-primary mb-3"><span className="material-symbols-outlined me-1 icon-lg">description</span> Payment Details</h5>
                 <div className="d-flex justify-content-between mb-2"><span className="text-muted">Payment Date</span><span className="fw-bold">{formatDate(selectedPayment.date_paid)}</span></div>
                 <div className="d-flex justify-content-between mb-2"><span className="text-muted">Staff</span><span className="fw-bold">{selectedPayment.records[0]?.production_name || '-'}</span></div>
                 <div className="d-flex justify-content-between mb-3"><span className="text-muted">Total Payment</span><h5 className="fw-bold mb-0">RM {selectedPayment.total_paid.toFixed(2)}</h5></div>

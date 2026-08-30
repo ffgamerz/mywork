@@ -1,5 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from './supabaseClient'
+import ToastBar from './components/ToastBar'
+import { useToast } from './utils/useToast'
+import AccessDenied from './components/AccessDenied'
+import { cleanRole } from './utils/role'
 
 export default function Inventory({ session, userRole, allowedModules = {} }) {
   const [selectedProduct, setSelectedProduct] = useState(null)
@@ -11,7 +15,6 @@ export default function Inventory({ session, userRole, allowedModules = {} }) {
   const [loadingProductions, setLoadingProductions] = useState(false)
   const [loadingSave, setLoadingSave] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [toast, setToast] = useState({ open: false, message: '', severity: 'success' })
 
   const [productions, setProductions] = useState([])
   const [staffList, setStaffList] = useState([])
@@ -30,38 +33,38 @@ export default function Inventory({ session, userRole, allowedModules = {} }) {
   const [visibleCount, setVisibleCount] = useState(6)
   const prodPageSize = 6
 
-  const cleanedRole = String(userRole || '').trim().toLowerCase()
+  const cleanedRole = cleanRole(userRole)
   const isSuperAdmin = cleanedRole === 'super_admin'
   const isAdmin = cleanedRole === 'admin'
   const hasPageAccess = isSuperAdmin || allowedModules['inventory'] === true || isAdmin
   const canEditStockInfo = isSuperAdmin
   const canToggleStockStatus = isSuperAdmin || isAdmin
 
-  const showToast = (message, severity = 'success') => { setToast({ open: true, message, severity }); setTimeout(() => setToast({ open: false, message: '', severity: 'success' }), 3000) }
+  const { toast, showToast, hideToast } = useToast()
 
   const fetchProducts = useCallback(async () => {
     if (!hasPageAccess) return
     setLoadingProducts(true)
     const { data, error } = await supabase.from('inventory').select(`*, stock_productions(id, batch_no, production_date, expiry_date, is_finished, paid_amount, paid_date, created_at)`).order('created_at', { ascending: true })
-    if (error) console.error(error.message)
+    if (error) showToast('Failed to fetch products: ' + error.message, 'error')
     else setProducts((data || []).map(prod => {
       const activeStocks = (prod.stock_productions || []).filter(stock => stock.is_finished === false).sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
       return { ...prod, fifo_stock: activeStocks[0] || null }
     }))
     setLoadingProducts(false)
-  }, [hasPageAccess])
+  }, [hasPageAccess, showToast])
 
   const fetchProductions = useCallback(async (productId) => {
     setLoadingProductions(true)
     const { data, error } = await supabase.from('stock_productions').select('*').eq('inventory_id', productId).order('production_date', { ascending: false })
-    if (error) console.error(error.message); else setProductions(data || [])
+    if (error) showToast('Failed to fetch productions: ' + error.message, 'error'); else setProductions(data || [])
     setLoadingProductions(false)
-  }, [])
+  }, [showToast])
 
   const fetchStaffList = useCallback(async () => {
     const { data, error } = await supabase.from('profiles').select('full_name').order('full_name', { ascending: true })
-    if (error) console.error('Error fetching staff names:', error.message); else setStaffList((data || []).filter(s => s.full_name))
-  }, [])
+    if (error) showToast('Failed to fetch staff list: ' + error.message, 'error'); else setStaffList((data || []).filter(s => s.full_name))
+  }, [showToast])
 
   useEffect(() => {
     let mounted = true
@@ -103,7 +106,7 @@ export default function Inventory({ session, userRole, allowedModules = {} }) {
     return () => { mounted = false }
   }, [isStockModalOpen, productions])
 
-  if (!hasPageAccess) return <div className="alert-unauthorized"><span className="material-symbols-outlined me-1" style={{ fontSize: '14px', verticalAlign: 'middle' }}>lock</span> Access Denied: Unauthorized.</div>
+  if (!hasPageAccess) return <AccessDenied />
 
   const handleToggleStockFinished = async (productionId, currentStatus) => {
     if (!canToggleStockStatus) { showToast('Access denied.', 'error'); return }
@@ -168,7 +171,7 @@ export default function Inventory({ session, userRole, allowedModules = {} }) {
   if (selectedProduct) {
     return (
       <div className="max-w-1200 mx-auto">
-        {toast.open && <div className="toast-container-custom"><div className={`d-flex align-items-center gap-2 px-3 py-2 rounded-pill shadow-lg fw-600 text-14 text-white ${toast.severity === 'error' ? 'bg-error' : 'bg-success'}`}><span>{toast.message}</span></div></div>}
+        <ToastBar toast={toast} onClose={hideToast} />
 
         <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 pb-2 mb-3 border-bottom border-default">
           <div className="d-flex align-items-center gap-3">
@@ -185,7 +188,7 @@ export default function Inventory({ session, userRole, allowedModules = {} }) {
             </div>
           </div>
           {canEditStockInfo && (
-            <button className="btn btn-sm btn-success fw-semibold" onClick={() => { setProdDate(new Date().toISOString().split('T')[0]); setProdQty(''); setProdName(''); setIsStockModalOpen(true) }}>
+            <button className="btn btn-sm btn-primary fw-semibold" onClick={() => { setProdDate(new Date().toISOString().split('T')[0]); setProdQty(''); setProdName(''); setIsStockModalOpen(true) }}>
               + Record Production
             </button>
           )}
@@ -226,11 +229,11 @@ export default function Inventory({ session, userRole, allowedModules = {} }) {
                       <div className="d-flex gap-2 mt-2 pt-2 border-top border-default">
                         {canToggleStockStatus && (
                           <button className={`btn btn-sm flex-grow-1 fw-semibold ${p.is_finished ? 'btn-danger' : 'btn-success'}`} onClick={() => handleToggleStockFinished(p.id, p.is_finished)} disabled={loadingSave}>
-                            {p.is_finished ? <><span className="material-symbols-outlined me-1" style={{ fontSize: '14px', verticalAlign: 'middle' }}>sync</span> Reopen</> : <><span className="material-symbols-outlined me-1" style={{ fontSize: '14px', verticalAlign: 'middle' }}>check_circle</span> Finish</>}
+                            {p.is_finished ? <><span className="material-symbols-outlined me-1 icon-sm">sync</span> Reopen</> : <><span className="material-symbols-outlined me-1 icon-sm">check_circle</span> Finish</>}
                           </button>
                         )}
                         {canEditStockInfo && (
-                          <button className="btn btn-sm btn-link text-secondary-custom" onClick={() => handleOpenEditStockModal(p)}><span className="material-symbols-outlined me-1" style={{ fontSize: '14px', verticalAlign: 'middle' }}>edit</span> Edit</button>
+                          <button className="btn btn-sm btn-link text-secondary-custom" onClick={() => handleOpenEditStockModal(p)}><span className="material-symbols-outlined me-1 icon-sm">edit</span> Edit</button>
                         )}
                       </div>
                     </div>
@@ -242,7 +245,7 @@ export default function Inventory({ session, userRole, allowedModules = {} }) {
         )}
 
         {productions.length > 0 && visibleCount < productions.length && (
-          <div className="text-center mt-3"><button className="btn btn-sm btn-outline-light fw-semibold" onClick={() => setVisibleCount(prev => Math.min(prev + prodPageSize, productions.length))}>Load More</button></div>
+          <div className="text-center mt-3"><button className="btn btn-sm btn-outline-secondary fw-semibold" onClick={() => setVisibleCount(prev => Math.min(prev + prodPageSize, productions.length))}>Load More</button></div>
         )}
 
         {isStockModalOpen && canEditStockInfo && (
@@ -251,7 +254,7 @@ export default function Inventory({ session, userRole, allowedModules = {} }) {
             <div className="modal d-block" tabIndex="-1">
               <div className="modal-dialog modal-dialog-centered max-w-448">
                 <div className="modal-content p-3">
-                  <h5 className="fw-bold mb-3 text-success"><span className="material-symbols-outlined me-1" style={{ fontSize: '18px', verticalAlign: 'middle' }}>factory</span> Record Production Stock</h5>
+                  <h5 className="fw-bold mb-3 text-success"><span className="material-symbols-outlined me-1 icon-lg">factory</span> Record Production Stock</h5>
                   <form onSubmit={handleAddStock}>
                     <div className="mb-3"><label className="form-label">Production Date</label><input type="date" className="form-control" required value={prodDate} onChange={(e) => setProdDate(e.target.value)} /></div>
                     <div className="mb-3"><label className="form-label">Batch No.</label><input type="text" className="form-control font-mono fw-bold text-accent text-18" value={prodBatch} readOnly /></div>
@@ -264,7 +267,7 @@ export default function Inventory({ session, userRole, allowedModules = {} }) {
                     </div>
                     <div className="mb-3"><label className="form-label">Quantity</label><input type="number" className="form-control" required value={prodQty} onChange={(e) => setProdQty(e.target.value)} inputMode="numeric" /></div>
                     <div className="d-flex gap-2 justify-content-end pt-2 border-top border-default">
-                      <button type="button" className="btn btn-sm btn-success" onClick={() => setIsStockModalOpen(false)}>Cancel</button>
+                      <button type="button" className="btn btn-sm btn-link" onClick={() => setIsStockModalOpen(false)}>Cancel</button>
                       <button type="submit" className="btn btn-sm fw-semibold text-white bg-success" disabled={loadingSave}>{loadingSave ? <span className="spinner-border spinner-border-sm"></span> : 'Save Record'}</button>
                     </div>
                   </form>
@@ -280,7 +283,7 @@ export default function Inventory({ session, userRole, allowedModules = {} }) {
             <div className="modal d-block" tabIndex="-1">
               <div className="modal-dialog modal-dialog-centered max-w-448">
                 <div className="modal-content p-3">
-                  <h5 className="fw-bold mb-3 text-secondary-custom"><span className="material-symbols-outlined me-1" style={{ fontSize: '18px', verticalAlign: 'middle' }}>edit</span> Edit Stock Information</h5>
+                  <h5 className="fw-bold mb-3 text-secondary-custom"><span className="material-symbols-outlined me-1 icon-lg">edit</span> Edit Stock Information</h5>
                   <form onSubmit={handleUpdateStock}>
                     <div className="mb-3"><label className="form-label">Production Date</label><input type="date" className="form-control" required value={prodDate} onChange={(e) => setProdDate(e.target.value)} /></div>
                     <div className="mb-3"><label className="form-label">Batch No.</label><input type="text" className="form-control font-mono fw-bold" required value={prodBatch} onChange={(e) => setProdBatch(e.target.value)} /></div>
@@ -294,7 +297,7 @@ export default function Inventory({ session, userRole, allowedModules = {} }) {
                     <div className="mb-3"><label className="form-label">Quantity</label><input type="number" className="form-control" required value={prodQty} onChange={(e) => setProdQty(e.target.value)} inputMode="numeric" /></div>
                     <div className="d-flex gap-2 justify-content-end pt-2 border-top border-default">
                       <button type="button" className="btn btn-sm" onClick={() => { setIsEditStockModalOpen(false); setEditingStock(null) }}>Cancel</button>
-                      <button type="submit" className="btn btn-sm btn-outline-light fw-semibold" disabled={loadingSave}>{loadingSave ? <span className="spinner-border spinner-border-sm"></span> : 'Save Changes'}</button>
+                      <button type="submit" className="btn btn-sm btn-outline-secondary fw-semibold" disabled={loadingSave}>{loadingSave ? <span className="spinner-border spinner-border-sm"></span> : 'Save Changes'}</button>
                     </div>
                   </form>
                 </div>
@@ -309,15 +312,15 @@ export default function Inventory({ session, userRole, allowedModules = {} }) {
   // ─── PRODUCT LIST VIEW ───
   return (
     <div className="max-w-1200 mx-auto">
-      {toast.open && <div className="toast-container-custom"><div className={`d-flex align-items-center gap-2 px-3 py-2 rounded-pill shadow-lg fw-600 text-14 text-white ${toast.severity === 'error' ? 'bg-error' : 'bg-success'}`}><span>{toast.message}</span></div></div>}
+      <ToastBar toast={toast} onClose={hideToast} />
 
       <div className="page-header-custom d-flex flex-wrap justify-content-between align-items-start gap-2">
         <div>
-          <h1 className="page-title-custom"><span className="material-symbols-outlined me-2" style={{ fontSize: '24px', verticalAlign: 'middle' }}>inventory_2</span> Inventory Manager</h1>
+          <h1 className="page-title-custom"><span className="material-symbols-outlined me-2 icon-xl">inventory_2</span> Inventory Manager</h1>
           <p className="page-subtitle-custom">Monitor product batches and current physical stock levels.</p>
         </div>
         {canEditStockInfo && (
-          <button className="btn btn-sm btn-success fw-semibold" onClick={() => { setIsModalOpen(true); setProductName(''); setExpiryMonth('12'); setWageRate('0.00') }}>
+          <button className="btn btn-sm btn-primary fw-semibold" onClick={() => { setIsModalOpen(true); setProductName(''); setExpiryMonth('12'); setWageRate('0.00') }}>
             + Add New Product
           </button>
         )}
@@ -373,7 +376,7 @@ export default function Inventory({ session, userRole, allowedModules = {} }) {
           <div className="modal d-block" tabIndex="-1">
             <div className="modal-dialog modal-dialog-centered max-w-448">
               <div className="modal-content p-3">
-                <h5 className="fw-bold text-accent mb-3"><span className="material-symbols-outlined me-1" style={{ fontSize: '18px', verticalAlign: 'middle' }}>inventory_2</span> Add New Product</h5>
+                <h5 className="fw-bold text-accent mb-3"><span className="material-symbols-outlined me-1 icon-lg">inventory_2</span> Add New Product</h5>
                 <form onSubmit={handleAddProduct}>
                   <div className="mb-3"><label className="form-label">Product Name</label><input type="text" className="form-control" required placeholder="e.g., Pes Kari Sambal" value={productName} onChange={(e) => setProductName(e.target.value)} /></div>
                   <div className="mb-3"><label className="form-label">Shelf Life (Months)</label><input type="number" className="form-control" required value={expiryMonth} onChange={(e) => setExpiryMonth(e.target.value)} inputMode="numeric" /></div>
@@ -401,8 +404,8 @@ export default function Inventory({ session, userRole, allowedModules = {} }) {
                   <div className="mb-3"><label className="form-label">Shelf Life (Months)</label><input type="number" className="form-control" required value={editExpiryMonth} onChange={(e) => setEditExpiryMonth(e.target.value)} inputMode="numeric" /></div>
                   <div className="mb-3"><label className="form-label">Cooking Wage Rate per Unit (RM)</label><input type="number" step="0.01" className="form-control" required value={editWageRate} onChange={(e) => setEditWageRate(e.target.value)} inputMode="decimal" /></div>
                   <div className="d-flex gap-2 justify-content-end pt-2 border-top border-default">
-                    <button type="button" className="btn btn-sm btn-warning" onClick={() => { setIsEditProductModalOpen(false); setEditingProduct(null) }}>Cancel</button>
-                    <button type="submit" className="btn btn-sm btn-success fw-semibold" disabled={loadingSave}>{loadingSave ? <span className="spinner-border spinner-border-sm"></span> : 'Save Changes'}</button>
+                    <button type="button" className="btn btn-sm btn-link" onClick={() => { setIsEditProductModalOpen(false); setEditingProduct(null) }}>Cancel</button>
+                    <button type="submit" className="btn btn-sm btn-primary fw-semibold" disabled={loadingSave}>{loadingSave ? <span className="spinner-border spinner-border-sm"></span> : 'Save Changes'}</button>
                   </div>
                 </form>
               </div>

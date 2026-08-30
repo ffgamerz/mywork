@@ -25,7 +25,7 @@ export default function Login() {
 
   return (
     <div className="min-vh-100 d-flex align-items-center justify-content-center px-2 py-4 bg-body">
-      <div className="max-w-480 w-100 mx-auto">
+      <div className="max-w-448 w-100 mx-auto">
         <div>
           <div className="card p-4 h-100 d-flex flex-column justify-content-center bg-card-bg">
             <form onSubmit={handleAuth}>

@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from './supabaseClient'
+import ToastBar from './components/ToastBar'
+import { useToast } from './utils/useToast'
 
 export default function Privileges() {
   const [users, setUsers] = useState([])
   const [modules, setModules] = useState([])
   const [permissions, setPermissions] = useState({})
   const [loadingData, setLoadingData] = useState(false)
-  const [toast, setToast] = useState('')
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [showConfirmStep, setShowConfirmStep] = useState(false)
@@ -21,10 +22,13 @@ export default function Privileges() {
 
   const [userToDelete, setUserToDelete] = useState(null)
 
-  const showToast = (msg) => {
-    setToast(msg)
-    setTimeout(() => setToast(''), 5000)
-  }
+  const { toast, showToast, hideToast } = useToast()
+
+  const [searchTerm, setSearchTerm] = useState('')
+  const [activeUserId, setActiveUserId] = useState(null)
+
+  const getInitials = (u) => (u.full_name || u.email || '?').trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()
+  const getRoleBadge = (role) => role === 'super_admin' ? 'badge-error' : role === 'admin' ? 'badge-warning' : 'badge-success'
 
   const loadData = useCallback(async () => {
     setLoadingData(true)
@@ -46,11 +50,11 @@ export default function Privileges() {
       }
     } catch (err) {
       console.error('Error loading data:', err.message)
-      showToast('Error loading data: ' + err.message)
+      showToast('Error loading data: ' + err.message, 'error')
     } finally {
       setLoadingData(false)
     }
-  }, [])
+  }, [showToast])
 
   useEffect(() => {
     let mounted = true
@@ -74,7 +78,7 @@ export default function Privileges() {
   const handleExecuteCreateUser = async () => {
     setCreateLoading(true)
     const { error } = await supabase.functions.invoke('admin-create-user', { body: { email: newEmail, password: generatedPassword } })
-    if (error) { showToast('Creation failed: ' + error.message) } else {
+    if (error) { showToast('Creation failed: ' + error.message, 'error') } else {
       if (newFullName.trim()) await supabase.from('profiles').update({ full_name: newFullName.trim() }).eq('email', newEmail.trim())
       showToast(`ACCOUNT CREATED SUCCESSFULLY! 🎉\nName: ${newFullName.trim() || newEmail}\nEmail: ${newEmail}\nTemporary Pass: ${generatedPassword}`)
       setNewFullName(''); setNewEmail(''); setGeneratedPassword(''); setShowConfirmStep(false); setIsCreateModalOpen(false); loadData()
@@ -85,7 +89,7 @@ export default function Privileges() {
   const handleDeleteUser = async () => {
     setActionLoading(true)
     const { error } = await supabase.functions.invoke('admin-delete-user', { body: { userId: userToDelete.id } })
-    if (error) showToast(error.message)
+    if (error) showToast(error.message, 'error')
     else { showToast('User deleted permanently!'); setUserToDelete(null); loadData() }
     setActionLoading(false)
   }
@@ -96,13 +100,13 @@ export default function Privileges() {
       const { error } = await supabase.functions.invoke('admin-change-role', { body: { userId, newRole } })
       if (error) throw error
       showToast(`Privilege level updated successfully to ${newRole}!`); loadData()
-    } catch (err) { showToast(err.message) } finally { setActionLoading(false) }
+    } catch (err) { showToast(err.message, 'error') } finally { setActionLoading(false) }
   }
 
   const handleTogglePermission = async (userId, moduleId, currentStatus) => {
     const newStatus = !currentStatus
     const { error } = await supabase.from('user_permissions').upsert({ user_id: userId, module_id: moduleId, is_allowed: newStatus, updated_at: new Date().toISOString() }, { onConflict: 'user_id,module_id' })
-    if (error) showToast(error.message)
+    if (error) showToast(error.message, 'error')
     else { setPermissions(prev => ({ ...prev, [`${userId}-${moduleId}`]: newStatus })); showToast('Preference updated!') }
   }
 
@@ -115,87 +119,152 @@ export default function Privileges() {
       await supabase.from('profiles').update({ requires_password_change: true, updated_at: new Date().toISOString() }).eq('id', selectedUser.id)
       showToast(`Password updated and forced reset active for ${selectedUser.email}`)
       setAdminNewPassword(''); setSelectedUser(null); loadData()
-    } catch (err) { showToast('Reset Password Failed: ' + err.message) } finally { setActionLoading(false) }
+    } catch (err) { showToast('Reset Password Failed: ' + err.message, 'error') } finally { setActionLoading(false) }
   }
 
   const closeCreateModal = () => { setIsCreateModalOpen(false); setNewFullName(''); setNewEmail(''); setGeneratedPassword(''); setShowConfirmStep(false) }
 
   return (
-    <div>
-      {toast && (
-        <div className="toast-container-custom">
-          <div className="d-flex align-items-center gap-2 px-3 py-2 rounded-pill shadow-lg">{toast}</div>
-        </div>
-      )}
+    <div className="max-w-1200 mx-auto">
+      <ToastBar toast={toast} onClose={hideToast} />
 
       <div className="page-header-custom d-flex flex-wrap justify-content-between align-items-start gap-3">
         <div>
-          <h1 className="page-title-custom">Privilege & User Manager</h1>
+          <h1 className="page-title-custom"><span className="material-symbols-outlined me-2 icon-xl">admin_panel_settings</span> Privilege & User Manager</h1>
           <p className="page-subtitle-custom">Create organization accounts and delegate dynamic structural rights.</p>
         </div>
-        <button onClick={() => setIsCreateModalOpen(true)} className="btn btn-primary fw-bold gap-2">
-          Add New Staff Account
+        <button onClick={() => setIsCreateModalOpen(true)} className="btn btn-primary fw-bold">
+          <span className="material-symbols-outlined me-1 icon-sm">person_add</span> Add Staff
         </button>
       </div>
 
-      <div className="card p-3">
-        <h6 className="fw-bold mb-3">Interactive Access Control Matrix</h6>
-        {loadingData ? (
-          <div className="text-center py-5"><span className="spinner-border"></span></div>
-        ) : users.length === 0 ? (
-          <div className="empty-state py-5">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94-3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" /></svg>
-            <p className="fw-bold text-muted mt-2">No users registered yet.</p>
-          </div>
-        ) : (
-          <div className="table-responsive">
-            <table className="table table-zebra">
-              <thead>
-                <tr>
-                  <th>User Details</th>
-                  <th>Privilege Level</th>
-                  {modules.map(m => <th key={m.id} className="text-center">{m.name}</th>)}
-                  <th className="text-end">Account Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {users.map((u) => (
-                  <tr key={u.id}>
-                    <td>
-                      <div className="fw-bold text-white">{u.full_name || '-'}</div>
-                      <div className="text-muted">{u.email || 'No Email'}</div>
-                      <div className="font-mono">{u.id}</div>
-                      {u.requires_password_change && <span className="badge badge-warning mt-1">Force Pass Reset Active</span>}
-                    </td>
-                    <td>
-                      <span className={`badge fw-bold ${u.role === 'super_admin' ? 'badge-error' : u.role === 'admin' ? 'badge-warning' : ''}`}>
-                        {u.role || 'default'}
-                      </span>
-                    </td>
-                    {modules.map(m => {
-                      const isChecked = !!permissions[`${u.id}-${m.id}`]
-                      return (
-                        <td key={m.id} className="text-center">
-                          <input type="checkbox" className="form-check-input" checked={isChecked} onChange={() => handleTogglePermission(u.id, m.id, permissions[`${u.id}-${m.id}`])} />
-                        </td>
-                      )
-                    })}
-                    <td className="text-end">
-                      <div className="d-flex gap-1 justify-content-end flex-wrap">
-                        <button onClick={() => setSelectedUser(u)} className="btn btn-sm btn-outline-light">Reset Pass</button>
-                        <button onClick={() => setUserToDelete(u)} className="btn btn-sm btn-link">Delete</button>
-                        <div className="vr mx-1"></div>
-                        <button onClick={() => handleRoleChange(u.id, 'default')} disabled={actionLoading || u.role === 'super_admin' || u.role === 'default' || !u.role} className={`btn btn-sm ${u.role === 'default' || !u.role ? 'btn-outline-light opacity-50' : 'btn-outline-light'}`}>Default</button>
-                        <button onClick={() => handleRoleChange(u.id, 'admin')} disabled={actionLoading || u.role === 'super_admin' || u.role === 'admin'} className={`btn btn-sm ${u.role === 'admin' ? 'btn-outline-light opacity-50' : 'btn-outline-primary'}`}>Admin</button>
+      {loadingData ? (
+        <div className="text-center py-5"><span className="spinner-border"></span></div>
+      ) : users.length === 0 ? (
+        <div className="card p-5 empty-state">
+          <span className="material-symbols-outlined mb-2" style={{ fontSize: '40px' }}>group_off</span>
+          <p className="fw-bold text-muted">No users registered yet.</p>
+        </div>
+      ) : (
+        <div className="row g-3">
+          {/* ===== LEFT: user list ===== */}
+          <div className="col-lg-4 d-flex flex-column gap-2">
+            <div className="input-group">
+              <span className="input-group-text"><span className="material-symbols-outlined icon-sm">search</span></span>
+              <input type="text" className="form-control" placeholder="Search name or email..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+            </div>
+            <div className="d-flex flex-column gap-2 overflow-auto pe-1" style={{ maxHeight: '640px' }}>
+              {users
+                .filter(u => {
+                  const term = searchTerm.trim().toLowerCase()
+                  if (!term) return true
+                  return (u.full_name || '').toLowerCase().includes(term) || (u.email || '').toLowerCase().includes(term)
+                })
+                .map((u) => (
+                  <div key={u.id} onClick={() => setActiveUserId(u.id)} className={`card p-3 cursor-pointer transition-all ${u.id === (users.find(x => x.id === activeUserId) || users[0])?.id ? 'bg-accent-15' : ''}`}>
+                    <div className="d-flex align-items-center gap-2">
+                      <div className="avatar-custom bg-gradient-avatar text-white flex-shrink-0">{getInitials(u)}</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="fw-bold text-white text-truncate">{u.full_name || '-'}</div>
+                        <div className="text-muted text-12 text-truncate">{u.email || 'No Email'}</div>
                       </div>
-                    </td>
-                  </tr>
+                      <span className={`badge flex-shrink-0 ${getRoleBadge(u.role)}`}>{u.role || 'default'}</span>
+                    </div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
+              {users.filter(u => {
+                const term = searchTerm.trim().toLowerCase()
+                if (!term) return true
+                return (u.full_name || '').toLowerCase().includes(term) || (u.email || '').toLowerCase().includes(term)
+              }).length === 0 && <div className="text-center text-muted py-4">No users match your search.</div>}
+            </div>
           </div>
-        )}
-      </div>
+
+          {/* ===== RIGHT: detail panel ===== */}
+          <div className="col-lg-8">
+            {(() => {
+              const activeUser = users.find(u => u.id === activeUserId) || users[0]
+              if (!activeUser) return <div className="card p-5 text-center text-muted">Select a user from the list to manage access.</div>
+              const isSuper = activeUser.role === 'super_admin'
+              return (
+                <div className="card p-4 d-flex flex-column gap-3">
+                  {/* Identity */}
+                  <div className="d-flex align-items-center gap-3">
+                    <div className="avatar-custom bg-gradient-avatar text-white flex-shrink-0" style={{ width: '48px', height: '48px', fontSize: '18px' }}>{getInitials(activeUser)}</div>
+                    <div className="flex-1 min-w-0">
+                      <div className="fw-bold text-white">{activeUser.full_name || '-'}</div>
+                      <div className="text-muted text-14">{activeUser.email || 'No Email'}</div>
+                      <div className="font-mono text-11 text-tertiary text-truncate">{activeUser.id}</div>
+                    </div>
+                    <div className="d-flex flex-column gap-1 align-items-end flex-shrink-0">
+                      <span className={`badge ${getRoleBadge(activeUser.role)}`}>{activeUser.role || 'default'}</span>
+                      {activeUser.requires_password_change && <span className="badge badge-warning">Force Pass Reset</span>}
+                    </div>
+                  </div>
+
+                  <div className="divider-gradient"></div>
+
+                  {/* Privilege level */}
+                  <div>
+                    <div className="section-label text-muted mb-2">Privilege Level</div>
+                    {isSuper ? (
+                      <div className="text-muted text-14">Super Admin role is managed directly in the database.</div>
+                    ) : (
+                      <div className="d-flex gap-2">
+                        <button
+                          className={`btn btn-sm fw-bold ${(!activeUser.role || activeUser.role === 'default') ? 'btn-primary' : 'btn-outline-secondary'}`}
+                          disabled={actionLoading || (!activeUser.role || activeUser.role === 'default')}
+                          onClick={() => handleRoleChange(activeUser.id, 'default')}
+                        >Default</button>
+                        <button
+                          className={`btn btn-sm fw-bold ${activeUser.role === 'admin' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                          disabled={actionLoading || activeUser.role === 'admin'}
+                          onClick={() => handleRoleChange(activeUser.id, 'admin')}
+                        >Admin</button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Module access */}
+                  <div>
+                    <div className="section-label text-muted mb-2">Module Access</div>
+                    <div className="row g-2">
+                      {modules.map(m => {
+                        const isChecked = !!permissions[`${activeUser.id}-${m.id}`]
+                        return (
+                          <div className="col-md-6" key={m.id}>
+                            <div className="d-flex align-items-center justify-content-between gap-2 p-2 rounded-12 bg-base-200">
+                              <span className="small text-truncate">{m.name}</span>
+                              <div className="form-check form-switch mb-0 flex-shrink-0">
+                                <input className="form-check-input" type="checkbox" role="switch" checked={isChecked} onChange={() => handleTogglePermission(activeUser.id, m.id, isChecked)} />
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="divider-gradient"></div>
+
+                  {/* Danger zone */}
+                  <div>
+                    <div className="section-label text-error mb-2">Danger Zone</div>
+                    <div className="d-flex flex-wrap gap-2">
+                      <button className="btn btn-sm btn-outline-warning fw-bold" onClick={() => { setSelectedUser(activeUser); setAdminNewPassword('') }}>
+                        <span className="material-symbols-outlined me-1 icon-sm">key</span> Force Password Reset
+                      </button>
+                      <button className="btn btn-sm btn-outline-danger fw-bold" onClick={() => setUserToDelete(activeUser)}>
+                        <span className="material-symbols-outlined me-1 icon-sm">delete</span> Delete User
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )
+            })()}
+          </div>
+        </div>
+      )}
 
       {isCreateModalOpen && (
         <>
@@ -208,7 +277,7 @@ export default function Privileges() {
                 <form onSubmit={handlePreSubmitCheck}>
                   <div className="mb-3"><label className="form-label">Staff Full Name *</label><input type="text" required placeholder="Ahmad Bin Ali" className="form-control" value={newFullName} onChange={(e) => setNewFullName(e.target.value)} /></div>
                   <div className="mb-3"><label className="form-label">Staff Email Address *</label><input type="email" required placeholder="staffname@gmail.com" className="form-control" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} /></div>
-                  <div className="mb-3"><label className="form-label">Temporary Security Password *</label><div className="input-group"><input type="text" readOnly placeholder="Click Generate to build" className="form-control font-mono" value={generatedPassword} required /><button type="button" onClick={generateRandomPassword} className="btn btn-outline-light fw-bold">Generate</button></div></div>
+                  <div className="mb-3"><label className="form-label">Temporary Security Password *</label><div className="input-group"><input type="text" readOnly placeholder="Click Generate to build" className="form-control font-mono" value={generatedPassword} required /><button type="button" onClick={generateRandomPassword} className="btn btn-outline-secondary fw-bold">Generate</button></div></div>
                   <div className="d-flex gap-2 justify-content-end pt-2">
                     <button type="button" className="btn btn-sm btn-link" onClick={closeCreateModal}>Cancel</button>
                     <button type="submit" className="btn btn-sm btn-primary fw-bold px-3">Create User</button>
