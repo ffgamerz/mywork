@@ -1,14 +1,16 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, lazy, Suspense } from 'react'
 import { supabase } from './supabaseClient'
 import Login from './Login'
-import AdsRecordManager from './AdsRecordManager'
-import Settings from './Settings'
-import Privileges from './Privileges'
-import Inventory from './Inventory'
-import ReceiptManager from './ReceiptManager'
-import WageCalculator from './WageCalculator'
-import ProductionPlanning from './ProductionPlanning'
-import MyWage from './MyWage'
+
+// Code splitting: each page loads on demand (keeps initial bundle small)
+const AdsRecordManager = lazy(() => import('./AdsRecordManager'))
+const Settings = lazy(() => import('./Settings'))
+const Privileges = lazy(() => import('./Privileges'))
+const Inventory = lazy(() => import('./Inventory'))
+const ReceiptManager = lazy(() => import('./ReceiptManager'))
+const WageCalculator = lazy(() => import('./WageCalculator'))
+const ProductionPlanning = lazy(() => import('./ProductionPlanning'))
+const MyWage = lazy(() => import('./MyWage'))
 import { useToast } from './utils/useToast'
 import ToastBar from './components/ToastBar'
 import { cleanRole } from './utils/role'
@@ -295,14 +297,16 @@ function App() {
             </div>
           )}
           
-          {activePage === 'records' && canAccessRecords && <AdsRecordManager session={session} />}
-          {activePage === 'settings' && <Settings session={session} />}
-          {activePage === 'privileges' && canAccessPrivileges && <Privileges session={session} />}
-          {activePage === 'inventory' && canAccessInventory && <Inventory session={session} userRole={userRole} allowedModules={allowedModules} />}
-          {activePage === 'receiptManager' && canAccessReceiptManager && <ReceiptManager session={session} userRole={userRole} allowedModules={allowedModules} />}
-          {activePage === 'wageCalculator' && canAccessWageCalculator && <WageCalculator session={session} userRole={userRole} allowedModules={allowedModules} />}
-          {activePage === 'myWage' && canAccessMyWage && <MyWage session={session} />}
-          {activePage === 'productionPlanning' && canAccessProductionPlanning && <ProductionPlanning session={session} userRole={userRole} allowedModules={allowedModules} />}
+          <Suspense fallback={<div className="text-center py-5"><span className="spinner-border"></span></div>}>
+            {activePage === 'records' && canAccessRecords && <AdsRecordManager session={session} />}
+            {activePage === 'settings' && <Settings session={session} />}
+            {activePage === 'privileges' && canAccessPrivileges && <Privileges session={session} />}
+            {activePage === 'inventory' && canAccessInventory && <Inventory session={session} userRole={userRole} allowedModules={allowedModules} />}
+            {activePage === 'receiptManager' && canAccessReceiptManager && <ReceiptManager session={session} userRole={userRole} allowedModules={allowedModules} />}
+            {activePage === 'wageCalculator' && canAccessWageCalculator && <WageCalculator session={session} userRole={userRole} allowedModules={allowedModules} />}
+            {activePage === 'myWage' && canAccessMyWage && <MyWage session={session} />}
+            {activePage === 'productionPlanning' && canAccessProductionPlanning && <ProductionPlanning session={session} userRole={userRole} allowedModules={allowedModules} />}
+          </Suspense>
         </div>
       </div>
 
