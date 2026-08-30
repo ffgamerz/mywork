@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from './supabaseClient'
 import ToastBar from './components/ToastBar'
 import { useToast } from './utils/useToast'
+import { getErrorMessage } from './utils/error'
 
 export default function Privileges() {
   const [users, setUsers] = useState([])
@@ -89,7 +90,7 @@ export default function Privileges() {
   const handleDeleteUser = async () => {
     setActionLoading(true)
     const { error } = await supabase.functions.invoke('admin-delete-user', { body: { userId: userToDelete.id } })
-    if (error) showToast(error.message, 'error')
+    if (error) showToast(await getErrorMessage(error), 'error')
     else { showToast('User deleted permanently!'); setUserToDelete(null); loadData() }
     setActionLoading(false)
   }
@@ -100,7 +101,7 @@ export default function Privileges() {
       const { error } = await supabase.functions.invoke('admin-change-role', { body: { userId, newRole } })
       if (error) throw error
       showToast(`Privilege level updated successfully to ${newRole}!`); loadData()
-    } catch (err) { showToast(err.message, 'error') } finally { setActionLoading(false) }
+    } catch (err) { showToast(await getErrorMessage(err), 'error') } finally { setActionLoading(false) }
   }
 
   const handleTogglePermission = async (userId, moduleId, currentStatus) => {
@@ -119,7 +120,7 @@ export default function Privileges() {
       await supabase.from('profiles').update({ requires_password_change: true, updated_at: new Date().toISOString() }).eq('id', selectedUser.id)
       showToast(`Password updated and forced reset active for ${selectedUser.email}`)
       setAdminNewPassword(''); setSelectedUser(null); loadData()
-    } catch (err) { showToast('Reset Password Failed: ' + err.message, 'error') } finally { setActionLoading(false) }
+    } catch (err) { showToast('Reset Password Failed: ' + await getErrorMessage(err), 'error') } finally { setActionLoading(false) }
   }
 
   const closeCreateModal = () => { setIsCreateModalOpen(false); setNewFullName(''); setNewEmail(''); setGeneratedPassword(''); setShowConfirmStep(false) }
