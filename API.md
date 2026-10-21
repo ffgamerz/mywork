@@ -1,7 +1,7 @@
 # Mywork API v1
 
 Client/AI handoff: [AI-API-GUIDE.md](./AI-API-GUIDE.md). Share the guide, not
-server credentials. Base live URL is pending deployment.
+server credentials. Live base URL: `https://bol-services.pages.dev/api/v1`.
 
 Base path: `/api/v1`. Implemented using Cloudflare Pages Functions.
 No login credentials, service key or bot key belong in React, Vite variables,
@@ -159,4 +159,12 @@ including literal product search, date/paid/boolean filters, pagination and
 missing/wrong credential rejection. No business records were changed.
 Mutation behavior against a sandbox, remaining filter combinations and
 database role-protection policies still require separate verification.
-No migrations, deployment or Git push were performed.
+Deployment completed on 21 October 2026 to Cloudflare Pages project
+`bol-services` (GitHub repository `ffgamerz/mywork`, branch main). All 39 read-only
+integration checks also passed over live HTTPS. No database migrations or
+business record mutations were performed. Mutation operations remain mock-tested.
+
+Live verification command:
+```bash
+MYWORK_API_URL=https://bol-services.pages.dev/api/v1 npm run test:api:integration
+```

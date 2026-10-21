@@ -2,9 +2,11 @@
 
 ## Status dan konfigurasi
 
-API sudah dibina dan diuji secara lokal terhadap database sebenar. **Belum
-dideploy ke live.** Jangan anggap domain live sudah mempunyai API ini.
-Pemilik akan memberikan base URL sebenar selepas deployment.
+API sudah live dan diuji pada Cloudflare Pages (projek `bol-services`, repo `mywork`).
+
+**Base URL: `https://bol-services.pages.dev/api/v1`**
+
+Gunakan key Mywork yang diberikan pemilik melalui saluran secret.
 
 Untuk mesin lokal pemilik:
 
@@ -15,12 +17,12 @@ npm run dev:api
 
 Base URL lokal: `http://127.0.0.1:8788/api/v1`.
 Vite di port5173 hanya frontend. AI di mesin lain tidak boleh menggunakan
-localhost komputer pemilik; tunggu URL HTTPS live.
+localhost komputer pemilik; gunakan URL HTTPS live di atas.
 
 Pemilik perlu menyediakan dua environment variable pada mesin AI:
 
 ```text
-MYWORK_API_URL=<base URL yang diberikan pemilik, berakhir dengan /api/v1>
+MYWORK_API_URL=https://bol-services.pages.dev/api/v1
 MYWORK_BOT_KEY=<API key Mywork daripada pemilik>
 ```
 
@@ -191,5 +193,8 @@ filter tarikh/paid/status, pagination dan input tidak sah diuji terhadap
 database sebenar. Skrip: `npm run test:api:integration` (memerlukan .dev.vars).
 Tiada rekod database ditambah/diubah/dipadam untuk ujian ini.
 Mutation hanya diuji dengan mock; belum diuji pada sandbox database.
-Live Cloudflare URL belum dideploy atau diuji. Audit perlindungan role/RLS
+Live Cloudflare URL telah lulus 39 read-only HTTP integration checks pada
+21 Oktober 2026. Jalankan semula dengan:
+`MYWORK_API_URL=https://bol-services.pages.dev/api/v1 npm run test:api:integration`.
+Audit perlindungan role/RLS
 database belum disahkan penuh. Rujuk `API.md` untuk kontrak teknikal lengkap.

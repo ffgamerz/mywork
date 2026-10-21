@@ -128,6 +128,7 @@ export async function onRequest({ request, env }) {
     const total = response.headers.get('Content-Range')?.split('/')[1]
     return json({ data: rows, pagination: { limit: Number(query.get('limit')), offset: Number(query.get('offset')), total: total && total !== '*' ? Number(total) : null } }, 200, headers)
   } catch (error) {
+    if (!(error instanceof InputError)) console.error('Mywork API failure', error.name, error.stack?.split('\n').slice(1, 3).join('\n'))
     return json({ error: error instanceof InputError ? error.message : 'Internal server error' }, error instanceof InputError ? 400 : 500, headers)
   }
 }

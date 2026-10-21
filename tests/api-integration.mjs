@@ -8,10 +8,11 @@ const env = Object.fromEntries(fs.readFileSync('.dev.vars', 'utf8').split('\n').
   const i = l.indexOf('='); return [l.slice(0, i), l.slice(i + 1)]
 }))
 const origin = 'https://mywork.integration'
+const liveBase = process.env.MYWORK_API_URL?.replace(/\/$/, '')
 let passed = 0
 async function check(path, expected = 200, key = env.BOT_API_KEY) {
-  const request = new Request(`${origin}/api/v1/${path}`, { headers: key === null ? {} : { 'X-Bot-Key': key } })
-  const r = await onRequest({ request, env })
+  const request = new Request(`${liveBase || origin + '/api/v1'}/${path}`, { headers: key === null ? {} : { 'X-Bot-Key': key } })
+  const r = liveBase ? await fetch(request) : await onRequest({ request, env })
   const j = await r.json()
   assert.equal(r.status, expected, `${path}: ${r.status} ${j.error || ''}`)
   assert.equal(r.headers.get('Cache-Control'), 'no-store')
@@ -43,4 +44,4 @@ await check('raw-materials?q=a&limit=1')
 await check('inventory?select=*', 400)
 await check('inventory?limit=1&limit=2', 400)
 await check('stock-productions?from=2026-02-30', 400)
-console.log(JSON.stringify({ passed, mode: 'read-only', writes: 0 }))
+console.log(JSON.stringify({ passed, mode: liveBase ? 'live-http-read-only' : 'read-only', writes: 0 }))

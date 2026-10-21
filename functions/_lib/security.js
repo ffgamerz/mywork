@@ -32,7 +32,9 @@ export async function upstream(env, path, options = {}) {
     ...options,
     headers: { apikey: env.SUPABASE_SERVICE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_KEY}`, ...options.headers },
     signal: AbortSignal.timeout(15000),
-    redirect: 'error',
+    // Workers supports manual/follow; manual also prevents leaking server
+    // credentials to a redirect destination (3xx is rejected by callers).
+    redirect: 'manual',
   })
 }
 

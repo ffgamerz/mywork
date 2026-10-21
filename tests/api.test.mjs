@@ -45,6 +45,7 @@ test('bearer token is verified with Auth before database role', async () => {
   const request = () => onRequest({ request: new Request('https://mywork.example/api/v1/', { headers: { Authorization: 'Bearer access-token' } }), env })
   assert.equal((await request()).status, 200)
   assert.equal(requests[0].headers.Authorization, 'Bearer access-token')
+  assert.equal(requests[0].redirect, 'manual')
   bearerValid = false; assert.equal((await request()).status, 401)
 })
 test('discovery lists all known resources', async () => {
