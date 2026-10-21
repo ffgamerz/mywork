@@ -1,0 +1,6 @@
+# Server only. Copy to .dev.vars for npm run dev:api or Wrangler Pages dev.
+# Never prefix these secrets with VITE_. Never commit .dev.vars.
+SUPABASE_URL=https://YOUR-PROJECT.supabase.co
+SUPABASE_SERVICE_KEY=YOUR_SERVER_SERVICE_ROLE_KEY
+BOT_API_KEY=YOUR_RANDOM_KEY_AT_LEAST_32_CHARACTERS
+BOT_USER_ID=UUID_OF_EXISTING_SUPER_ADMIN

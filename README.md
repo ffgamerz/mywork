@@ -1,5 +1,14 @@
 # React + Vite
 
+## Mywork API
+
+Authenticated server API: see [API.md](./API.md). Run `npm run test:api` for
+security/route tests and `npm run dev:api` for the local API on port 8788.
+Use `.dev.vars.example` for server configuration; secrets must never use VITE_.
+For another AI/client, share [AI-API-GUIDE.md](./AI-API-GUIDE.md) and provision
+only its bot key separately. `npm run test:api:integration` performs read-only
+checks against the configured database; never share `.dev.vars`.
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:

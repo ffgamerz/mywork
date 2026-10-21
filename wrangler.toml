@@ -1,11 +1,8 @@
 name = "mywork"
 compatibility_date = "2024-01-01"
+pages_build_output_dir = "./dist"
 
 # Cloudflare Pages configuration
 [vars]
 # Environment variables will be set in Cloudflare Pages dashboard
 # VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY
-
-# For static site deployment
-[site]
-bucket = "./dist"
