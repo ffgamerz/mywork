@@ -11,6 +11,9 @@ const oneOf = choices => v => choices.includes(v)
 const uuid = v => typeof v === 'string' && UUID_RE.test(v)
 export const recordId = v => typeof v === 'string' && (uuid(v) || /^[1-9]\d{0,18}$/.test(v))
 export const date = v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) && Number.isFinite(Date.parse(v)) && new Date(v).toISOString().slice(0, 10) === v
+// Today's date in Malaysia (UTC+8, no DST); paid dates may not be after it.
+export const malaysiaToday = (now = Date.now()) => new Date(now + 8 * 3600000).toISOString().slice(0, 10)
+const pastDate = v => date(v) && v <= malaysiaToday()
 const resource = (table, fields, required, options = {}) => ({ table, fields, required, sort: 'created_at', ...options })
 // Ownership is injected server-side on create. No arbitrary tables/columns,
 // role updates, payment linking or paid fields are exposed for mutation.
@@ -26,6 +29,8 @@ export const resources = {
   'purchase-plan-items': resource('purchase_plan_items', { purchase_plan_id: uuid, raw_material_id: uuid, total_quantity_needed: number, raw_quantity_needed: nullable(number), unit: requiredText, raw_unit: nullable(text), unit_price: nullable(number), estimated_cost: number }, ['purchase_plan_id', 'raw_material_id', 'total_quantity_needed', 'unit'], { filters: { purchase_plan_id: uuid, raw_material_id: uuid } }),
   'purchase-plan-batches': resource('purchase_plan_batches', { purchase_plan_id: uuid, inventory_id: uuid, batch_count: integer }, ['purchase_plan_id', 'inventory_id', 'batch_count'], { filters: { purchase_plan_id: uuid, inventory_id: uuid } }),
   'ads-payments': resource('ads_payment', {}, [], { readOnly: true, date: 'paid_date' }),
-  'receipt-payments': resource('receipts_payment', {}, [], { readOnly: true, date: 'paid_date' }),
+  // Only paid_date may be corrected, and only with an expected_paid_date guard
+  // (optimistic concurrency): the update applies only if the stored value still matches.
+  'receipt-payments': resource('receipts_payment', { paid_date: pastDate }, [], { methods: ['GET', 'PATCH'], date: 'paid_date', guard: { field: 'paid_date', key: 'expected_paid_date', validate: date } }),
   'wage-payments': resource('wage_payments', {}, [], { readOnly: true, date: 'date_paid' }),
 }

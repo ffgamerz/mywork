@@ -72,7 +72,7 @@ so read the row before editing; payment linking and marking paid are excluded.
 | purchase-plan-items | purchase_plan_items | purchase_plan_id*, raw_material_id*, total_quantity_needed*, unit*, raw_quantity_needed, raw_unit, unit_price, estimated_cost |
 | purchase-plan-batches | purchase_plan_batches | purchase_plan_id*, inventory_id*, batch_count* |
 | ads-payments | ads_payment | Read only |
-| receipt-payments | receipts_payment | Read only |
+| receipt-payments | receipts_payment | PATCH only: `paid_date` (+ required guard `expected_paid_date`), see below |
 | wage-payments | wage_payments | Read only |
 
 No auth/user management, role changes, payment execution/mark-paid, receipt file
@@ -87,6 +87,14 @@ numbers >=0 and <=1e12; quantities/batch/expiry counts require positive integers
 where applicable. Dates require real YYYY-MM-DD calendar dates; expiry cannot
 precede production. Fraction materials require positive fraction_grams and
 fraction_unit g/ml (including merged PATCH state).
+
+## Receipt payment paid_date correction
+
+`PATCH /receipt-payments/:id` with `{"paid_date":"YYYY-MM-DD","expected_paid_date":"YYYY-MM-DD"}`.
+Only `paid_date` is writable; no POST/DELETE, no other fields. `paid_date` must be
+a real calendar date and not after today in Malaysia (UTC+8). `expected_paid_date`
+is required and must equal the stored value (optimistic concurrency guard); a
+mismatch returns 409 (re-read and retry), a missing id returns 404, bad input 400.
 
 ## Collection filters
 

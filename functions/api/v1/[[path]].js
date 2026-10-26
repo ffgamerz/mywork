@@ -67,6 +67,19 @@ function queryFor(params, resource) {
   return query
 }
 
+const methodsFor = r => r.methods || (r.readOnly ? ['GET'] : ['GET', 'POST', 'PATCH', 'DELETE'])
+
+// Removes and validates the guard value from a guarded PATCH body.
+function takeGuard(body, resource) {
+  if (!resource.guard) return undefined
+  const { key, validate } = resource.guard
+  if (!Object.hasOwn(body, key)) fail(`Missing required field: ${key} (current value, re-read the record first)`)
+  const value = body[key]
+  delete body[key]
+  if (!validate(value)) fail(`Invalid ${key}`)
+  return value
+}
+
 async function validateChanges(body, method, resource, id, env) {
   if (!Object.keys(body).length) fail('Empty changes')
   for (const [key, value] of Object.entries(body)) if (!Object.hasOwn(resource.fields, key) || !resource.fields[key](value)) fail(`Invalid or unknown field: ${key}`)
@@ -98,18 +111,20 @@ export async function onRequest({ request, env }) {
     const url = new URL(request.url)
     const parts = url.pathname.replace(/^\/api\/v1\/?/, '').split('/').filter(Boolean)
     const method = request.method
-    if (!parts.length && method === 'GET') return json({ version: 1, resources: Object.fromEntries(Object.entries(resources).map(([name, r]) => [name, { methods: r.readOnly ? ['GET'] : ['GET', 'POST', 'PATCH', 'DELETE'], fields: Object.keys(r.fields), required: r.required }])) }, 200, headers)
+    if (!parts.length && method === 'GET') return json({ version: 1, resources: Object.fromEntries(Object.entries(resources).map(([name, r]) => [name, { methods: methodsFor(r), ...(r.guard ? { guard: r.guard.key } : {}), fields: Object.keys(r.fields), required: r.required }])) }, 200, headers)
     const [name, id] = parts
     const resource = Object.hasOwn(resources, name) ? resources[name] : null
     if (!resource || parts.length > 2) return json({ error: 'Not found' }, 404, headers)
     if (id && !recordId(id)) fail('Invalid record ID')
-    if ((resource.readOnly && method !== 'GET') || (method === 'POST' && id) || (['PATCH', 'DELETE'].includes(method) && !id)) return json({ error: 'Method not allowed for this path' }, 405, headers)
+    if (!methodsFor(resource).includes(method) || (method === 'POST' && id) || (['PATCH', 'DELETE'].includes(method) && !id)) return json({ error: 'Method not allowed for this path' }, 405, headers)
     if ((id || method !== 'GET') && url.search) fail('Query parameters allowed only on collection GET')
     const query = !id && method === 'GET' ? queryFor(url.searchParams, resource) : new URLSearchParams({ select: '*' })
     if (id) query.set('id', `eq.${id}`)
-    let body
+    let body, guardValue
     if (['POST', 'PATCH'].includes(method)) {
       body = await readBody(request)
+      if (method === 'PATCH') guardValue = takeGuard(body, resource)
+      if (guardValue !== undefined) query.set(resource.guard.field, `eq.${guardValue}`)
       await validateChanges(body, method, resource, id, env)
       if (method === 'POST' && resource.owned) body.user_id = caller.userId
       if (method === 'POST' && name === 'ads-records' && !body.title) body.title = `RM ${body.amount.toFixed(2)}`
@@ -123,6 +138,11 @@ export async function onRequest({ request, env }) {
       return json({ error: status === 409 ? 'Record conflicts with data or references' : status === 400 ? 'Database rejected the request' : 'Database request failed' }, status, headers)
     }
     const rows = await response.json()
+    if (id && !rows.length && guardValue !== undefined) {
+      const check = await upstream(env, `/rest/v1/${resource.table}?select=id&id=eq.${id}&limit=1`)
+      if (!check.ok) throw new Error('Lookup failed')
+      if ((await check.json()).length) return json({ error: `${resource.guard.field} has changed; re-read the record and retry` }, 409, headers)
+    }
     if (id && !rows.length) return json({ error: 'Record not found' }, 404, headers)
     if (id || method === 'POST') return json({ data: rows[0] }, method === 'POST' ? 201 : 200, headers)
     const total = response.headers.get('Content-Range')?.split('/')[1]

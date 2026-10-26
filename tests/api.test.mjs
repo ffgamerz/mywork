@@ -102,9 +102,42 @@ test('partial updates validate date pair and fraction fields against stored row'
   assert.equal((await call('raw-materials/' + id, 'PATCH', { fraction_grams: null })).status, 400)
 })
 test('payments read only; paid fields cannot be injected through writable resources', async () => {
-  for (const resource of ['ads-payments', 'receipt-payments', 'wage-payments']) for (const method of ['POST', 'PATCH', 'DELETE']) assert.equal((await call(resource + (method === 'POST' ? '' : '/1'), method, method === 'DELETE' ? undefined : {})).status, 405)
+  for (const resource of ['ads-payments', 'wage-payments']) for (const method of ['POST', 'PATCH', 'DELETE']) assert.equal((await call(resource + (method === 'POST' ? '' : '/1'), method, method === 'DELETE' ? undefined : {})).status, 405)
   assert.equal((await call('stock-productions/' + id, 'PATCH', { paid_amount: 100 })).status, 400)
   assert.equal((await call('receipt-records/1', 'PATCH', { payment_id: 2 })).status, 400)
+  for (const method of ['POST', 'DELETE']) assert.equal((await call('receipt-payments' + (method === 'POST' ? '' : '/1'), method, method === 'DELETE' ? undefined : {})).status, 405)
+})
+test('receipt-payments paid_date PATCH is guarded by expected_paid_date', async () => {
+  row = { id: 14, paid_date: '2026-10-25' }
+  const r = await call('receipt-payments/14', 'PATCH', { paid_date: '2026-10-25', expected_paid_date: '2026-10-26' })
+  assert.equal(r.status, 200)
+  const req = requests.at(-1)
+  assert.equal(req.method, 'PATCH')
+  assert.deepEqual(JSON.parse(req.body), { paid_date: '2026-10-25' })
+  assert.equal(req.url.searchParams.get('id'), 'eq.14')
+  assert.equal(req.url.searchParams.get('paid_date'), 'eq.2026-10-26')
+  const j = await (await call()).json()
+  assert.deepEqual(j.resources['receipt-payments'].methods, ['GET', 'PATCH'])
+  assert.equal(j.resources['receipt-payments'].guard, 'expected_paid_date')
+})
+test('receipt-payments paid_date rejects missing guard, bad/future dates and other fields', async () => {
+  const future = new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10)
+  for (const body of [{ paid_date: '2026-10-25' }, { paid_date: '2026-02-30', expected_paid_date: '2026-10-26' }, { paid_date: '25/10/2026', expected_paid_date: '2026-10-26' }, { paid_date: future, expected_paid_date: '2026-10-26' }, { paid_date: '2026-10-25', expected_paid_date: 'x' }, { total_amount: 1, expected_paid_date: '2026-10-26' }, { expected_paid_date: '2026-10-26' }, { paid_date: '2026-10-25', expected_paid_date: '2026-10-26', wage_amount: 0 }]) {
+    requests = []
+    assert.equal((await call('receipt-payments/14', 'PATCH', body)).status, 400, JSON.stringify(body))
+    assert.ok(!requests.some(x => x.method === 'PATCH'))
+  }
+})
+test('receipt-payments paid_date stale guard returns 409, missing record 404', async () => {
+  let exists = true
+  globalThis.fetch = async (url, options = {}) => {
+    if (url.includes('/profiles?')) return Response.json([{ role: 'super_admin' }])
+    if (options.method === 'PATCH') return Response.json([])
+    return Response.json(exists ? [{ id: 14 }] : [])
+  }
+  assert.equal((await call('receipt-payments/14', 'PATCH', { paid_date: '2026-10-25', expected_paid_date: '2026-10-24' })).status, 409)
+  exists = false
+  assert.equal((await call('receipt-payments/14', 'PATCH', { paid_date: '2026-10-25', expected_paid_date: '2026-10-24' })).status, 404)
 })
 test('no bulk mutation, nested routes or query-injected mutation', async () => {
   assert.equal((await call('inventory', 'DELETE')).status, 405)

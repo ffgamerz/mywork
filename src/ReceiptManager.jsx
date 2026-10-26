@@ -4,6 +4,7 @@ import ToastBar from './components/ToastBar'
 import { useToast } from './utils/useToast'
 import AccessDenied from './components/AccessDenied'
 import { cleanRole } from './utils/role'
+import { localToday, paidDateError } from './utils/paidDate'
 
 export default function ReceiptManager({ session, userRole, allowedModules = {} }) {
   const { toast, showToast, hideToast } = useToast()
@@ -24,6 +25,11 @@ export default function ReceiptManager({ session, userRole, allowedModules = {} 
   const [editingLinks, setEditingLinks] = useState(false)
   const [bankReceiptLink, setBankReceiptLink] = useState('')
   const [purchaseReceiptLink, setPurchaseReceiptLink] = useState('')
+  const [markPaidTarget, setMarkPaidTarget] = useState(null) // { ids, amount } awaiting confirmation
+  const [markPaidDate, setMarkPaidDate] = useState('')
+  const [editingPaidDate, setEditingPaidDate] = useState(false)
+  const [paidDateDraft, setPaidDateDraft] = useState('')
+  const [loadingPaidDate, setLoadingPaidDate] = useState(false)
 
   const cleanedRole = cleanRole(userRole)
   const isAuthorized = cleanedRole === 'super_admin' || cleanedRole === 'admin' || allowedModules['receiptManager'] === true
@@ -122,49 +128,42 @@ export default function ReceiptManager({ session, userRole, allowedModules = {} 
     else setSelectedIds(unpaidRecords.map(r => r.id))
   }
 
-  // --- Mark as Paid (bulk: create 1 payment, link all selected records) ---
-  const handleMarkAsPaid = async () => {
+  // --- Mark as Paid: open a confirmation with an editable paid date (default today) ---
+  const handleMarkAsPaid = () => {
     if (selectedIds.length === 0) return
-    if (!window.confirm(`Mark ${selectedIds.length} receipt(s) as paid?`)) return
-    setLoadingMarkAsPaid(true)
-    const totalAmount = totalSelectedAmount + (parseFloat(wageAmount) || 0)
-    const { data: paymentData, error: payError } = await supabase
-      .from('receipts_payment')
-      .insert([{
-        total_amount: totalAmount,
-        wage_amount: parseFloat(wageAmount) || 0,
-        paid_date: new Date().toISOString().split('T')[0]
-      }]).select('id').single()
-    if (payError) { showToast('Failed to create payment: ' + payError.message, 'error') }
-    else {
-      const { error: linkError } = await supabase
-        .from('receipt_records')
-        .update({ payment_id: paymentData.id })
-        .in('id', selectedIds)
-      if (linkError) { showToast('Failed to link records: ' + linkError.message, 'error') }
-      else { setSelectedIds([]); showToast(`${selectedIds.length} receipt(s) marked as paid!`); fetchPayments(); fetchRecords() }
-    }
-    setLoadingMarkAsPaid(false)
+    setMarkPaidDate(localToday())
+    setMarkPaidTarget({ ids: [...selectedIds], amount: totalSelectedAmount, bulk: true })
   }
 
-  // --- Mark single receipt as paid ---
-  const handleMarkSingleAsPaid = async (rec) => {
+  const handleMarkSingleAsPaid = (rec) => {
+    setMarkPaidDate(localToday())
+    setMarkPaidTarget({ ids: [rec.id], amount: parseFloat(rec.amount) || 0, bulk: false })
+  }
+
+  const confirmMarkAsPaid = async () => {
+    if (!markPaidTarget) return
+    const dateError = paidDateError(markPaidDate)
+    if (dateError) { showToast(dateError, 'error'); return }
+    const { ids, amount, bulk } = markPaidTarget
     setLoadingMarkAsPaid(true)
+    const wage = parseFloat(wageAmount) || 0
     const { data: paymentData, error: payError } = await supabase
       .from('receipts_payment')
-      .insert([{
-        total_amount: (parseFloat(rec.amount) || 0) + (parseFloat(wageAmount) || 0),
-        wage_amount: parseFloat(wageAmount) || 0,
-        paid_date: new Date().toISOString().split('T')[0]
-      }]).select('id').single()
+      .insert([{ total_amount: amount + wage, wage_amount: wage, paid_date: markPaidDate }])
+      .select('id').single()
     if (payError) { showToast('Failed to create payment: ' + payError.message, 'error') }
     else {
       const { error: linkError } = await supabase
         .from('receipt_records')
         .update({ payment_id: paymentData.id })
-        .eq('id', rec.id)
-      if (linkError) { showToast('Failed to link record: ' + linkError.message, 'error') }
-      else { showToast('Receipt marked as paid!'); fetchPayments(); fetchRecords() }
+        .in('id', ids)
+      if (linkError) { showToast('Failed to link records: ' + linkError.message, 'error') }
+      else {
+        if (bulk) setSelectedIds([])
+        setMarkPaidTarget(null)
+        showToast(ids.length > 1 ? `${ids.length} receipt(s) marked as paid!` : 'Receipt marked as paid!')
+        fetchPayments(); fetchRecords()
+      }
     }
     setLoadingMarkAsPaid(false)
   }
@@ -206,8 +205,44 @@ export default function ReceiptManager({ session, userRole, allowedModules = {} 
     setBankReceiptLink(pay.bank_receipt_link || '')
     setPurchaseReceiptLink(pay.purchase_receipt_link || '')
     setEditingLinks(false)
+    setEditingPaidDate(false)
+    setPaidDateDraft(pay.paid_date || '')
   }
-  const closePaymentDetail = () => setSelectedPayment(null)
+  const closePaymentDetail = () => { setSelectedPayment(null); setEditingPaidDate(false) }
+
+  const startEditingPaidDate = () => {
+    setPaidDateDraft(selectedPayment?.paid_date || localToday())
+    setEditingPaidDate(true)
+  }
+  const cancelEditingPaidDate = () => {
+    setPaidDateDraft(selectedPayment?.paid_date || '')
+    setEditingPaidDate(false)
+  }
+
+  // Explicit save only. Guarded: updates only if paid_date is still what we loaded.
+  const savePaidDate = async () => {
+    if (!selectedPayment) return
+    const dateError = paidDateError(paidDateDraft)
+    if (dateError) { showToast(dateError, 'error'); return }
+    if (paidDateDraft === selectedPayment.paid_date) { setEditingPaidDate(false); return }
+    setLoadingPaidDate(true)
+    let query = supabase.from('receipts_payment').update({ paid_date: paidDateDraft }).eq('id', selectedPayment.id)
+    query = selectedPayment.paid_date ? query.eq('paid_date', selectedPayment.paid_date) : query.is('paid_date', null)
+    const { data, error } = await query.select('id, paid_date')
+    if (error) {
+      showToast('Failed to save paid date: ' + error.message, 'error')
+    } else if (!data || data.length === 0) {
+      showToast('Paid date was changed elsewhere. Reloaded, please try again.', 'error')
+      fetchPayments()
+    } else {
+      const updated = data[0].paid_date
+      setSelectedPayment(prev => ({ ...prev, paid_date: updated }))
+      setPayments(prev => prev.map(p => (p.id === selectedPayment.id ? { ...p, paid_date: updated } : p)))
+      setEditingPaidDate(false)
+      showToast('Paid date saved!')
+    }
+    setLoadingPaidDate(false)
+  }
 
   const startEditingLinks = () => {
     setBankReceiptLink(selectedPayment?.bank_receipt_link || '')
@@ -369,8 +404,24 @@ export default function ReceiptManager({ session, userRole, allowedModules = {} 
                   <h5 className="fw-bold text-accent mb-0">Payment Details</h5>
                   <button type="button" className="btn-close btn-close-danger" onClick={closePaymentDetail}></button>
                 </div>
-                <div className="mb-3 text-muted small">
-                  Paid Date: <span className="text-white fw-medium">{selectedPayment.paid_date}</span>
+                <div className="mb-3 text-muted small d-flex align-items-center gap-2 flex-wrap">
+                  <span>Paid Date:</span>
+                  {editingPaidDate ? (
+                    <>
+                      <input type="date" className="form-control form-control-sm w-auto" aria-label="Paid date" value={paidDateDraft} max={localToday()} onChange={(e) => setPaidDateDraft(e.target.value)} />
+                      <button type="button" className="btn btn-sm btn-primary fw-bold" onClick={savePaidDate} disabled={loadingPaidDate}>
+                        {loadingPaidDate ? <span className="spinner-border spinner-border-sm"></span> : <><span className="material-symbols-outlined" style={{ fontSize: '14px' }}>save</span> Save</>}
+                      </button>
+                      <button type="button" className="btn btn-sm btn-link fw-bold" onClick={cancelEditingPaidDate} disabled={loadingPaidDate}>Cancel</button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-white fw-medium">{selectedPayment.paid_date}</span>
+                      <button type="button" className="btn btn-sm btn-outline-primary fw-bold py-0" onClick={startEditingPaidDate} title="Edit paid date">
+                        <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>edit</span> Edit
+                      </button>
+                    </>
+                  )}
                 </div>
                 <div className="mb-3">
                   <div className="d-flex justify-content-end mb-2">
@@ -466,6 +517,32 @@ export default function ReceiptManager({ session, userRole, allowedModules = {} 
 
       {activeTab === 'records' && renderReceiptsTab()}
       {activeTab === 'payments' && renderPaymentsTab()}
+
+      {/* Mark as Paid confirmation */}
+      {markPaidTarget && (
+        <>
+          <div className="modal-backdrop show" onClick={() => !loadingMarkAsPaid && setMarkPaidTarget(null)}></div>
+          <div className="modal d-block" tabIndex="-1" role="dialog" aria-modal="true">
+            <div className="modal-dialog modal-dialog-centered">
+              <div className="modal-content p-3">
+                <h5 className="fw-bold text-accent mb-2">Mark as Paid</h5>
+                <p className="text-white mb-2">
+                  Mark {markPaidTarget.ids.length} receipt(s) as paid? Total RM {(markPaidTarget.amount + (parseFloat(wageAmount) || 0)).toFixed(2)} (termasuk upah).
+                </p>
+                <label className="form-label text-muted small mb-1" htmlFor="mark-paid-date">Paid date</label>
+                <input id="mark-paid-date" type="date" className="form-control form-control-sm w-auto mb-1" value={markPaidDate} max={localToday()} onChange={(e) => setMarkPaidDate(e.target.value)} />
+                {markPaidDate && paidDateError(markPaidDate) && <div className="text-danger small">{paidDateError(markPaidDate)}</div>}
+                <div className="d-flex justify-content-end gap-2 mt-3">
+                  <button type="button" className="btn btn-sm btn-link fw-bold" onClick={() => setMarkPaidTarget(null)} disabled={loadingMarkAsPaid}>Cancel</button>
+                  <button type="button" className="btn btn-sm btn-warning fw-bold" onClick={confirmMarkAsPaid} disabled={loadingMarkAsPaid || !!paidDateError(markPaidDate)}>
+                    {loadingMarkAsPaid ? <span className="spinner-border spinner-border-sm"></span> : 'Mark as Paid'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }

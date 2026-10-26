@@ -93,7 +93,7 @@ ke JavaScript Number yang mungkin hilang ketepatan.
 | purchase-plan-items | Item bahan dalam pelan | GET/POST/PATCH/DELETE |
 | purchase-plan-batches | Bilangan batch produk dalam pelan | GET/POST/PATCH/DELETE |
 | ads-payments | Rekod pembayaran iklan | GET sahaja |
-| receipt-payments | Rekod pembayaran resit | GET sahaja |
+| receipt-payments | Rekod pembayaran resit | GET; PATCH `paid_date` sahaja (dengan `expected_paid_date`) |
 | wage-payments | Rekod pembayaran upah | GET sahaja |
 
 GET collection `/resource`; GET/PATCH/DELETE satu rekod `/resource/ID`;
@@ -114,10 +114,23 @@ curl "$MYWORK_API_URL/inventory/$INVENTORY_ID" -H "X-Bot-Key: $MYWORK_BOT_KEY"
 
 Field writable dan required ada dalam respons discovery serta `API.md`.
 `user_id` ditetapkan server, bukan input AI. `current_stock`, `payment_id`,
-`paid_amount`, `paid_date`, role dan permission tidak boleh diubah melalui body.
+`paid_amount`, `paid_date` (kecuali receipt-payments di atas), role dan permission tidak boleh diubah melalui body.
 Harga/total pembelian tidak dikira automatik. Tarikh menggunakan YYYY-MM-DD;
 nilai ini date-only, bukan masa penjadualan. Gunakan tarikh Malaysia seperti
 diminta pemilik; jangan tukar tarikh berdasarkan UTC secara automatik.
+
+### Betulkan paid_date receipt-payments (selepas arahan pemilik)
+
+Hanya `paid_date` boleh diubah, wajib bersama `expected_paid_date` (nilai semasa
+yang baru dibaca). Tarikh mesti sah dan bukan masa depan (tarikh Malaysia).
+409 = nilai sudah berubah, baca semula dan cuba lagi; 404 = id tiada.
+
+```bash
+curl "$MYWORK_API_URL/receipt-payments/14" -H "X-Bot-Key: $MYWORK_BOT_KEY"
+curl -X PATCH "$MYWORK_API_URL/receipt-payments/14" \
+  -H "X-Bot-Key: $MYWORK_BOT_KEY" -H 'Content-Type: application/json' \
+  --data '{"paid_date":"2026-10-25","expected_paid_date":"2026-10-26"}'
+```
 
 ## Filter dan pagination
 
