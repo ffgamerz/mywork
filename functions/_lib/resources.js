@@ -15,6 +15,9 @@ export const date = v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) 
 export const malaysiaToday = (now = Date.now()) => new Date(now + 8 * 3600000).toISOString().slice(0, 10)
 const pastDate = v => date(v) && v <= malaysiaToday()
 const resource = (table, fields, required, options = {}) => ({ table, fields, required, sort: 'created_at', ...options })
+// Ads payment text: null or <= 2000 chars. Links: null or an https:// URL, <= 2000 chars.
+const adsNote = v => v === null || (typeof v === 'string' && v.length <= 2000)
+const adsLink = v => v === null || (typeof v === 'string' && v.length <= 2000 && /^https:\/\/\S+$/.test(v))
 // Ownership is injected server-side on create. No arbitrary tables/columns,
 // role updates, payment linking or paid fields are exposed for mutation.
 export const resources = {
@@ -28,7 +31,12 @@ export const resources = {
   'purchase-plans': resource('purchase_plans', { plan_date: date, notes: nullable(text), total_estimated_cost: number }, [], { owned: true, search: 'notes', date: 'plan_date' }),
   'purchase-plan-items': resource('purchase_plan_items', { purchase_plan_id: uuid, raw_material_id: uuid, total_quantity_needed: number, raw_quantity_needed: nullable(number), unit: requiredText, raw_unit: nullable(text), unit_price: nullable(number), estimated_cost: number }, ['purchase_plan_id', 'raw_material_id', 'total_quantity_needed', 'unit'], { filters: { purchase_plan_id: uuid, raw_material_id: uuid } }),
   'purchase-plan-batches': resource('purchase_plan_batches', { purchase_plan_id: uuid, inventory_id: uuid, batch_count: integer }, ['purchase_plan_id', 'inventory_id', 'batch_count'], { filters: { purchase_plan_id: uuid, inventory_id: uuid } }),
-  'ads-payments': resource('ads_payment', {}, [], { readOnly: true, date: 'paid_date' }),
+  // GET is the generic collection path (fields stays empty so sort/filters are unchanged).
+  // POST/PATCH/DELETE are handled by functions/_lib/adsPayments.js; writeFields documents them.
+  'ads-payments': resource('ads_payment', {}, ['record_ids', 'total_amount', 'paid_date'], {
+    methods: ['GET', 'POST', 'PATCH', 'DELETE'], date: 'paid_date',
+    writeFields: { record_ids: v => Array.isArray(v), total_amount: positive, paid_date: pastDate, reference: adsNote, notes: adsNote, transfer_own_acc_link: adsLink, transfer_cc_link: adsLink },
+  }),
   // Only paid_date may be corrected, and only with an expected_paid_date guard
   // (optimistic concurrency): the update applies only if the stored value still matches.
   'receipt-payments': resource('receipts_payment', { paid_date: pastDate }, [], { methods: ['GET', 'PATCH'], date: 'paid_date', guard: { field: 'paid_date', key: 'expected_paid_date', validate: date } }),

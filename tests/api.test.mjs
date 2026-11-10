@@ -101,8 +101,9 @@ test('partial updates validate date pair and fraction fields against stored row'
   row = { id, calculation_mode: 'fraction', fraction_grams: 100, fraction_unit: 'g' }
   assert.equal((await call('raw-materials/' + id, 'PATCH', { fraction_grams: null })).status, 400)
 })
-test('payments read only; paid fields cannot be injected through writable resources', async () => {
-  for (const resource of ['ads-payments', 'wage-payments']) for (const method of ['POST', 'PATCH', 'DELETE']) assert.equal((await call(resource + (method === 'POST' ? '' : '/1'), method, method === 'DELETE' ? undefined : {})).status, 405)
+test('wage payments read only; paid fields cannot be injected through writable resources', async () => {
+  // ads-payments has its own guarded write path: see tests/adsPayments.test.mjs.
+  for (const resource of ['wage-payments']) for (const method of ['POST', 'PATCH', 'DELETE']) assert.equal((await call(resource + (method === 'POST' ? '' : '/1'), method, method === 'DELETE' ? undefined : {})).status, 405)
   assert.equal((await call('stock-productions/' + id, 'PATCH', { paid_amount: 100 })).status, 400)
   assert.equal((await call('receipt-records/1', 'PATCH', { payment_id: 2 })).status, 400)
   for (const method of ['POST', 'DELETE']) assert.equal((await call('receipt-payments' + (method === 'POST' ? '' : '/1'), method, method === 'DELETE' ? undefined : {})).status, 405)

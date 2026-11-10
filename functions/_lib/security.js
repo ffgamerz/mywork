@@ -59,7 +59,13 @@ export async function authenticate(request, env) {
   if (!response.ok) return null
   const profile = (await response.json())[0]
   if (profile?.role?.trim().toLowerCase() !== 'super_admin' || profile.requires_password_change === true) return null
-  return { userId }
+  // Audit label for writes: bots are named by optional BOT_KEY_NAME, users by uuid.
+  return { userId, actor: botKey !== null ? `bot:${botActorName(env)}` : `user:${userId}` }
+}
+
+const BOT_NAME_RE = /^[A-Za-z0-9_.-]{1,64}$/
+export function botActorName(env) {
+  return BOT_NAME_RE.test(env.BOT_KEY_NAME || '') ? env.BOT_KEY_NAME : 'mywork-bot'
 }
 
 // Best-effort burst protection per isolate; use Cloudflare WAF for a global limit.

@@ -48,8 +48,10 @@ Bot dipaut kepada akaun super_admin; server semak role pada setiap request.
    spesifik yang sudah diberi tidak perlu ditanya berulang.
 5. Selepas perubahan dibenarkan, hantar satu mutation, kemudian GET ID yang
    sama dan sahkan hasil. Jangan uji API dengan rekod bisnes sebenar.
-6. Jangan tandakan bayaran selesai atau jalankan pembayaran. Payment endpoints
-   adalah read-only. Jangan bypass API terus ke Supabase apabila request ditolak.
+6. Jangan tandakan bayaran selesai atau jalankan pembayaran tanpa arahan pemilik.
+   Payment endpoints adalah read-only, kecuali `ads-payments` yang mempunyai write
+   path berpandu (POST/PATCH/DELETE; lihat bahagian Rekod pembayaran iklan).
+   Endpoint payment lain kekal read-only. Jangan bypass API terus ke Supabase apabila request ditolak.
 7. Jangan deploy/push, ubah credential, role atau permission tanpa arahan pemilik.
 
 ## Request dan response
@@ -92,7 +94,7 @@ ke JavaScript Number yang mungkin hilang ketepatan.
 | purchase-plans | Pelan pembelian | GET/POST/PATCH/DELETE |
 | purchase-plan-items | Item bahan dalam pelan | GET/POST/PATCH/DELETE |
 | purchase-plan-batches | Bilangan batch produk dalam pelan | GET/POST/PATCH/DELETE |
-| ads-payments | Rekod pembayaran iklan | GET sahaja |
+| ads-payments | Rekod pembayaran iklan | GET; POST (pautkan rekod iklan), PATCH pautan/nota/rujukan, DELETE (nyahpaut dan padam). Lihat bahagian khas |
 | receipt-payments | Rekod pembayaran resit | GET; PATCH `paid_date` sahaja (dengan `expected_paid_date`) |
 | wage-payments | Rekod pembayaran upah | GET sahaja |
 
@@ -115,6 +117,7 @@ curl "$MYWORK_API_URL/inventory/$INVENTORY_ID" -H "X-Bot-Key: $MYWORK_BOT_KEY"
 Field writable dan required ada dalam respons discovery serta `API.md`.
 `user_id` ditetapkan server, bukan input AI. `current_stock`, `payment_id`,
 `paid_amount`, `paid_date` (kecuali receipt-payments di atas), role dan permission tidak boleh diubah melalui body.
+`payment_id` rekod iklan hanya ditetapkan melalui `POST /ads-payments`, bukan PATCH generik.
 Harga/total pembelian tidak dikira automatik. Tarikh menggunakan YYYY-MM-DD;
 nilai ini date-only, bukan masa penjadualan. Gunakan tarikh Malaysia seperti
 diminta pemilik; jangan tukar tarikh berdasarkan UTC secara automatik.
@@ -131,6 +134,93 @@ curl -X PATCH "$MYWORK_API_URL/receipt-payments/14" \
   -H "X-Bot-Key: $MYWORK_BOT_KEY" -H 'Content-Type: application/json' \
   --data '{"paid_date":"2026-10-25","expected_paid_date":"2026-10-26"}'
 ```
+
+## Rekod pembayaran iklan (ads-payments)
+
+Write path ini mengikut aliran Payment History (Mark as Paid dan pautan transfer).
+**Pemilik perlu meluluskan sebelum sebarang write sebenar (bukan dry_run).** Tunjuk
+dahulu hasil `dry_run: true`. Jumlah mesti sama tepat dengan jumlah amount rekod
+yang dipilih (sen). Pautan mesti `https://` (maks 2000 aksara). Teks maks 2000
+aksara. Kosongkan field dengan `null`.
+
+**Migration wajib dahulu:** `supabase/migrations/20261110000000_ads_payment_api_audit.sql`
+(tambah `reference`, `notes`, `created_by`, `updated_by`, `updated_at` pada `ads_payment`).
+Selagi belum dijalankan, POST dan PATCH pulang 400 "Database rejected the request".
+
+Audit: `created_by`/`updated_by` ialah `bot:<BOT_KEY_NAME>` (default `bot:mywork-bot`)
+atau `user:<uuid>`. Setiap mutation berjaya menulis satu baris log JSON
+(`ads_payment.create|update|delete`) tanpa header atau key.
+
+### POST /ads-payments
+
+```json
+{
+  "record_ids": ["103", "104"],
+  "total_amount": 3319.43,
+  "paid_date": "2026-10-15",
+  "reference": "TRF-1",
+  "notes": "Oktober",
+  "transfer_own_acc_link": "https://drive.google.com/file/d/CONTOH_OWN/view",
+  "transfer_cc_link": null,
+  "dry_run": true
+}
+```
+
+- `record_ids` (wajib): 1–100 ID rekod unik (string, atau integer JSON selamat).
+- `total_amount` (wajib): nombor > 0, maksimum 2 titik perpuluhan.
+- `paid_date` (wajib): tarikh sebenar `YYYY-MM-DD`, tidak lewat daripada hari ini (Malaysia).
+- `reference`, `notes`, `transfer_own_acc_link`, `transfer_cc_link` (pilihan).
+- `dry_run` (pilihan, default false). Field tidak dikenali pulang 400.
+
+`dry_run: true` pulang 200 tanpa sebarang write:
+
+```json
+{"dry_run":true,"data":{"payment":{"total_amount":3319.43,"paid_date":"2026-10-15","reference":"TRF-1","notes":"Oktober","transfer_own_acc_link":"https://drive.google.com/file/d/CONTOH_OWN/view","transfer_cc_link":null,"created_by":"bot:mywork-bot"},"records":[{"id":"103","amount":1120.38,"date":"2026-10-15","ads_platform":"tiktok","title":"Iklan A"},{"id":"104","amount":2199.05,"date":"2026-10-15","ads_platform":"shopee","title":"Iklan B"}],"records_total":3319.43}}
+```
+
+Write sebenar (body sama, `dry_run` false atau tiada) pulang 201. Payment dimasukkan
+dahulu, kemudian rekod dipautkan dengan guard (`payment_id IS NULL`):
+
+```json
+{"data":{"payment":{"id":500,"total_amount":3319.43,"paid_date":"2026-10-15","reference":"TRF-1","notes":"Oktober","transfer_own_acc_link":"https://drive.google.com/file/d/CONTOH_OWN/view","transfer_cc_link":null,"created_by":"bot:mywork-bot","updated_by":"bot:mywork-bot","updated_at":"2026-10-15T08:00:00.000Z"},"records":[{"id":"103","payment_id":500,"amount":1120.38},{"id":"104","payment_id":500,"amount":2199.05}]}}
+```
+
+### PATCH /ads-payments/ID
+
+Hanya `transfer_own_acc_link`, `transfer_cc_link`, `notes`, `reference` (sekurang-kurangnya satu).
+Field lain (termasuk `total_amount`, `paid_date`, `record_ids`, `payment_id`) pulang
+400 `Invalid or unknown field: X`.
+
+```json
+{"transfer_own_acc_link":"https://drive.google.com/file/d/CONTOH_OWN/view","transfer_cc_link":null,"notes":"Disahkan"}
+```
+
+Pulang 200 `{"data":{...baris ads_payment penuh...}}`. `"dry_run":true` pulang 200
+`{"dry_run":true,"data":{"before":{...},"after":{...}}}` tanpa write.
+
+### DELETE /ads-payments/ID
+
+Untuk buat asal kesilapan. Body pilihan; jika dihantar mesti JSON dengan `dry_run` sahaja.
+Rekod dinyahpaut dahulu, kemudian payment dipadam. Tiada soft delete dalam database,
+jadi snapshot dalam respons ialah backup.
+
+```json
+{"data":{"deleted_payment":{"id":500,"total_amount":3319.43,"paid_date":"2026-10-15","reference":"TRF-1","notes":"Oktober","transfer_own_acc_link":null,"transfer_cc_link":null,"created_by":"bot:mywork-bot","updated_by":"bot:mywork-bot","updated_at":"2026-10-15T08:00:00.000Z"},"unlinked_record_ids":["103","104"]},"backup_note":"Deleted row returned above; keep it to restore."}
+```
+
+`dry_run: true` dalam body pulang 200 `{"dry_run":true,"data":{"payment":{...},"records":[...]}}`.
+
+### Ralat ads-payments
+
+| Status | Maksud | Tindakan |
+| --- | --- | --- |
+| 400 | Jumlah tidak sama dengan jumlah rekod (`records_total` vs `total_amount`), atau field/format tidak sah | Betulkan input; jangan retry sama |
+| 404 | Rekod iklan atau payment tiada (`missing_ids` dinyatakan) | Baca semula senarai |
+| 409 | Rekod sudah dipautkan (`linked`), atau pautan dibatalkan kerana rekod dipautkan pihak lain (`Linking failed; payment rolled back`) | Baca semula; tunjuk kepada pemilik |
+| 502 | Ralat DB semasa pautan (payment dibatalkan), atau DELETE gagal (rekod dipautkan semula), atau unlink gagal (tiada apa dipadam) | Baca semula sebelum retry; tunjuk kepada pemilik |
+| 500 | `Rollback incomplete` dengan `payment_id` | **Jangan retry.** Pemilik perlu semak payment tersebut dan rekod dengan `payment_id` itu |
+
+Jangan retry POST/PATCH/DELETE secara automatik. Baca semula dahulu.
 
 ## Filter dan pagination
 
@@ -206,6 +296,7 @@ filter tarikh/paid/status, pagination dan input tidak sah diuji terhadap
 database sebenar. Skrip: `npm run test:api:integration` (memerlukan .dev.vars).
 Tiada rekod database ditambah/diubah/dipadam untuk ujian ini.
 Mutation hanya diuji dengan mock; belum diuji pada sandbox database.
+Write path ads-payments (POST/PATCH/DELETE) juga hanya diuji dengan mock (`npm run test:api`).
 Live Cloudflare URL telah lulus 39 read-only HTTP integration checks pada
 21 Oktober 2026. Jalankan semula dengan:
 `MYWORK_API_URL=https://bol-services.pages.dev/api/v1 npm run test:api:integration`.

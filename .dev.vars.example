@@ -4,3 +4,5 @@ SUPABASE_URL=https://YOUR-PROJECT.supabase.co
 SUPABASE_SERVICE_KEY=YOUR_SERVER_SERVICE_ROLE_KEY
 BOT_API_KEY=YOUR_RANDOM_KEY_AT_LEAST_32_CHARACTERS
 BOT_USER_ID=UUID_OF_EXISTING_SUPER_ADMIN
+# Optional audit name for bot writes (letters, digits, _ . -; max 64). Default: mywork-bot.
+# BOT_KEY_NAME=mywork-bot

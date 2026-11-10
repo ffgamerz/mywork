@@ -1,30 +1,7 @@
 import { authenticate, headersFor, json, rateLimited, upstream } from '../../_lib/security.js'
 import { resources, recordId, date } from '../../_lib/resources.js'
-
-class InputError extends Error {}
-const fail = message => { throw new InputError(message) }
-const MAX_BODY = 65536
-async function readBody(request) {
-  if (!/^application\/json(?:\s*;|$)/i.test(request.headers.get('Content-Type') || '')) fail('Content-Type must be application/json')
-  const reader = request.body?.getReader()
-  if (!reader) fail('JSON object body required')
-  let size = 0
-  const chunks = []
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) break
-    size += value.byteLength
-    if (size > MAX_BODY) { await reader.cancel(); fail('Body exceeds 64 KiB') }
-    chunks.push(value)
-  }
-  const buffer = new Uint8Array(size)
-  let offset = 0
-  for (const chunk of chunks) { buffer.set(chunk, offset); offset += chunk.byteLength }
-  let body
-  try { body = JSON.parse(new TextDecoder().decode(buffer)) } catch { fail('Invalid JSON') }
-  if (!body || Array.isArray(body) || typeof body !== 'object') fail('JSON object required')
-  return body
-}
+import { InputError, fail, readBody } from '../../_lib/input.js'
+import { handleAdsPayments } from '../../_lib/adsPayments.js'
 
 function queryFor(params, resource) {
   const allowed = new Set(['limit', 'offset', 'sort', 'order', ...(resource.search ? ['q'] : []), ...(resource.date ? ['from', 'to'] : []), ...(resource.paid ? ['paid'] : []), ...Object.keys(resource.filters || {})])
@@ -111,10 +88,13 @@ export async function onRequest({ request, env }) {
     const url = new URL(request.url)
     const parts = url.pathname.replace(/^\/api\/v1\/?/, '').split('/').filter(Boolean)
     const method = request.method
-    if (!parts.length && method === 'GET') return json({ version: 1, resources: Object.fromEntries(Object.entries(resources).map(([name, r]) => [name, { methods: methodsFor(r), ...(r.guard ? { guard: r.guard.key } : {}), fields: Object.keys(r.fields), required: r.required }])) }, 200, headers)
+    if (!parts.length && method === 'GET') return json({ version: 1, resources: Object.fromEntries(Object.entries(resources).map(([name, r]) => [name, { methods: methodsFor(r), ...(r.guard ? { guard: r.guard.key } : {}), fields: Object.keys(r.writeFields || r.fields), required: r.required }])) }, 200, headers)
     const [name, id] = parts
     const resource = Object.hasOwn(resources, name) ? resources[name] : null
     if (!resource || parts.length > 2) return json({ error: 'Not found' }, 404, headers)
+    // Ads payments: GET stays on the generic path below; writes go to the dedicated module.
+    // "return await": a bare return would skip this try/catch and leak input errors as 500s.
+    if (name === 'ads-payments' && method !== 'GET') return await handleAdsPayments({ request, env, actor: caller.actor, headers, method, id })
     if (id && !recordId(id)) fail('Invalid record ID')
     if (!methodsFor(resource).includes(method) || (method === 'POST' && id) || (['PATCH', 'DELETE'].includes(method) && !id)) return json({ error: 'Method not allowed for this path' }, 405, headers)
     if ((id || method !== 'GET') && url.search) fail('Query parameters allowed only on collection GET')
